@@ -86,6 +86,7 @@ Learning_Refractometer/
 ├── dispersion.html     05 三色光色散
 ├── optics.html         06 光路设计
 ├── solutions.html      07 多组分方案
+├── favicon.ico         站点图标
 ├── .nojekyll           跳过 Jekyll 处理
 └── README.md
 ```
