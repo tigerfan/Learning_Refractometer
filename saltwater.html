@@ -1,0 +1,2458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>盐水折射率 · 当离子加和失效</title>
+<style>
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#04080f;
+  --bg-2:#070d16;
+  --surface:#0b1119;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#4ec9e8;
+  --cy-soft:rgba(78,201,232,.14);
+  --cy-line:rgba(78,201,232,.35);
+  --am:#ffc453;
+  --am-soft:rgba(255,196,83,.13);
+  --vi:#7f9cff;
+  --vi-soft:rgba(127,156,255,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(78,201,232,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(127,156,255,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,196,83,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(78,201,232,.28),rgba(127,156,255,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#98ecf8 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(78,201,232,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,196,83,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(78,201,232,.12);color:var(--cy);border:1px solid rgba(78,201,232,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,196,83,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(127,156,255,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,196,83,.05);border:1px solid rgba(255,196,83,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(78,201,232,.045);border-color:rgba(78,201,232,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(78,201,232,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(78,201,232,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#98ecf8}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(78,201,232,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 公式没问题</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 加和崩塌</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 水合层</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 表观 k</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 全浓度</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 两体系对照</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 盐度计</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 温度</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 误差预算</span></a>
+  <a href="#s10"><i class="dot"></i><span>10 · 公式总表</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>计算光学 · 电解质溶液</div>
+      <h1>盐水：加和性<br><em>在这里失效</em></h1>
+      <p class="hero-lead">
+        把 NaCl 拆成 Na⁺ 和 Cl⁻，用离子折射度加起来，算出的折射率只有实测值的<b>一半</b>。
+        不是参数错了——是电解质溶液里，离子把水分子拽进了自己的配位层，
+        加和式赖以成立的那个前提，被打破了。
+      </p>
+
+      <div class="chain">
+        <span>NaCl 电离</span><i>→</i>
+        <span>离子折射度</span><i>→</i>
+        <span class="hi">加和失败</span><i>→</i>
+        <span>表观 k</span><i>→</i>
+        <span class="hi">n</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">离子加和 R</div><div class="v">4.56<small>cm³/mol</small></div></div>
+        <div class="kpi"><div class="k">表观 R</div><div class="v">9.18<small>cm³/mol</small></div></div>
+        <div class="kpi"><div class="k">相差</div><div class="v">2.01<small>×</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvRay" height="420"></canvas>
+      <div class="cv-cap"><span>光线逐层穿过递增的盐水</span><span style="text-transform:none">逐层折射</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================================================
+     S1 · 公式本身没有问题
+     ============================================================ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">先说清楚：公式本身没有问题</div>
+      <div class="sec-sub">
+        Lorenz–Lorentz 对水和 NaCl 溶液都成立。真正会出问题的，是它下面那句
+        "把各组分的贡献加起来"——这句话有一个隐藏前提。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>四步换算出分子极化率</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <div>
+            <div class="h">从麦克斯韦到介电常数</div>
+            <div class="d">
+              光在非磁性介质中 <code>n² = ε_r</code>。折射率就是"分子被电场拉弯了多少"的宏观平方根。
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">2</div>
+          <div>
+            <div class="h">极化强度与数密度</div>
+            <div class="d">
+              单位体积偶极矩 <code>P = N·α·E_loc</code>，其中 <code>N</code> 是单位体积的极化单元数。
+              <b>对电解质，这个"单元"是离子而不是分子</b>。
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">3</div>
+          <div>
+            <div class="h">Lorentz 局域场修正</div>
+            <div class="d">
+              扣掉分子自身产生的场，补上球形空腔壁的贡献：<code>E_loc = E + P/(3ε₀)</code>。
+              这一步让 n 变成 n²，也是它比 Gladstone–Dale 更准的根源。
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="n">4</div>
+          <div>
+            <div class="h">联立得到可加和的形式</div>
+            <div class="d">
+              <b>这一步是关键。</b>从 <code>P = Σ N_i α_i · E_loc</code> 推出
+              <code>(n²−1)/(n²+2) = Σ N_i α_i · 4π/3</code>，看起来天然可加。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>加和式的隐藏前提</h3>
+        <div class="formula-lab">Lorenz–Lorentz</div>
+        <div class="eq">
+          <span class="frac"><span>n² − 1</span><span>n² + 2</span></span>
+          <span class="o">=</span>
+          <span class="frac"><span>4π</span><span>3</span></span>
+          <span style="color:var(--tx-3)">Σ</span> N<sub>i</sub> α<sub>i</sub>
+          <span class="o">=</span>
+          ρ <span style="color:var(--tx-3)">Σ</span> w<sub>i</sub> k<sub>i</sub>
+        </div>
+
+        <div class="dl">
+          <div class="it"><b>前提一</b><span>
+            各组分的极化率 α<sub>i</sub> <b>互不影响</b>。蔗糖分子之间隔着水，勉强成立；
+            离子周围有强电场，直接不成立。
+          </span></div>
+          <div class="it"><b>前提二</b><span>
+            球形空腔里的局域场是<b>均匀</b>的。离子表面的场强能到 10⁹ V/m 量级，
+            水分子在空腔里感受到的场根本不均匀。
+          </span></div>
+          <div class="it"><b>后果</b><span>
+            公式照样能算出一个数，只是那个数<b>没有物理意义</b>——它对应的是
+            "一群互不干扰的孤立离子"，而不是真实溶液。
+          </span></div>
+        </div>
+      </div>
+
+      <div class="cvbox" style="margin-top:16px">
+        <canvas id="cvRules" height="300"></canvas>
+        <div class="cv-cap"><span>三种折射率–密度关系的外推分歧</span><span>固定 R<sub>m</sub>/M = 水的值</span></div>
+      </div>
+      <div class="note ok" style="margin-top:14px">
+        <div class="ico">◆</div>
+        <div>
+          关系式本身经得起检验。所以下面看到的偏差，<b>不能靠换公式解决</b>——
+          问题出在喂给公式的 k 值上。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S2 · 加和崩塌
+     ============================================================ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">把离子加起来，差了整整一倍</div>
+      <div class="sec-sub">
+        Pauling 的离子折射度是 1927 年从气相离子算出来的，至今仍是标准值。
+        把它代进溶液里，结果却对不上——而且偏差随浓度单调扩大。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:.9fr 1.1fr;gap:18px;align-items:start">
+    <div class="card">
+      <h3>离子折射度加和</h3>
+      <table style="margin-bottom:14px">
+        <thead><tr><th>离子</th><th class="num">R (cm³/mol)</th><th>来源</th></tr></thead>
+        <tbody>
+          <tr><td>Na⁺</td><td class="num">0.46</td><td>Pauling, 气相</td></tr>
+          <tr><td>Cl⁻</td><td class="num">4.10</td><td>Pauling, 气相</td></tr>
+          <tr style="border-top:1px solid var(--line)">
+            <td><b>NaCl 合计</b></td><td class="num hl"><b>4.56</b></td><td>1:1 加和</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="formula-lab">换算成比折射度</div>
+      <div class="eq sm">
+        k<sub>ion</sub> <span class="o">=</span>
+        <span class="frac"><span>4.56</span><span>58.443</span></span>
+        <span class="o">=</span><span class="hl2">0.0780</span> cm³/g
+      </div>
+
+      <div class="formula-lab">与水的对照</div>
+      <div class="dl" style="margin-top:2px">
+        <div class="it"><b>水的 k</b><span>0.20606 cm³/g — 是 NaCl 的 2.6 倍</span></div>
+        <div class="it"><b>含义</b><span>
+          按这个值，盐的折射贡献<b>弱到几乎被水淹没</b>。10% 溶液算出来只比纯水高 0.0022，
+          实测却高了 0.0175。
+        </span></div>
+      </div>
+
+      <div class="note" style="margin-top:14px">
+        <div class="ico">⚠</div>
+        <div>
+          注意这里不是"差了 10%"这种量级的误差。<b>溶质贡献本身差了整整一倍</b>——
+          说明加和值根本不是同一个物理量。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cvbox">
+        <canvas id="cvIon" height="352"></canvas>
+        <div class="cv-cap"><span>离子加和预测 vs 实测折射率</span><span>20 °C · 589 nm</span></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <h3 style="font-size:14px">偏差随浓度扩大</h3>
+        <table>
+          <thead>
+            <tr><th class="num">NaCl %</th><th class="num">实测 n</th><th class="num">离子加和</th><th class="num">Δn</th><th class="num">偏差</th></tr>
+          </thead>
+          <tbody id="tbIon"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:16px">
+    <div class="ico">◆</div>
+    <div>
+      看曲线形状：离子加和那条几乎<b>贴着水线平躺</b>，实测那条一路爬升。
+      两条线的缝隙在 10% 处已经张开 0.015，到 26% 张到 0.044——
+      <b>偏差不是常数偏移，是随浓度发散的</b>。这是"模型缺了一项随浓度增长的贡献"的典型特征。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S3 · 水合层
+     ============================================================ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">失效的根源：离子把水锁住了</div>
+      <div class="sec-sub">
+        Na⁺ 表面电场约 10⁹ V/m，足以让周围的水分子放弃自由转动、按固定取向排队。
+        第一配位层里各有约 6 个水分子——它们不再是"水"，而是水合络合物的一部分。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.15fr .85fr;gap:18px;align-items:start">
+    <div class="card" style="padding:14px 16px">
+      <div class="cvbox">
+        <canvas id="cvHyd" height="400"></canvas>
+        <div class="cv-cap" style="text-transform:none">Na⁺ 与 Cl⁻ 的第一水合层 · 取向示意</div>
+      </div>
+      <div class="switches" style="margin-top:12px">
+        <label class="sw on" data-hy="l" style="--c:#4ec9e8"><input type="checkbox" checked><i></i>配位键</label>
+        <label class="sw on" data-hy="r" style="--c:#7f9cff"><input type="checkbox" checked><i></i>水分子取向</label>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>为什么取向会改变折射率</h3>
+        <div class="dl">
+          <div class="it"><b>自由水</b><span>
+            水分子随机翻滚，偶极方向各向同性。极化率的<b>平均</b>贡献稳定。
+          </span></div>
+          <div class="it"><b>结合水</b><span>
+            在离子场里被固定朝向，分子间距也被压缩到 0.28 nm 以下。
+            电子云被挤压变形，<b>极化率随之改变</b>。
+          </span></div>
+          <div class="it"><b>净效果</b><span>
+            同一份"水+盐"，在光频场下的总极化响应比"互不干扰地加起来"更大。
+            这就是表观 R 翻倍的原因。
+          </span></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>电致伸缩：体积被压小了</h3>
+        <p style="font-size:12.7px">
+          离子电场把水拉紧，混合体积小于理想加和值。这个效应在电解质里比在糖溶液里强得多：
+        </p>
+        <div id="volBars" style="margin-top:6px"></div>
+        <p style="font-size:11.5px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.7">
+          同样接近饱和：盐水 26 %（收缩 3.03 %），蔗糖 67 Bx（收缩 0.07 %）——<b style="color:var(--am)">差 46 倍</b>——
+          这就是"离子"和"中性分子"在堆积行为上的分野。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S4 · 表观 k
+     ============================================================ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">绕过去：反标定一个表观比折射度</div>
+      <div class="sec-sub">
+        既然第一性原理走不通，就用实测数据把 k 反推出来。关键是——反推出来的 k
+        在整个浓度范围内<b>几乎是常数</b>，这本身就是一条有用的物理事实。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvKapp" height="330"></canvas>
+      <div class="cv-cap"><span>逐点反推的比折射度 k<sub>app</sub></span><span>cm³/g</span></div>
+    </div>
+
+    <div class="card">
+      <h3>反推方法与结果</h3>
+      <p style="font-size:12.7px">对每个实测点，把 ρ 和 n 代回 L–L，解出溶质项的 k：</p>
+      <div class="eq sm">
+        k<sub>app</sub> <span class="o">=</span>
+        <span class="frac"><span>x/ρ − (1−w)·k<sub>w</sub></span><span>w</span></span>
+        <span class="o">,</span>
+        &nbsp;x <span class="o">=</span>
+        <span class="frac"><span>n² − 1</span><span>n² + 2</span></span>
+      </div>
+
+      <div class="readout" style="margin-top:14px">
+        <div class="cell"><div class="k">平均 k<sub>app</sub></div><div class="v cy">0.1570</div></div>
+        <div class="cell"><div class="k">对应 R<sub>app</sub></div><div class="v">9.18<span class="u">cm³/mol</span></div></div>
+        <div class="cell"><div class="k">与 k<sub>ion</sub> 之比</div><div class="v am">2.01×</div></div>
+        <div class="cell"><div class="k">与蔗糖 k 之比</div><div class="v">0.76×</div></div>
+      </div>
+
+      <div class="note ok" style="margin-top:14px">
+        <div class="ico">◆</div>
+        <div>
+          <b>为什么能用常数？</b>因为"离子 + 水合层"作为一个整体单元，其有效极化率
+          在 0–26 % 范围内变化不大。浓度再高（接近饱和），水合层开始重叠，
+          k<sub>app</sub> 才会明显漂移——图上 26 % 那一点已经能看到轻微下折。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S5 · 全浓度
+     ============================================================ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">全浓度校验：三条模型一起跑</div>
+      <div class="sec-sub">
+        0 到 26 % w/w（20 °C 饱和点 26.4 %），17 个实测点。
+        用同一套密度和同一个 L–L 公式，只换 k 的取法，看谁活得下来。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:18px 22px">
+    <div class="ctrlbar">
+      <div>
+        <div class="ctrl-row"><label>NaCl 浓度</label>
+          <span class="val"><span id="vW">10.0</span> % w/w &nbsp;<span style="color:var(--tx-3)">/</span>&nbsp; <span id="vM">1.711</span> mol/kg</span>
+        </div>
+        <input type="range" id="sW" min="0" max="26" step="0.1" value="10">
+      </div>
+      <div>
+        <div class="ctrl-row"><label>温度</label><span class="val"><span id="vT">20.0</span> °C</span></div>
+        <input type="range" id="sT" class="am" min="10" max="40" step="0.5" value="20">
+      </div>
+      <div style="text-align:right">
+        <div class="rf">model n<sub>D</sub></div>
+        <div class="bigN" id="bigN">1.3505</div>
+      </div>
+    </div>
+
+    <div class="switches" id="curveSw">
+      <label class="sw on" data-k="app" style="--c:#4ec9e8"><input type="checkbox" checked><i></i>表观 k 模型</label>
+      <label class="sw" data-k="ion" style="--c:#ff7185"><input type="checkbox"><i></i>离子加和</label>
+      <label class="sw" data-k="gd" style="--c:#ffc453"><input type="checkbox"><i></i>Gladstone–Dale</label>
+      <label class="sw on" data-k="pts" style="--c:#e9eff8"><input type="checkbox" checked><i></i>实测点</label>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 296px;gap:14px;margin-top:14px;align-items:start">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvMain" height="430"></canvas>
+        <div class="cv-cap"><span>折射率 n<sub>D</sub> vs NaCl 质量分数</span><span>20 °C · 589.3 nm</span></div>
+      </div>
+      <div class="cvbox" style="margin-top:12px">
+        <canvas id="cvDev" height="158"></canvas>
+        <div class="cv-cap"><span>模型 − 实测 残差</span><span>×10⁻³</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:16px 18px">
+      <div class="rf" style="margin-bottom:4px">实时读数</div>
+      <div class="rl">
+        <div class="rl-i"><span>n<sub>D</sub>(模型)</span><b class="cy" id="rN">—</b></div>
+        <div class="rl-i"><span>n<sub>D</sub>(实测插值)</span><b id="rNexp">—</b></div>
+        <div class="rl-i"><span>残差 Δn</span><b class="gr" id="rDn">—</b></div>
+        <div class="rl-i"><span>密度 ρ</span><b id="rRho">—</b></div>
+        <div class="rl-i"><span>体积摩尔浓度 c</span><b id="rC">—</b></div>
+        <div class="rl-i"><span>渗透压（van't Hoff）</span><b id="rPi">—</b></div>
+        <div class="rl-i"><span>冰点下降</span><b id="rTf">—</b></div>
+        <div class="rl-i"><span>dn/dw</span><b id="rSens">—</b></div>
+      </div>
+      <div class="note" style="margin-top:14px;font-size:11.5px;padding:9px 12px">
+        <div class="ico">↳</div>
+        <div>渗透压与冰点按理想 van't Hoff 计算（i = 2），浓溶液实际偏离，仅作量级参考。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S6 · 两体系对照
+     ============================================================ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">两种溶质，两条完全不同的路</div>
+      <div class="sec-sub">
+        蔗糖和 NaCl 的折射率增量居然差不多（都在 1.7–2.0×10⁻³ 每 1 %）——
+        但走的是两条相反的路径：一个靠分子大，一个靠密度高。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.05fr .95fr;gap:18px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvCompare" height="376"></canvas>
+      <div class="cv-cap"><span>n 随质量分数上升：蔗糖 vs NaCl</span><span>20 °C</span></div>
+    </div>
+
+    <div class="card">
+      <h3>逐项对照</h3>
+      <table>
+        <thead>
+          <tr><th>项目</th><th class="num">蔗糖</th><th class="num">NaCl</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>溶质形态</td><td class="num">中性分子</td><td class="num">离子 1:1</td></tr>
+          <tr><td>摩尔质量</td><td class="num">342.30</td><td class="num">58.44</td></tr>
+          <tr><td>加和性</td><td class="num hl">成立 0.7%</td><td class="num bad">失效 2×</td></tr>
+          <tr><td>比折射度 k</td><td class="num">0.2055</td><td class="num">0.1570</td></tr>
+          <tr><td>饱和质量分数</td><td class="num">67.1 %</td><td class="num">26.4 %</td></tr>
+          <tr><td>饱和时 ρ</td><td class="num">1.348</td><td class="num">1.202</td></tr>
+          <tr><td>饱和时 n</td><td class="num">1.4665</td><td class="num">1.3795</td></tr>
+          <tr><td>体积收缩（饱和）</td><td class="num">0.07 %</td><td class="num am">3.03 %</td></tr>
+          <tr><td>dn/dw 低浓端</td><td class="num">1.45</td><td class="num">1.73</td></tr>
+          <tr><td>dn/dw 高浓端</td><td class="num">2.48</td><td class="num">1.76</td></tr>
+          <tr><td>温度系数 dw/dT</td><td class="num">−0.070</td><td class="num">−0.055</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:10.5px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.75">
+        dn/dw 单位 10⁻³ 每 1 %；温度系数单位 %/K。
+      </p>
+    </div>
+  </div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">谁的密度贡献更大</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:24px">NaCl</span></div>
+      <p style="font-size:12px;margin:8px 0 0">
+        盐水的 k 只有蔗糖的 76 %，但 26 % 时密度 1.197 对 1.108。<b>密度把差距扳回来了</b>。
+      </p>
+    </div>
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">谁的斜率更陡</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:24px">各有胜负</span></div>
+      <p style="font-size:12px;margin:8px 0 0">
+        低浓端盐水略陡（1.73 vs 1.45），高浓端蔗糖反超（2.48 vs 1.76）——
+        因为蔗糖能一路升到 67 %，盐水 26 % 就到头了。
+      </p>
+    </div>
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">谁的模型更好用</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:24px">蔗糖</span></div>
+      <p style="font-size:12px;margin:8px 0 0">
+        蔗糖有第一性原理支撑（原子加和）；盐水只能靠反标定。
+        <b>这是物理困难，不是计算偷懒</b>。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S7 · 盐度计
+     ============================================================ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">反问题：折射仪怎么读盐度</div>
+      <div class="sec-sub">
+        盐水体系没有"Brix 刻度"这种东西——折射仪读的是 n，盐度刻度是厂家用自己的曲线
+        标定出来的。而这条曲线，和上一章那个 k = 0.1570 是同一条。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:.9fr 1.1fr;gap:18px;align-items:start">
+    <div class="card">
+      <div class="rf" style="margin-bottom:8px">虚拟盐度计读数</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:16px">
+        <span class="bigN" id="rvN" style="font-size:46px">1.3505</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--tx-3)">n<sub>D</sub></span>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>折射率读数</label><span class="val" id="rvNlab">1.35050</span></div>
+        <input type="range" id="sN" min="1.3330" max="1.3800" step="0.00001" value="1.35050">
+      </div>
+      <div class="readout" style="margin-top:16px">
+        <div class="cell"><div class="k">反解盐度</div><div class="v cy" id="rvB">10.00<span class="u">%w/w</span></div></div>
+        <div class="cell"><div class="k">mol/kg</div><div class="v" id="rvM">1.711</div></div>
+        <div class="cell"><div class="k">体积浓度</div><div class="v" id="rvC" style="font-size:14px">1.832<span class="u">mol/L</span></div></div>
+        <div class="cell"><div class="k">Δn=10⁻⁴ 折算</div><div class="v am" id="rvRes" style="font-size:14px">±0.06<span class="u">%</span></div></div>
+      </div>
+      <div class="note ok" style="margin-top:14px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          反解用二分法在模型曲线上求根。注意 10 % 时读数 1.35050 反解得 10.08 %——
+          模型在该点低 1.4×10⁻⁴，折合 0.08 %，仍在仪器 0.1 % 分辨率之内。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>几个标志性盐水</h3>
+        <table>
+          <thead><tr><th>样品</th><th class="num">盐度 (%w/w)</th><th class="num">n<sub>D</sub></th><th class="num">密度</th></tr></thead>
+          <tbody id="tbRefs"></tbody>
+        </table>
+        <p style="font-size:11px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono)">
+          海水按 3.5 % 总盐度近似为纯 NaCl 溶液，实际因Mg²⁺、SO₄²⁻ 存在会有 0.0002 量级偏差。
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>灵敏度：从稀到饱和只涨 2 %</h3>
+        <p style="font-size:12.7px">
+          和蔗糖那种"斜率翻倍"不同，盐水的 dn/dw 从 1.73 到 1.76（×10⁻³ per 1 %），
+          <b>几乎是一条直线</b>。这有两个后果：
+        </p>
+        <div class="dl" style="margin-top:8px">
+          <div class="it"><b>好处</b><span>整段量程可以用同一个换算系数，仪表标定简单</span></div>
+          <div class="it"><b>坏处</b><span>没有"浓端更灵敏"的补偿空间，全量程精度几乎均等</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S8 · 温度
+     ============================================================ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">温度：盐水比糖水更"抗热"</div>
+      <div class="sec-sub">
+        同样的两通道拆法：密度下降 + 氢键网络重排。但盐水里这两项都更小——
+        离子已经把水锁紧了，温度再想撼动它就难了。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:14px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvDnDT" height="330"></canvas>
+      <div class="cv-cap"><span>温度系数的两通道分解</span><span>−dn/dT (10⁻⁴ /K)</span></div>
+    </div>
+    <div class="cvbox">
+      <canvas id="cvHeat" height="330"></canvas>
+      <div class="cv-cap"><span>n 在 (盐度, 温度) 平面的分布</span><span>等值线间隔 0.01</span></div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;align-items:start">
+    <div class="card">
+      <h3>温度实验台</h3>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>温度 T</label><span class="val"><span id="tvT">25.0</span> °C</span></div>
+        <input type="range" id="sTT" min="10" max="40" step="0.5" value="25">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>真实盐度</label><span class="val"><span id="tvB">10</span> % w/w</span></div>
+        <input type="range" id="sTB" class="am" min="0" max="26" step="0.5" value="10">
+      </div>
+      <div class="readout">
+        <div class="cell"><div class="k">n(w, T)</div><div class="v cy" id="tvN">—</div></div>
+        <div class="cell"><div class="k">相对 20 °C</div><div class="v" id="tvDn">—</div></div>
+        <div class="cell"><div class="k">仪器直接读数</div><div class="v am" id="tvBx">—</div></div>
+        <div class="cell"><div class="k">补偿后</div><div class="v" id="tvBxc">—</div></div>
+      </div>
+      <div class="note" style="margin-top:12px;font-size:11.5px">
+        <div class="ico">↳</div>
+        <div>补偿式 w<sub>补</sub> = w<sub>读</sub> + 0.058·(T − 20)，系数比蔗糖的 0.065 小。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>量化表：ΔT = 1 K 的代价</h3>
+      <table>
+        <thead>
+          <tr><th class="num">%w/w</th><th class="num">密度通道</th><th class="num">结构通道</th><th class="num">合计</th><th class="num">Δw/K</th></tr>
+        </thead>
+        <tbody id="tbTemp"></tbody>
+      </table>
+      <p style="font-size:10.5px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.75">
+        单位 10⁻⁴ /K。结构通道为离子水合层重排的经验项，占比远小于蔗糖体系。
+      </p>
+    </div>
+  </div>
+
+  <div class="note ok" style="margin-top:14px">
+    <div class="ico">◆</div>
+    <div>
+      <b>与蔗糖体系的关键差异：</b>蔗糖的 Δw/K 随浓度<b>下降</b>（−0.070 → −0.062），
+      盐水则<b>上升</b>（−0.055 → −0.064）。原因是蔗糖的 dn/dBrix 涨得比 dn/dT 快，
+      而盐水的 dn/dw 几乎不动。所以糖厂可以用一个补偿常数，盐厂在高浓段最好用分段系数。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S9 · 误差预算
+     ============================================================ -->
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">误差预算：这套模型在哪里会翻车</div>
+      <div class="sec-sub">所有量级都能用页面上的模型复现。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th style="width:22%">误差源</th><th style="width:18%">性质</th><th class="num">量级</th><th>说明与对策</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>表观 k 的漂移</b></td><td><span class="badge am">主要</span></td>
+          <td class="num warn">±1 %</td>
+          <td>k<sub>app</sub> 在 0–20 % 稳定在 0.1570，26 % 处降到 0.1568。用单一常数在饱和区会差 0.0002 量级。</td>
+        </tr>
+        <tr>
+          <td><b>密度输入</b></td><td><span class="badge am">主要</span></td>
+          <td class="num warn">±0.3 %</td>
+          <td>ρ 的 ±0.3 % 变成 n 的 ±0.0012。盐水密度对温度敏感，恒温是第一位。</td>
+        </tr>
+        <tr>
+          <td><b>离子种类混杂</b></td><td><span class="badge rd">不可修正</span></td>
+          <td class="num">视样品</td>
+          <td>Mg²⁺ 折射度约为 Na⁺ 的 3 倍，SO₄²⁻ 更高。折光法给的是"表观 NaCl 当量"，不是真实组分。</td>
+        </tr>
+        <tr>
+          <td><b>温度</b></td><td><span class="badge">可补偿</span></td>
+          <td class="num">−1.1×10⁻⁴/K</td>
+          <td>20 °C 基准，全浓度 −1.0 ~ −1.2×10⁻⁴/K。ΔT=1 K 折合 −0.055 ~ −0.064 %，ΔT=5 K 就有 0.3 %，必须补偿。</td>
+        </tr>
+        <tr>
+          <td><b>色散</b></td><td><span class="badge">可指定</span></td>
+          <td class="num">±2×10⁻³</td>
+          <td>本模型为 589.3 nm。盐水色散略大于纯水，换 F 线约 +0.0042。</td>
+        </tr>
+        <tr>
+          <td><b>离子对缔合</b></td><td><span class="badge vi">理论</span></td>
+          <td class="num">&lt;0.5 %</td>
+          <td>高浓时部分 Na⁺Cl⁻ 形成接触离子对，减少自由离子数。这是 k<sub>app</sub> 在饱和区下折的原因之一。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">模型整体精度</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:26px">±0.0002</span><span class="u">Δn, 0–26 %</span></div>
+      <p style="font-size:12px;margin:8px 0 0">比蔗糖体系的 ±0.0011 还好一个量级——因为 k 本来就是从这批数据反标定出来的。</p>
+    </div>
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">折合成盐度</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:26px">±0.06</span><span class="u">% w/w</span></div>
+      <p style="font-size:12px;margin:8px 0 0">与工业盐度计 0.1 % 的分辨率同量级，模型不是瓶颈。</p>
+    </div>
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">链条长度</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:26px">2</span><span class="u">个离子 → 1 个读数</span></div>
+      <p style="font-size:12px;margin:8px 0 0">比蔗糖的 45 个原子少了两个量级，但每一步的可信度也低了一档。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S10 · 公式总表
+     ============================================================ -->
+<section id="s10sec">
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <div>
+      <div class="sec-title">一页纸的公式链</div>
+      <div class="sec-sub">前两步是"本该成立却没成立"，第三步是实际的解法。</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:16px;align-items:start">
+    <div class="card">
+      <div class="formula-lab">① 电离</div>
+      <div class="eq sm">
+        NaCl <span class="o">→</span> Na⁺ <span class="o">+</span> Cl⁻
+        <span style="color:var(--tx-3)">,</span>
+        &nbsp;每 mol 盐给出 <span class="hl">2 mol</span> 离子
+      </div>
+
+      <div class="formula-lab">② 离子加和（失败）</div>
+      <div class="eq sm">
+        R<sub>ion</sub> <span class="o">=</span> 0.46 <span class="o">+</span> 4.10 <span class="o">=</span> <span class="bad">4.56</span> cm³/mol
+      </div>
+      <div class="eq-note">代回 L–L 只给出实测的一半 → 该值对应孤立离子，不是溶液中的离子</div>
+
+      <div class="formula-lab">③ 表观比折射度（反标定）</div>
+      <div class="eq sm">
+        k<sub>app</sub> <span class="o">=</span> <span class="hl">0.1570</span> cm³/g
+        <span class="o">,</span>&nbsp;
+        R<sub>app</sub> <span class="o">=</span> 0.1570 <span class="o">×</span> 58.443 <span class="o">=</span> 9.18 cm³/mol
+      </div>
+
+      <div class="formula-lab">④ 混合求解</div>
+      <div class="eq sm">
+        <span class="frac"><span>n² − 1</span><span>n² + 2</span></span>
+        <span class="o">=</span> ρ [ w·k<sub>app</sub> <span class="o">+</span> (1−w)·k<sub>w</sub> ]
+        <span class="o">,</span>&nbsp;k<sub>w</sub> <span class="o">=</span> 0.20606
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="formula-lab" style="margin-top:0">⑤ 反解</div>
+        <div class="eq sm">
+          n <span class="o">=</span> <span class="hl" style="font-size:16px">√</span><span class="brk">[</span><span class="frac"><span>1 + 2x</span><span>1 − x</span></span><span class="brk">]</span>
+          <span class="o">,</span>&nbsp;
+          x <span class="o">=</span> ρ[w k<sub>app</sub> + (1−w)k<sub>w</sub>]
+        </div>
+
+        <div class="formula-lab">⑥ 密度（外部输入）</div>
+        <div class="eq sm">
+          ρ <span class="o">=</span> f(w) <span style="color:var(--tx-3)">单调三次插值，20 °C 实测表</span>
+        </div>
+
+        <div class="formula-lab">⑦ 温度修正（两通道）</div>
+        <div class="eq sm">
+          n(T) <span class="o">=</span> n(20) <span class="o">+</span>
+          [ (dn/dT)<sub>密度</sub> <span class="o">+</span> (dn/dT)<sub>结构</sub> ] <span class="o">·</span> (T − 20)
+        </div>
+        <div class="eq-note">结构项 −2.0×10⁻⁵ (1 − 0.033w)，w 以 % 计</div>
+
+        <div class="formula-lab">⑧ 反问题（仪器刻度）</div>
+        <div class="eq sm">
+          w <span class="o">=</span> f⁻¹(n) <span style="color:var(--tx-3)">二分法求根，无近似</span>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:16px">
+        <div class="ico">⚠</div>
+        <div>
+          <b>注意这条链的诚实边界：</b>第 ③ 步的 k<sub>app</sub> 是从实测折射率反推的，
+          这意味着第 ⑤ 步算出来的 n <b>在某种意义上是在复述输入</b>。
+          它的价值不在"预测"，而在于：<b>用一个常数统一了 0–26 % 的全部数据</b>，
+          说明这个体系的自由度只有 1 个。
+        </div>
+      </div>
+
+      <div class="note ok">
+        <div class="ico">✓</div>
+        <div>
+          对比蔗糖页：那边 45 个原子 → R<sub>m</sub> → n，<b>全程零拟合</b>；
+          这边 2 个离子 → 反标定 → n，<b>有一个拟合参数</b>。
+          两种做法的可信度差在哪，两页并排看最清楚。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="t">
+      <b>盐水的折射率 · 当离子加和失效</b><br>
+      模型：Lorenz–Lorentz 关系 + 表观比折射度反标定<br>
+      实测：20 °C, 589 nm, 0–26 % w/w NaCl
+    </div>
+    <div class="r">
+      交互式单页 · 无外部依赖<br>
+      <span id="footStamp">—</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 常量与实测数据
+   ============================================================ */
+const MW_S = 58.4428;        // NaCl g/mol
+const MW_W = 18.01528;
+const RHO_S = 2.165;         // NaCl 晶体密度
+const RHO_W = 0.99821;
+const N_W   = 1.33299;
+const W_SAT = 26.4;          // 20 °C 饱和质量分数 %
+
+// Pauling 离子折射度 (cm3/mol, 气相)
+const R_NA = 0.46, R_CL = 4.10;
+const R_ION = R_NA + R_CL;   // 4.56
+
+// 表观比折射度（由实测反标定）
+const K_APP = 0.15700;
+
+const N_CRYSTAL = 1.5442;    // NaCl 晶体 n_D
+
+const xOf = n => (n*n - 1) / (n*n + 2);
+const nOf = x => Math.sqrt((1 + 2*x) / (1 - x));
+
+const K_W = xOf(N_W) / RHO_W;          // 0.206059
+const K_ION = R_ION / MW_S;            // 0.078025
+const R_APP = K_APP * MW_S;            // 9.176
+const R_GD_S = (N_CRYSTAL - 1) / RHO_S;
+const R_GD_W = (N_W - 1) / RHO_W;
+
+// 20 °C 密度表 (%w/w)
+const DENS = [
+  [0,0.9982],[1,1.0053],[2,1.0125],[3,1.0196],[4,1.0268],[5,1.0340],
+  [6,1.0413],[7,1.0486],[8,1.0559],[9,1.0633],[10,1.0707],
+  [12,1.0857],[14,1.1008],[16,1.1162],[18,1.1319],[20,1.1478],
+  [22,1.1643],[24,1.1807],[26,1.1972]
+];
+
+// 20 °C 实测折射率 (589 nm)
+const NREF = [
+  [0,1.33299],[1,1.33470],[2,1.33650],[3,1.33830],[4,1.34000],[5,1.34180],
+  [6,1.34350],[7,1.34530],[8,1.34700],[9,1.34880],[10,1.35050],
+  [12,1.35410],[14,1.35760],[16,1.36120],[18,1.36480],[20,1.36840],[26,1.37950]
+];
+
+const CO = {
+  cy:'#4ec9e8', am:'#ffc453', vi:'#7f9cff', rd:'#ff7185', gr:'#6ee7a0',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#131d2a', grid2:'#1a2634', line:'#22303f'
+};
+
+/* ============================================================
+   1 · 工具
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function pchip(xs, ys){
+  const n = xs.length, h = [], d = [], m = new Array(n);
+  for(let i=0;i<n-1;i++){ h[i]=xs[i+1]-xs[i]; d[i]=(ys[i+1]-ys[i])/h[i]; }
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(d[i-1]*d[i] <= 0){ m[i]=0; }
+    else{
+      const w1 = 2*h[i]+h[i-1], w2 = h[i]+2*h[i-1];
+      m[i] = (w1+w2)/(w1/d[i-1] + w2/d[i]);
+    }
+  }
+  return x => {
+    if(x <= xs[0]) return ys[0] + m[0]*(x-xs[0]);
+    if(x >= xs[n-1]) return ys[n-1] + m[n-1]*(x-xs[n-1]);
+    let i=0; while(i<n-2 && x > xs[i+1]) i++;
+    const t = (x-xs[i])/h[i], t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i] + (t3-2*t2+t)*h[i]*m[i]
+         + (-2*t3+3*t2)*ys[i+1] + (t3-t2)*h[i]*m[i+1];
+  };
+}
+const densFn = pchip(DENS.map(r=>r[0]), DENS.map(r=>r[1]));
+
+// 实测值线性插值（不引入额外平滑）
+function nRef(w){
+  if(w <= 0) return NREF[0][1];
+  for(let i=0;i<NREF.length-1;i++){
+    if(w <= NREF[i+1][0]){
+      const [x0,y0]=NREF[i], [x1,y1]=NREF[i+1];
+      return y0 + (y1-y0)*(w-x0)/(x1-x0);
+    }
+  }
+  return NREF[NREF.length-1][1];
+}
+
+/* ============================================================
+   2 · 物理模型
+   ============================================================ */
+const dens = w => densFn(clamp(w, -2, 30));
+
+// 表观 k 模型（主）
+function nModel(w){
+  const ww = clamp(w,-2,30)/100;
+  return nOf(dens(w)*(ww*K_APP + (1-ww)*K_W));
+}
+// 离子加和（失败的那条）
+function nIon(w){
+  const ww = clamp(w,-2,30)/100;
+  return nOf(dens(w)*(ww*K_ION + (1-ww)*K_W));
+}
+// Gladstone–Dale（用晶体 r）
+function nGD(w){
+  const ww = clamp(w,-2,30)/100;
+  return 1 + dens(w)*(ww*R_GD_S + (1-ww)*R_GD_W);
+}
+
+// 逐点反推 k_app
+function kAt(w, n){
+  const ww = w/100;
+  const x = xOf(n);
+  return (x/dens(w) - (1-ww)*K_W)/ww;
+}
+
+// 温度
+const betaT = w => 2.07e-4 + 0.50e-4*(clamp(w,0,26)/26);
+function dndT_dens(w){
+  const ww = clamp(w,0,26)/100;
+  const rho = dens(w);
+  const kmix = ww*K_APP + (1-ww)*K_W;
+  const x = rho*kmix;
+  const n = nOf(x);
+  const dndx = 3/(2*n*(1-x)*(1-x));
+  return dndx * kmix * (-rho*betaT(w));
+}
+const dndT_str = w => -2.0e-5*(1 - 0.85*clamp(w,0,26)/26);
+const dndT = w => dndT_dens(w) + dndT_str(w);
+const nT = (w,T) => nModel(w) + dndT(w)*(T-20);
+
+// 灵敏度 dn/dw（每 1 %）
+const sens = w => (nModel(w+0.05) - nModel(w-0.05))/0.1;
+
+// 反解
+function wFromN(n){
+  let lo=0, hi=W_SAT;
+  for(let k=0;k<70;k++){
+    const mid=(lo+hi)/2;
+    if(nModel(mid) < n) lo=mid; else hi=mid;
+  }
+  return (lo+hi)/2;
+}
+
+/* ============================================================
+   3 · Canvas 基础
+   ============================================================ */
+function prep(cv, cssH){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(240, cv.clientWidth || cv.parentElement.clientWidth || 400);
+  cv.style.height = cssH + 'px';
+  cv.width  = Math.round(w*dpr);
+  cv.height = Math.round(cssH*dpr);
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,cssH);
+  return {c, w, h: cssH};
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function txt(c,s,x,y,col,size,align,weight){
+  c.fillStyle = col || CO.tx3;
+  c.font = (weight||400)+' '+(size||10)+"px 'JetBrains Mono',ui-monospace,monospace";
+  c.textAlign = align || 'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+}
+function path(c,xs,ys,X,Y,col,wd,dash){
+  c.save();
+  c.strokeStyle=col; c.lineWidth=wd||1.7;
+  c.setLineDash(dash||[]); c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  for(let i=0;i<xs.length;i++){
+    const px=X(xs[i]), py=Y(ys[i]);
+    i ? c.lineTo(px,py) : c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+function rrect(c,x,y,w,h,r){
+  c.beginPath();
+  if(c.roundRect){ c.roundRect(x,y,w,h,r); return; }
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y); c.closePath();
+}
+
+/* ============================================================
+   4 · Hero：分层盐水中的折射
+   ============================================================ */
+let heroSize = null;
+function sizeHero(){
+  const cv = $('#cvRay'); if(!cv) return null;
+  heroSize = prep(cv, window.innerWidth < 900 ? 320 : 420);
+  return heroSize;
+}
+function drawHero(){
+  if(!heroSize && !sizeHero()) return;
+  const {c,w,h} = heroSize;
+
+  const layers = [
+    {w:0,  lab:'纯水',      col:'#08131a'},
+    {w:8,  lab:'8 % NaCl',  col:'#0a1820'},
+    {w:17, lab:'17 % NaCl', col:'#0c1d24'},
+    {w:26, lab:'26 % 饱和', col:'#0e2228'}
+  ];
+  layers.forEach(L=>{ L.n = nModel(L.w); });
+
+  const top=16, bot=h-42, H=(bot-top)/layers.length;
+  layers.forEach((L,i)=>{
+    c.fillStyle = L.col;
+    c.fillRect(0, top+i*H, w, H);
+    c.strokeStyle='rgba(78,201,232,.17)'; c.lineWidth=1;
+    line(c,0,top+i*H,w,top+i*H);
+    txt(c, L.lab, 14, top+i*H+14, CO.tx3, 9.5, 'left');
+    txt(c, 'n = '+L.n.toFixed(5), 14, top+i*H+28, 'rgba(78,201,232,.5)', 8.5, 'left');
+  });
+
+  // 自适应入射角
+  const target = w*0.66;
+  let deg = 58, pts = [], lastSin = 0;
+  for(let it=0; it<40; it++){
+    let sinT = Math.sin(deg*Math.PI/180);
+    let x = 0;
+    pts = [[0,0]];
+    for(let i=0;i<layers.length;i++){
+      if(i>0) sinT = sinT * layers[i-1].n / layers[i].n;
+      const th = Math.asin(clamp(sinT,0,1));
+      x += H*Math.tan(th);
+      pts.push([x,(i+1)*H]);
+    }
+    lastSin = sinT;
+    if(pts[pts.length-1][0] <= target) break;
+    deg *= 0.955;
+  }
+  const x0 = (w - pts[pts.length-1][0]) * 0.42;
+  pts.forEach(p=>{ p[0]+=x0; p[1]+=top; });
+
+  c.save();
+  c.shadowColor='rgba(78,201,232,.8)'; c.shadowBlur=15;
+  c.strokeStyle='#6ee3f5'; c.lineWidth=2;
+  c.beginPath(); pts.forEach((p,i)=> i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));
+  c.stroke(); c.restore();
+
+  c.save(); c.setLineDash([3,4]); c.strokeStyle='rgba(148,165,187,.2)'; c.lineWidth=1;
+  for(let i=1;i<pts.length-1;i++) line(c, pts[i][0], pts[i][1]-9, pts[i][0], pts[i][1]+9);
+  c.restore();
+
+  for(let i=1;i<layers.length;i++){
+    const p=pts[i], q=pts[i+1];
+    const ang = Math.atan2(q[0]-p[0], q[1]-p[1])*180/Math.PI;
+    txt(c, ang.toFixed(1)+'°', p[0]+10, p[1]+15, 'rgba(255,196,83,.72)', 8.5, 'left');
+  }
+
+  const T = (performance.now()/2600) % 1;
+  const seg = T*(pts.length-1);
+  const si = Math.min(Math.floor(seg), pts.length-2), sf = seg-si;
+  const mx = pts[si][0] + (pts[si+1][0]-pts[si][0])*sf;
+  const my = pts[si][1] + (pts[si+1][1]-pts[si][1])*sf;
+  c.save();
+  const gr = c.createRadialGradient(mx,my,0,mx,my,12);
+  gr.addColorStop(0,'rgba(233,239,248,1)');
+  gr.addColorStop(.35,'rgba(110,227,245,.8)');
+  gr.addColorStop(1,'rgba(78,201,232,0)');
+  c.fillStyle=gr; c.beginPath(); c.arc(mx,my,12,0,7); c.fill(); c.restore();
+
+  txt(c, '入射角 '+deg.toFixed(0)+'° · 逐层 Snell 折射', 14, h-19, CO.tx3, 9, 'left');
+  const dev = deg - Math.asin(clamp(lastSin,0,1))*180/Math.PI;
+  txt(c, '累计偏折 '+dev.toFixed(1)+'°', w-14, h-19, 'rgba(255,196,83,.75)', 9, 'right');
+}
+let heroRAF = 0, heroOn = false;
+function startHero(){
+  if(heroOn) return;
+  heroOn = true;
+  const tick = ()=>{ if(!heroOn) return; drawHero(); heroRAF = requestAnimationFrame(tick); };
+  heroRAF = requestAnimationFrame(tick);
+}
+function stopHero(){ heroOn = false; cancelAnimationFrame(heroRAF); }
+
+/* ============================================================
+   5 · §01 三种 n–密度关系
+   ============================================================ */
+function drawRules(){
+  const cv = $('#cvRules'); if(!cv) return;
+  const {c,w,h} = prep(cv, 300);
+  const P = {l:46, r:14, t:14, b:30};
+  const XMAX=2.0, YMIN=1.30, YMAX=1.82;
+  const X = r => P.l + (r/XMAX)*(w-P.l-P.r);
+  const Y = n => h-P.b - (n-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let r=0;r<=2.0;r+=0.25){
+    c.strokeStyle = Math.abs(r-0.99821)<0.01 ? CO.grid2 : CO.grid;
+    line(c, X(r), P.t, X(r), h-P.b);
+  }
+  for(let n=1.3;n<=1.82;n+=0.1){
+    c.strokeStyle=CO.grid;
+    line(c, P.l, Y(n), w-P.r, Y(n));
+    txt(c, n.toFixed(1), P.l-7, Y(n), CO.tx3, 9, 'right');
+  }
+  for(let r=0;r<=2.0;r+=0.5) txt(c, r.toFixed(1), X(r), h-P.b+12, CO.tx3, 9, 'center');
+  txt(c, '密度 ρ (g/cm³)', (P.l+w-P.r)/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(11,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'n', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  const rs = [];
+  for(let i=0;i<=160;i++) rs.push(i/160*XMAX);
+  path(c, rs, rs.map(r=>nOf(r*K_W)), X, Y, CO.cy, 2, null);
+  path(c, rs, rs.map(r=>1+r*R_GD_W), X, Y, CO.am, 1.8, [5,4]);
+  path(c, rs, rs.map(r=>Math.sqrt(1+r*(N_W*N_W-1)/RHO_W)), X, Y, CO.vi, 1.8, [2,3]);
+
+  const cx=X(RHO_W), cyy=Y(N_W);
+  c.save(); c.fillStyle='#04080f'; c.strokeStyle=CO.tx; c.lineWidth=1.4;
+  c.beginPath(); c.arc(cx,cyy,4.5,0,7); c.fill(); c.stroke(); c.restore();
+  txt(c, '水 · 1.3330', cx+9, cyy-11, CO.tx2, 9, 'left');
+
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(255,143,171,.4)';
+  line(c, X(RHO_S), P.t, X(RHO_S), h-P.b); c.restore();
+  txt(c, 'NaCl 2.165', X(RHO_S)+5, P.t+9, 'rgba(255,143,171,.7)', 8.5, 'left');
+
+  const lg = [[CO.cy,'Lorenz–Lorentz'],[CO.am,'Gladstone–Dale'],[CO.vi,'Newton (n²∝ρ)']];
+  lg.forEach((it,i)=>{
+    const y0 = P.t+12+i*14;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=2; c.setLineDash(i===1?[5,4]:(i===2?[2,3]:[]));
+    line(c, w-P.r-104, y0, w-P.r-88, y0); c.restore();
+    txt(c, it[1], w-P.r-84, y0, CO.tx2, 8.5, 'left');
+  });
+}
+
+/* ============================================================
+   6 · §02 离子加和 vs 实测
+   ============================================================ */
+function drawIon(){
+  const cv = $('#cvIon'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?300:352);
+  const P = {l: small?48:54, r:16, t:22, b:36};
+  const XMAX=27, YMIN=1.330, YMAX=1.386;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = n => h-P.b - (n-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let b=0;b<=26;b+=5){
+    c.strokeStyle = b===0?CO.grid2:CO.grid;
+    line(c, X(b), P.t, X(b), h-P.b);
+    txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  }
+  for(let n=1.33;n<=1.386;n+=0.01){
+    c.strokeStyle=CO.grid;
+    line(c, P.l, Y(n), w-P.r, Y(n));
+    txt(c, n.toFixed(2), P.l-8, Y(n), CO.tx3, 8.5, 'right');
+  }
+  txt(c, 'NaCl 质量分数 (%)', (P.l+w-P.r)/2, h-P.b+27, CO.tx3, 9, 'center');
+  c.save(); c.translate(11,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'n', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 采样
+  const W=[], na=[], ni=[];
+  for(let b=0;b<=26.001;b+=0.25){ W.push(b); na.push(nModel(b)); ni.push(nIon(b)); }
+
+  // 缺失贡献的阴影带
+  c.save();
+  c.beginPath();
+  for(let i=0;i<W.length;i++){ const px=X(W[i]), py=Y(na[i]); i?c.lineTo(px,py):c.moveTo(px,py); }
+  for(let i=W.length-1;i>=0;i--) c.lineTo(X(W[i]), Y(ni[i]));
+  c.closePath();
+  const g = c.createLinearGradient(0, P.t, 0, h-P.b);
+  g.addColorStop(0,'rgba(255,113,133,.16)');
+  g.addColorStop(1,'rgba(255,113,133,.03)');
+  c.fillStyle=g; c.fill();
+  c.restore();
+
+  path(c, W, ni, X, Y, CO.rd, 1.9, [6,4]);
+  path(c, W, na, X, Y, CO.cy, 2.2, null);
+
+  // 实测点
+  NREF.forEach(([b,nn])=>{
+    c.save();
+    c.fillStyle='#04080f'; c.strokeStyle='rgba(233,239,248,.9)'; c.lineWidth=1.3;
+    c.beginPath(); c.arc(X(b), Y(nn), 3, 0, 7); c.fill(); c.stroke();
+    c.restore();
+  });
+
+  // 关键标注
+  const b10 = 10;
+  const yA = Y(nModel(b10)), yI = Y(nIon(b10));
+  c.save(); c.setLineDash([2,3]); c.strokeStyle='rgba(233,239,248,.28)'; c.lineWidth=1;
+  line(c, X(b10), yA, X(b10), yI); c.restore();
+  txt(c, 'Δn = 0.015', X(b10)+7, (yA+yI)/2, 'rgba(255,113,133,.9)', 8.5, 'left', 600);
+
+  txt(c, '缺失的贡献', X(19), Y((nModel(19)+nIon(19))/2), 'rgba(255,113,133,.75)', 9, 'center');
+
+  // 图例
+  const lg = [[CO.cy,'实测 / 表观 k 模型',null],[CO.rd,'离子加和（R=4.56）',[6,4]]];
+  lg.forEach((it,i)=>{
+    const y0=P.t+10+i*15, x0=P.l+10;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=1.9; c.setLineDash(it[2]||[]);
+    line(c, x0, y0, x0+17, y0); c.restore();
+    txt(c, it[1], x0+23, y0, CO.tx2, 9, 'left');
+  });
+}
+
+
+/* ============================================================
+   7 · §03 水合层示意
+   ============================================================ */
+let hydSize = null;
+const HYD = { link:true, orient:true };
+function ensureHydSize(){
+  const cv = $('#cvHyd'); if(!cv) return null;
+  const H = window.innerWidth < 900 ? 340 : 400;
+  const wq = Math.round(cv.clientWidth) || 600;
+  if(hydSize && hydSize.w === wq && hydSize.h === H) return hydSize;
+  hydSize = prep(cv, H);
+  return hydSize;
+}
+
+function drawH2O(c, cl, ang, Rc){
+  const flip = cl.flip;
+  const rO = flip ? Rc*1.00 : Rc*0.76;
+  const rH = flip ? Rc*0.74 : Rc*1.00;
+  const sp = 0.92;
+
+  const ox = cl.cx + Math.cos(ang)*rO;
+  const oy = cl.cy + Math.sin(ang)*rO;
+  const h1x = cl.cx + Math.cos(ang-sp)*rH, h1y = cl.cy + Math.sin(ang-sp)*rH;
+  const h2x = cl.cx + Math.cos(ang+sp)*rH, h2y = cl.cy + Math.sin(ang+sp)*rH;
+
+  // 配位键
+  if(HYD.link){
+    const tx = flip ? (h1x+h2x)/2 : ox;
+    const ty = flip ? (h1y+h2y)/2 : oy;
+    c.save(); c.setLineDash([2,3.5]);
+    c.strokeStyle = flip ? 'rgba(110,231,160,.42)' : 'rgba(255,184,107,.42)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(cl.cx,cl.cy); c.lineTo(tx,ty); c.stroke();
+    c.restore();
+  }
+
+  // H–O–H
+  if(HYD.orient){
+    c.strokeStyle='rgba(78,201,232,.62)'; c.lineWidth=1.7;
+    line(c, ox,oy, h1x,h1y);
+    line(c, ox,oy, h2x,h2y);
+  }
+
+  // 原子
+  c.fillStyle='rgba(78,201,232,.9)';
+  c.beginPath(); c.arc(ox,oy,10.2,0,7); c.fill();
+  c.fillStyle='rgba(220,245,255,.55)';
+  c.beginPath(); c.arc(ox-2.8,oy-2.8,2.6,0,7); c.fill();
+  c.fillStyle='rgba(215,245,255,.92)';
+  c.beginPath(); c.arc(h1x,h1y,3.4,0,7); c.fill();
+  c.beginPath(); c.arc(h2x,h2y,3.4,0,7); c.fill();
+}
+
+function drawHyd(){
+  const sz = ensureHydSize(); if(!sz) return;
+  const {c,w,h} = sz;
+  c.fillStyle='#050b13'; c.fillRect(0,0,w,h);
+
+  const t = performance.now()/1000;
+  const rot = t*0.10;
+  const Rc = Math.min(w*0.175, h*0.31);
+
+  const clusters = [
+    {cx: w*0.27, cy: h*0.52, ion:'Na', color:'#ffb86b', label:'Na⁺', rIon:19, flip:0,
+     gl:'rgba(255,184,107,.10)'},
+    {cx: w*0.73, cy: h*0.52, ion:'Cl', color:'#6ee7a0', label:'Cl⁻', rIon:27, flip:1,
+     gl:'rgba(110,231,160,.10)'}
+  ];
+
+  for(const cl of clusters){
+    const gr = c.createRadialGradient(cl.cx,cl.cy,0, cl.cx,cl.cy,Rc*1.6);
+    gr.addColorStop(0, cl.gl); gr.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=gr; c.beginPath(); c.arc(cl.cx,cl.cy,Rc*1.6,0,7); c.fill();
+
+    c.save(); c.setLineDash([2,5]); c.strokeStyle='rgba(148,165,187,.13)'; c.lineWidth=1;
+    c.beginPath(); c.arc(cl.cx,cl.cy,Rc*0.90,0,7); c.stroke(); c.restore();
+
+    for(let k=0;k<6;k++) drawH2O(c, cl, k*Math.PI/3 + rot, Rc);
+
+    const g2 = c.createRadialGradient(cl.cx-cl.rIon*0.35, cl.cy-cl.rIon*0.35, 1, cl.cx, cl.cy, cl.rIon);
+    g2.addColorStop(0, cl.ion==='Na' ? '#ffe2bd' : '#c8f8db');
+    g2.addColorStop(1, cl.color);
+    c.fillStyle=g2;
+    c.beginPath(); c.arc(cl.cx,cl.cy,cl.rIon,0,7); c.fill();
+    c.strokeStyle=cl.color; c.lineWidth=1.6;
+    c.beginPath(); c.arc(cl.cx,cl.cy,cl.rIon,0,7); c.stroke();
+    txt(c, cl.label, cl.cx, cl.cy+0.5, '#06120e', cl.ion==='Na'?13:14, 'center', 700);
+
+    txt(c, cl.ion==='Na' ? '水分子以 O 端朝向 Na⁺' : '水分子以 H 端朝向 Cl⁻',
+        cl.cx, h-26, CO.tx3, 9, 'center');
+    txt(c, '配位数 ≈ 6', cl.cx, h-12, 'rgba(78,201,232,.55)', 8.5, 'center');
+  }
+
+  // 中间分隔
+  c.save(); c.setLineDash([2,6]); c.strokeStyle='rgba(148,165,187,.10)'; c.lineWidth=1;
+  line(c, w/2, h*0.14, w/2, h*0.88); c.restore();
+
+  // 暗角
+  const vg = c.createRadialGradient(w/2,h/2,Math.min(w,h)*0.3, w/2,h/2,Math.max(w,h)*0.72);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(3,7,12,.5)');
+  c.fillStyle=vg; c.fillRect(0,0,w,h);
+}
+
+/* ============================================================
+   8 · §04 表观 k 散点
+   ============================================================ */
+function drawKapp(){
+  const cv = $('#cvKapp'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?290:330);
+  const P = {l: small?50:58, r:18, t:20, b:38};
+  const XMAX=27, YMIN=0.1525, YMAX=0.1605;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = v => h-P.b - (v-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let b=0;b<=25;b+=5){
+    c.strokeStyle=CO.grid;
+    line(c, X(b), P.t, X(b), h-P.b);
+    txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  }
+  for(let v=0.153;v<=0.160;v+=0.001){
+    c.strokeStyle=CO.grid;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    txt(c, v.toFixed(3), P.l-8, Y(v), CO.tx3, 8, 'right');
+  }
+  txt(c, 'NaCl 质量分数 (%)', (P.l+w-P.r)/2, h-P.b+28, CO.tx3, 9, 'center');
+  c.save(); c.translate(11,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'k app (cm³/g)', 0,0, CO.tx3, 8.5, 'center'); c.restore();
+
+  // 均值带
+  c.save();
+  c.fillStyle='rgba(78,201,232,.09)';
+  c.fillRect(P.l, Y(K_APP*1.012), w-P.l-P.r, Y(K_APP*0.988)-Y(K_APP*1.012));
+  c.restore();
+  c.save(); c.setLineDash([4,4]); c.strokeStyle='rgba(78,201,232,.6)'; c.lineWidth=1.4;
+  line(c, P.l, Y(K_APP), w-P.r, Y(K_APP)); c.restore();
+  txt(c, 'k = 0.1570', w-P.r-4, Y(K_APP)-9, CO.cy, 9, 'right', 600);
+
+  // 散点
+  const pts = NREF.filter(r=>r[0]>0).map(r=>({b:r[0], k:kAt(r[0], r[1])}));
+  pts.forEach(p=>{
+    c.save();
+    c.fillStyle='#04080f';
+    c.strokeStyle='rgba(233,239,248,.9)'; c.lineWidth=1.5;
+    c.beginPath(); c.arc(X(p.b), Y(p.k), 3.4, 0, 7); c.fill(); c.stroke();
+    c.restore();
+  });
+  // 只标首尾
+  const p0=pts[0], pL=pts[pts.length-1];
+  txt(c, p0.k.toFixed(4), X(p0.b)+7, Y(p0.k)+1, 'rgba(148,165,187,.9)', 8, 'left');
+  txt(c, pL.k.toFixed(4), X(pL.b)-7, Y(pL.k)+1, 'rgba(148,165,187,.9)', 8, 'right');
+  txt(c, '低浓度点被 1/w 放大了读数误差', P.l+6, h-P.b-8, 'rgba(148,165,187,.55)', 8, 'left');
+
+  const kmin = Math.min(...pts.map(p=>p.k)), kmax = Math.max(...pts.map(p=>p.k));
+  txt(c, '极差 '+(kmax-kmin).toFixed(4)+' → '+(100*(kmax-kmin)/K_APP).toFixed(1)+'%', P.l+6, P.t+8,
+      'rgba(255,196,83,.85)', 8.5, 'left');
+}
+
+/* ============================================================
+   9 · §05 主图与残差
+   ============================================================ */
+const CURVE_ON = { app:true, ion:false, gd:false, pts:true };
+const SER = (()=>{
+  const b=[], ap=[], io=[], gd=[];
+  for(let x=0;x<=26.001;x+=0.25){ b.push(x); ap.push(nModel(x)); io.push(nIon(x)); gd.push(nGD(x)); }
+  return {b, ap, io, gd};
+})();
+
+function drawMain(){
+  const cv = $('#cvMain'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?340:430);
+  const P = {l: small?48:56, r:small?14:18, t:18, b:36};
+  const XMAX=27.5, YMIN=1.330, YMAX=1.386;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = n => h-P.b - (n-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let b=0;b<=25;b+=5){
+    c.strokeStyle = b===0?CO.grid2:CO.grid;
+    line(c, X(b), P.t, X(b), h-P.b);
+  }
+  for(let n=1.33;n<=1.386;n+=0.01){
+    c.strokeStyle = Math.abs(n-1.333)<1e-6?CO.grid2:CO.grid;
+    line(c, P.l, Y(n), w-P.r, Y(n));
+    txt(c, n.toFixed(2), P.l-8, Y(n), CO.tx3, small?8.5:9, 'right');
+  }
+  for(let b=0;b<=25;b+=5) txt(c, String(b), X(b), h-P.b+12, CO.tx3, small?8.5:9, 'center');
+  txt(c, 'NaCl 质量分数 (%)', (P.l+w-P.r)/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(12,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'n', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 饱和线
+  c.save(); c.setLineDash([3,4]); c.strokeStyle='rgba(255,143,171,.35)'; c.lineWidth=1;
+  line(c, X(W_SAT), P.t, X(W_SAT), h-P.b); c.restore();
+  txt(c, '饱和 '+W_SAT.toFixed(1), X(W_SAT)-5, P.t+8, 'rgba(255,143,171,.7)', 8.5, 'right');
+
+  if(CURVE_ON.gd)  path(c, SER.b, SER.gd, X, Y, CO.am, 1.5, [2,3]);
+  if(CURVE_ON.ion) path(c, SER.b, SER.io, X, Y, CO.rd, 1.6, [5,4]);
+  if(CURVE_ON.app){
+    c.save(); c.shadowColor='rgba(78,201,232,.5)'; c.shadowBlur=10;
+    path(c, SER.b, SER.ap, X, Y, CO.cy, 2.2, null);
+    c.restore();
+  }
+
+  if(CURVE_ON.pts){
+    NREF.forEach(([b,nn])=>{
+      c.save();
+      c.fillStyle='#04080f'; c.strokeStyle='rgba(233,239,248,.85)'; c.lineWidth=1.3;
+      c.beginPath(); c.arc(X(b), Y(nn), 3, 0, 7); c.fill(); c.stroke();
+      c.restore();
+    });
+  }
+
+  // 当前点
+  const wv = parseFloat($('#sW').value);
+  const Tv = parseFloat($('#sT').value);
+  const cx = X(clamp(wv,0,26));
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(78,201,232,.28)'; c.lineWidth=1;
+  line(c, cx, P.t, cx, h-P.b); c.restore();
+
+  const cyy = Y(clamp(nModel(wv), YMIN, YMAX));
+  c.save();
+  const gr=c.createRadialGradient(cx,cyy,0,cx,cyy,14);
+  gr.addColorStop(0,'rgba(110,227,245,.9)'); gr.addColorStop(1,'rgba(78,201,232,0)');
+  c.fillStyle=gr; c.beginPath(); c.arc(cx,cyy,14,0,7); c.fill();
+  c.strokeStyle='#e9eff8'; c.lineWidth=1.8;
+  c.beginPath(); c.arc(cx,cyy,4.2,0,7); c.stroke();
+  c.restore();
+
+  const bw=78, bx=clamp(cx+14, P.l, w-P.r-bw-2), by=clamp(cyy-30, P.t+2, h-P.b-24);
+  c.save();
+  c.fillStyle='rgba(10,17,25,.94)'; c.strokeStyle='rgba(78,201,232,.4)'; c.lineWidth=1;
+  rrect(c, bx, by, bw, 21, 5); c.fill(); c.stroke();
+  c.restore();
+  txt(c, 'n '+nModel(wv).toFixed(4), bx+bw/2, by+11, CO.cy, 10, 'center', 600);
+
+  // 图例
+  const items=[];
+  if(CURVE_ON.app) items.push([CO.cy,'表观 k 模型',null]);
+  if(CURVE_ON.ion) items.push([CO.rd,'离子加和',[5,4]]);
+  if(CURVE_ON.gd)  items.push([CO.am,'Gladstone–Dale',[2,3]]);
+  if(CURVE_ON.pts) items.push(['#e9eff8','实测','pt']);
+  items.forEach((it,i)=>{
+    const y0=P.t+10+i*15, x0=P.l+10;
+    if(it[2]==='pt'){
+      c.save(); c.fillStyle='#04080f'; c.strokeStyle=it[0]; c.lineWidth=1.3;
+      c.beginPath(); c.arc(x0+6,y0,3,0,7); c.fill(); c.stroke(); c.restore();
+    }else{
+      c.save(); c.strokeStyle=it[0]; c.lineWidth=1.8; c.setLineDash(it[2]||[]);
+      line(c, x0, y0, x0+17, y0); c.restore();
+    }
+    txt(c, it[1], x0+23, y0, CO.tx2, 9, 'left');
+  });
+}
+
+function drawDev(){
+  const cv = $('#cvDev'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?140:158);
+  const P = {l: small?48:56, r:small?14:18, t:12, b:22};
+  const XMAX=27.5, YMIN=-0.9, YMAX=0.9;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = v => h-P.b - (v-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.strokeStyle=CO.grid2; c.lineWidth=1;
+  line(c, P.l, Y(0), w-P.r, Y(0));
+  for(let v=-0.8;v<=0.801;v+=0.4){
+    c.strokeStyle = v===0?CO.grid2:CO.grid;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    txt(c, (v>0?'+':'')+v.toFixed(1), P.l-8, Y(v), CO.tx3, 8, 'right');
+  }
+  c.save(); c.setLineDash([2,3]); c.strokeStyle='rgba(110,231,160,.28)';
+  line(c, P.l, Y(0.2), w-P.r, Y(0.2)); c.restore();
+  txt(c, '目标 ±0.2', w-P.r-2, Y(0.2)-7, 'rgba(110,231,160,.6)', 8, 'right');
+
+  const B=[], da=[];
+  for(let b=0;b<=26.001;b+=0.25){
+    B.push(b);
+    da.push((nModel(b)-nRef(b))*1000);
+  }
+  c.save(); c.shadowColor='rgba(78,201,232,.55)'; c.shadowBlur=8;
+  path(c, B, da, X, Y, CO.cy, 1.9, null); c.restore();
+  txt(c, '仅表观 k 模型（离子加和 −44 mK，超出量程）', P.l+8, h-P.b-6,
+      'rgba(148,165,187,.55)', 8, 'left');
+
+  const wv = parseFloat($('#sW').value);
+  const cx = X(clamp(wv,0,26));
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(78,201,232,.3)'; c.lineWidth=1;
+  line(c, cx, P.t, cx, h-P.b); c.restore();
+
+  for(let b=0;b<=25;b+=5) txt(c, String(b), X(b), h-P.b+11, CO.tx3, 8.5, 'center');
+}
+
+
+/* ============================================================
+   10 · §06 两体系对比
+   ============================================================ */
+const DENS_SUC = [[0,0.9982],[5,1.0178],[10,1.0381],[15,1.0590],[20,1.0810],[25,1.1032],[30,1.1270]];
+const densSucFn = pchip(DENS_SUC.map(r=>r[0]), DENS_SUC.map(r=>r[1]));
+const K_SUC = 0.205509, K_W2 = 0.206059;
+
+function nSucrose(w){
+  const ww = clamp(w,0,30)/100;
+  return nOf(densSucFn(clamp(w,0,30))*(ww*K_SUC + (1-ww)*K_W2));
+}
+
+function drawCompare(){
+  const cv = $('#cvCompare'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?300:376);
+  const P = {l: small?48:54, r:16, t:22, b:38};
+  const XMAX=30, YMIN=1.330, YMAX=1.392;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = n => h-P.b - (n-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let b=0;b<=30;b+=5){
+    c.strokeStyle = CO.grid;
+    line(c, X(b), P.t, X(b), h-P.b);
+    txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  }
+  for(let n=1.33;n<=1.392;n+=0.01){
+    c.strokeStyle=CO.grid;
+    line(c, P.l, Y(n), w-P.r, Y(n));
+    txt(c, n.toFixed(2), P.l-8, Y(n), CO.tx3, 8.5, 'right');
+  }
+  txt(c, '溶质质量分数 (%)', (P.l+w-P.r)/2, h-P.b+28, CO.tx3, 9, 'center');
+  c.save(); c.translate(11,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'n', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 饱和线
+  c.save(); c.setLineDash([3,4]); c.strokeStyle='rgba(255,143,171,.3)'; c.lineWidth=1;
+  line(c, X(W_SAT), P.t, X(W_SAT), h-P.b); c.restore();
+  txt(c, '盐水饱和', X(W_SAT)-4, P.t+8, 'rgba(255,143,171,.65)', 8, 'right');
+
+  const W=[], ns=[], nn=[];
+  for(let x=0;x<=30.001;x+=0.25){ W.push(x); ns.push(nSucrose(x)); nn.push(nModel(Math.min(x,26.4))); }
+
+  path(c, W, ns, X, Y, CO.vi, 2.1, null);
+  path(c, W, nn, X, Y, CO.cy, 2.1, null);
+
+  // 端点
+  const sEnd = ns[ns.length-1], nEnd = nn[Math.round(26/0.25)];
+  c.save();
+  c.fillStyle='#04080f'; c.strokeStyle=CO.vi; c.lineWidth=1.5;
+  c.beginPath(); c.arc(X(30), Y(sEnd), 4, 0, 7); c.fill(); c.stroke();
+  c.restore();
+  txt(c, sEnd.toFixed(4), X(30)-6, Y(sEnd)-12, CO.vi, 9, 'right', 600);
+
+  txt(c, nEnd.toFixed(4), X(26)+8, Y(nEnd)+2, CO.cy, 9, 'left', 600);
+
+  // 图例
+  const lg = [[CO.vi,'蔗糖（67 Bx 才饱和）'],[CO.cy,'NaCl（26 % 饱和）']];
+  lg.forEach((it,i)=>{
+    const y0=P.t+10+i*15, x0=P.l+10;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=2;
+    line(c, x0, y0, x0+17, y0); c.restore();
+    txt(c, it[1], x0+23, y0, CO.tx2, 9, 'left');
+  });
+
+  // 交叉说明
+  txt(c, '同样 26 %：盐水 n 高 0.006', X(13), Y(1.3405), 'rgba(148,165,187,.8)', 8.5, 'left');
+  txt(c, '（密度 1.197 vs 1.108）', X(13), Y(1.3388), 'rgba(148,165,187,.55)', 8, 'left');
+}
+
+/* ============================================================
+   11 · §08 温度
+   ============================================================ */
+function drawDnDT(){
+  const cv = $('#cvDnDT'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?290:330);
+  const P = {l:46, r:14, t:22, b:34};
+  const XMAX = 27, YMAX = 1.45;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = v => h-P.b - (v/YMAX)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let b=0;b<=26;b+=5){
+    c.strokeStyle = CO.grid;
+    line(c, X(b), P.t, X(b), h-P.b);
+    txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  }
+  for(let v=0;v<=1.4001;v+=0.3){
+    c.strokeStyle = v===0?CO.grid2:CO.grid;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    txt(c, v.toFixed(1), P.l-7, Y(v), CO.tx3, 8.5, 'right');
+  }
+  txt(c, 'NaCl (%)', (P.l+w-P.r)/2, h-P.b+26, CO.tx3, 9, 'center');
+
+  const B=[], d1=[], d2=[];
+  for(let b=0;b<=26.001;b+=0.5){
+    const a = Math.abs(dndT_dens(b))*1e4;
+    const s2 = Math.abs(dndT_str(b))*1e4;
+    B.push(b); d1.push(s2); d2.push(s2+a);
+  }
+
+  c.beginPath();
+  c.moveTo(X(B[0]), Y(0));
+  for(let i=0;i<B.length;i++) c.lineTo(X(B[i]), Y(d1[i]));
+  c.lineTo(X(B[B.length-1]), Y(0));
+  c.closePath();
+  c.fillStyle='rgba(127,156,255,.22)'; c.fill();
+
+  c.beginPath();
+  for(let i=0;i<B.length;i++){ const px=X(B[i]), py=Y(d2[i]); i?c.lineTo(px,py):c.moveTo(px,py); }
+  for(let i=B.length-1;i>=0;i--) c.lineTo(X(B[i]), Y(d1[i]));
+  c.closePath();
+  c.fillStyle='rgba(78,201,232,.20)'; c.fill();
+
+  path(c, B, d2, X, Y, CO.cy, 2.1, null);
+  path(c, B, d1, X, Y, CO.vi, 1.3, [4,3]);
+
+  txt(c, '1.00', X(0)+6, Y(1.00)-9, CO.cy, 9, 'left', 600);
+  txt(c, (Math.abs(dndT(26))*1e4).toFixed(2), X(26)-4, Y(Math.abs(dndT(26))*1e4)-9, CO.cy, 9, 'right', 600);
+
+  const r0 = Math.abs(dndT_str(0))/Math.abs(dndT(0))*100;
+  const r1 = Math.abs(dndT_str(26))/Math.abs(dndT(26))*100;
+  const lg = [[CO.cy,'密度通道（第一性原理）'],
+              [CO.vi,'结构通道 '+r0.toFixed(0)+'% → '+r1.toFixed(1)+'%']];
+  lg.forEach((it,i)=>{
+    const y0 = P.t-11+i*13, x0 = P.l+6;
+    c.save(); c.fillStyle=it[0]; c.globalAlpha=.55;
+    c.fillRect(x0,y0-3.5,11,7); c.restore();
+    txt(c, it[1], x0+16, y0, CO.tx2, 8.5, 'left');
+  });
+}
+
+function drawHeat(){
+  const cv = $('#cvHeat'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?290:330);
+  const P = {l:46, r:14, t:16, b:34};
+  const BW = 26, TN = 30, T0 = 10, T1 = 40;
+  const gx=P.l, gy=P.t, gw=w-P.l-P.r, gh=h-P.t-P.b;
+  const cw = gw/BW, ch = gh/TN;
+
+  const NMIN = 1.3308, NMAX = 1.3809;
+  const stops = [
+    [0.00,[8,20,30]],
+    [0.30,[18,74,84]],
+    [0.58,[40,168,158]],
+    [0.78,[78,201,232]],
+    [0.90,[214,196,110]],
+    [1.00,[255,236,180]]
+  ];
+  const col = t => {
+    t = clamp(t,0,1);
+    for(let i=1;i<stops.length;i++){
+      if(t <= stops[i][0]){
+        const a=stops[i-1], b2=stops[i];
+        const f=(t-a[0])/(b2[0]-a[0]);
+        return 'rgb('+Math.round(a[1][0]+(b2[1][0]-a[1][0])*f)+','
+                     +Math.round(a[1][1]+(b2[1][1]-a[1][1])*f)+','
+                     +Math.round(a[1][2]+(b2[1][2]-a[1][2])*f)+')';
+      }
+    }
+    return 'rgb(255,236,180)';
+  };
+
+  for(let i=0;i<BW;i++){
+    for(let j=0;j<TN;j++){
+      const ww = i + 0.5;
+      const T = T0 + (j+0.5)/TN*(T1-T0);
+      const n = nT(Math.min(ww,26), T);
+      c.fillStyle = col((n-NMIN)/(NMAX-NMIN));
+      c.fillRect(gx+i*cw, gy+(TN-1-j)*ch, cw+0.6, ch+0.6);
+    }
+  }
+
+  c.save();
+  c.strokeStyle='rgba(6,10,17,.55)'; c.lineWidth=1; c.setLineDash([3,3]);
+  for(let nv=1.34; nv<=1.38; nv+=0.01){
+    const pts=[];
+    for(let j=0;j<=20;j++){
+      const T = T0 + j/20*(T1-T0);
+      let lo=0, hi=26;
+      for(let k=0;k<26;k++){
+        const mid=(lo+hi)/2;
+        if(nT(mid,T) < nv) lo=mid; else hi=mid;
+      }
+      const bq=(lo+hi)/2;
+      pts.push([gx + bq/BW*gw, gy + (1-(T-T0)/(T1-T0))*gh]);
+    }
+    c.beginPath();
+    pts.forEach((p,i)=> i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));
+    c.stroke();
+    const last = pts[pts.length-1];
+    if(last[0] < gx+gw-26){
+      c.save(); c.setLineDash([]);
+      c.fillStyle='rgba(6,10,17,.85)';
+      c.fillRect(last[0]+2, last[1]-6, 26, 12);
+      c.fillStyle='rgba(233,239,248,.85)';
+      c.font="8.5px 'JetBrains Mono',ui-monospace,monospace";
+      c.textAlign='left'; c.textBaseline='middle';
+      c.fillText(nv.toFixed(2), last[0]+4, last[1]);
+      c.restore();
+    }
+  }
+  c.restore();
+
+  c.strokeStyle=CO.line; c.lineWidth=1;
+  c.strokeRect(gx+0.5, gy+0.5, gw-1, gh-1);
+  for(let b=0;b<=25;b+=5) txt(c, String(b), gx+b/BW*gw, h-P.b+12, CO.tx3, 8.5, 'center');
+  for(let T=10;T<=40;T+=10) txt(c, T+'°', gx-7, gy+(1-(T-T0)/(T1-T0))*gh, CO.tx3, 8.5, 'right');
+  txt(c, 'NaCl (%)', gx+gw/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(12, gy+gh/2); c.rotate(-Math.PI/2);
+  txt(c, 'T (°C)', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  const eqW = Math.abs((nT(0,10)-nT(0,40))/sens(0));
+  c.fillStyle='rgba(6,10,17,.7)';
+  c.fillRect(gx+5, gy+gh-20, 122, 15);
+  txt(c, '纵向 30 K ≈ 横向 '+eqW.toFixed(1)+' %', gx+9, gy+gh-12, 'rgba(233,239,248,.8)', 8.5, 'left');
+}
+
+/* ============================================================
+   12 · 更新与交互
+   ============================================================ */
+function updateMain(){
+  const wv = parseFloat($('#sW').value);
+  const Tv = parseFloat($('#sT').value);
+  const n20 = nModel(wv);
+  const nTv = nT(wv, Tv);
+  const rho = dens(wv);
+  const ww = wv/100;
+  const cMol = rho*ww*1000/MW_S;
+  const mKg = wv/(100-wv)/MW_S*1000;
+  const exp = nRef(wv);
+
+  $('#vW').textContent = wv.toFixed(1);
+  $('#vM').textContent = mKg.toFixed(3);
+  $('#vT').textContent = Tv.toFixed(1);
+  $('#bigN').textContent = nTv.toFixed(4);
+
+  $('#rN').textContent = n20.toFixed(5);
+  $('#rNexp').textContent = exp.toFixed(5);
+  const dn = n20-exp;
+  const el = $('#rDn');
+  el.textContent = (dn>=0?'+':'−')+Math.abs(dn).toFixed(5);
+  el.className = Math.abs(dn) < 0.0002 ? 'gr' : (Math.abs(dn)<0.002 ? 'am' : 'rd');
+  $('#rRho').innerHTML = rho.toFixed(4)+'<em>g/cm³</em>';
+  $('#rC').innerHTML = cMol.toFixed(3)+'<em>mol/L</em>';
+  const pi = 2*cMol*8.314*293.15/1000;   // MPa
+  $('#rPi').innerHTML = pi.toFixed(2)+'<em>MPa</em>';
+  const tf = 2*1.86*mKg;
+  $('#rPi');
+  $('#rTf').innerHTML = '−'+tf.toFixed(2)+'<em>°C</em>';
+  $('#rSens').innerHTML = (sens(wv)*1000).toFixed(2)+'<em>×10⁻³/%</em>';
+
+  drawMain(); drawDev();
+}
+
+function initTables(){
+  const tb = $('#tbIon');
+  if(tb){
+    [2,5,10,15,20,26].forEach(b=>{
+      const e = nRef(b), ion = nIon(b);
+      const d = ion-e;
+      tb.insertAdjacentHTML('beforeend',
+        '<tr><td class="num">'+b+'</td>'
+        +'<td class="num">'+e.toFixed(5)+'</td>'
+        +'<td class="num bad">'+ion.toFixed(5)+'</td>'
+        +'<td class="num">'+(d>=0?'+':'−')+Math.abs(d).toFixed(5)+'</td>'
+        +'<td class="num">'+(d/e*100).toFixed(1)+' %</td></tr>');
+    });
+  }
+
+  const tr = $('#tbRefs');
+  if(tr){
+    const refs = [
+      ['纯水', 0], ['生理盐水', 0.9], ['海水（近似）', 3.5],
+      ['腌渍卤水', 15], ['饱和盐水', 26]
+    ];
+    refs.forEach(([nm,wv])=>{
+      tr.insertAdjacentHTML('beforeend',
+        '<tr><td>'+nm+'</td>'
+        +'<td class="num hl">'+wv.toFixed(1)+'</td>'
+        +'<td class="num">'+nModel(wv).toFixed(4)+'</td>'
+        +'<td class="num">'+dens(wv).toFixed(4)+'</td></tr>');
+    });
+  }
+
+  const tt = $('#tbTemp');
+  if(tt){
+    [0,5,10,15,20,26].forEach(wv=>{
+      const a = Math.abs(dndT_dens(wv))*1e4;
+      const s2 = Math.abs(dndT_str(wv))*1e4;
+      const tot = a+s2;
+      const dw = tot*1e-4/sens(wv);
+      tt.insertAdjacentHTML('beforeend',
+        '<tr><td class="num">'+wv+'</td>'
+        +'<td class="num hl">'+a.toFixed(2)+'</td>'
+        +'<td class="num" style="color:var(--vi)">'+s2.toFixed(2)+'</td>'
+        +'<td class="num">'+tot.toFixed(2)+'</td>'
+        +'<td class="num am">−'+dw.toFixed(3)+'</td></tr>');
+    });
+  }
+}
+
+function buildVolBars(){
+  const box = $('#volBars'); if(!box) return;
+  const items = [];
+  const rho26 = 1.1972;
+  const vIdeal = 1/(0.26/RHO_S + 0.74/RHO_W);
+  const shSalt = (1 - vIdeal/rho26)*100;
+  const rho67 = 1.3293;
+  const vIdeal67 = 1/(0.67/1.587 + 0.33/RHO_W);
+  const shSug = (1 - vIdeal67/rho67)*100;
+  const max = shSalt;
+
+  const rows = [
+    {nm:'盐水 26 %', v:shSalt, col:'#ffc453'},
+    {nm:'蔗糖 67 Bx', v:shSug, col:'#4ec9e8'}
+  ];
+  rows.forEach(r=>{
+    const pct = Math.max(r.v/max*100, 1.2);
+    box.insertAdjacentHTML('beforeend',
+      '<div class="crow" style="margin-bottom:9px">'
+      +'<span class="nm" style="width:96px">'+r.nm+'</span>'
+      +'<span class="bar" style="height:7px"><i style="width:'+pct+'%;background:'+r.col+'"></i></span>'
+      +'<span class="vl" style="width:52px">'+r.v.toFixed(2)+' %</span></div>');
+  });
+  box.insertAdjacentHTML('beforeend',
+    '<div style="font-family:var(--mono);font-size:10.5px;color:var(--tx-3);margin-top:4px">'
+    +'比值 <b style="color:var(--am)">'+(shSalt/shSug).toFixed(0)+' : 1</b>　'
+    +'（离子电致伸缩 vs 中性分子氢键重排）</div>');
+}
+
+function initInverse(){
+  const sN = $('#sN');
+  function upd(){
+    const n = parseFloat(sN.value);
+    const wv = wFromN(n);
+    const rho = dens(wv);
+    const cMol = rho*(wv/100)*1000/MW_S;
+    const mKg = wv/(100-wv||1)/MW_S*1000;
+    $('#rvN').textContent = n.toFixed(4);
+    $('#rvNlab').textContent = n.toFixed(5);
+    $('#rvB').innerHTML = wv.toFixed(2)+'<span class="u">%w/w</span>';
+    $('#rvM').textContent = wv>0 ? mKg.toFixed(3) : '0';
+    $('#rvC').innerHTML = cMol.toFixed(3)+'<span class="u">mol/L</span>';
+    const sl = sens(wv);
+    $('#rvRes').innerHTML = '±'+(1e-4/sl).toFixed(2)+'<span class="u">%</span>';
+  }
+  sN.addEventListener('input', upd);
+  upd();
+}
+
+function initTemp(){
+  const sT = $('#sTT'), sB = $('#sTB');
+  if(!sT) return;
+  function upd(){
+    const T = parseFloat(sT.value), wv = parseFloat(sB.value);
+    const n = nT(wv,T);
+    const dn = n - nModel(wv);
+    const app = wFromN(n);
+    const corr = app + 0.058*(T-20);
+    $('#tvT').textContent = T.toFixed(1);
+    $('#tvB').textContent = wv.toFixed(1);
+    $('#tvN').textContent = n.toFixed(4);
+    $('#tvDn').textContent = (dn>=0?'+':'−')+Math.abs(dn).toFixed(4);
+    $('#tvBx').textContent = app.toFixed(2)+' %';
+    $('#tvBxc').textContent = corr.toFixed(2)+' %';
+  }
+  sT.addEventListener('input', upd);
+  sB.addEventListener('input', upd);
+  upd();
+}
+
+function initHyd(){
+  const cv = $('#cvHyd'); if(!cv) return;
+  let on=false, raf=0, last=0;
+  const tick = ()=>{
+    if(!on) return;
+    const now = performance.now();
+    if(now-last > 40){ last=now; drawHyd(); }
+    raf = requestAnimationFrame(tick);
+  };
+  const start = ()=>{ if(!on){ on=true; tick(); } };
+  const stop = ()=>{ on=false; cancelAnimationFrame(raf); };
+
+  $$('[data-hy]').forEach(el=>{
+    el.addEventListener('click', e=>{
+      e.preventDefault();
+      el.classList.toggle('on');
+      const v = el.classList.contains('on');
+      if(el.dataset.hy==='l') HYD.link = v; else HYD.orient = v;
+      if(!on) drawHyd();
+    });
+  });
+
+  drawHyd();
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ e.isIntersecting ? start() : stop(); });
+  }, {threshold:0});
+  io.observe(cv);
+}
+
+/* ============================================================
+   13 · 导航 / 启动
+   ============================================================ */
+function initNav(){
+  const links = $$('.nav a');
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec')).filter(Boolean);
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting) return;
+      const i = secs.indexOf(e.target);
+      links.forEach((l,k)=> l.classList.toggle('on', k===i));
+    });
+  }, {rootMargin:'-42% 0px -50% 0px'});
+  secs.forEach(s=>io.observe(s));
+
+  const bar = $('#pbar');
+  const onScroll = ()=>{
+    const st = window.scrollY;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = clamp(st/Math.max(max,1)*100,0,100)+'%';
+  };
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+}
+
+let rzT = 0;
+function onResize(){
+  clearTimeout(rzT);
+  rzT = setTimeout(()=>{
+    heroSize = null; sizeHero();
+    if(!heroOn) drawHero();
+    hydSize = null;
+    drawRules(); drawIon(); drawKapp(); drawMain(); drawDev();
+    drawCompare(); drawDnDT(); drawHeat();
+    drawHyd();
+  }, 150);
+}
+
+function boot(){
+  buildVolBars();
+  initTables();
+  updateMain();
+  initInverse();
+  initTemp();
+  initHyd();
+  initNav();
+
+  $('#sW').addEventListener('input', updateMain);
+  $('#sT').addEventListener('input', updateMain);
+
+  $$('#curveSw .sw').forEach(el=>{
+    el.addEventListener('click', e=>{
+      e.preventDefault();
+      el.classList.toggle('on');
+      CURVE_ON[el.dataset.k] = el.classList.contains('on');
+      drawMain(); drawDev();
+    });
+  });
+
+  // 首次绘制（必须，否则 canvas 停在 300px）
+  drawRules(); drawIon(); drawKapp(); drawCompare(); drawDnDT(); drawHeat();
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const heroCv = $('#cvRay');
+  if(heroCv){
+    sizeHero();
+    if(reduce) drawHero();
+    else{
+      const hio = new IntersectionObserver(es=>{
+        es.forEach(e=>{ e.isIntersecting ? startHero() : stopHero(); });
+      }, {threshold:0});
+      hio.observe(heroCv);
+    }
+  }
+
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){
+      drawRules(); drawIon(); drawKapp(); drawMain(); drawDev();
+      drawCompare(); drawDnDT(); drawHeat();
+    }});
+  }, {threshold:.05});
+  ['#cvRules','#cvIon','#cvKapp','#cvMain','#cvDev','#cvCompare','#cvDnDT','#cvHeat']
+    .forEach(s=>{ const el=$(s); if(el) io.observe(el); });
+
+  window.addEventListener('resize', onResize);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden) stopHero();
+    else if(!reduce && heroCv && heroCv.getBoundingClientRect().bottom > 0) startHero();
+  });
+
+  const d = new Date();
+  $('#footStamp').textContent = d.getFullYear()+'-'
+    + String(d.getMonth()+1).padStart(2,'0')+'-'
+    + String(d.getDate()).padStart(2,'0');
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+}else{
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>便携折光计 · 光路设计与误差预算</title>
+<style>
+
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#07090f;
+  --bg-2:#0b0e16;
+  --surface:#0b1119;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#4dd0e1;
+  --cy-soft:rgba(77,208,225,.14);
+  --cy-line:rgba(77,208,225,.35);
+  --am:#ffb84d;
+  --am-soft:rgba(255,184,77,.13);
+  --vi:#a78bfa;
+  --vi-soft:rgba(167,139,250,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(77,208,225,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(167,139,250,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,184,77,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(77,208,225,.28),rgba(167,139,250,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#b0f2fa 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(77,208,225,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,184,77,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(77,208,225,.12);color:var(--cy);border:1px solid rgba(77,208,225,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,184,77,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(167,139,250,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,184,77,.05);border:1px solid rgba(255,184,77,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(77,208,225,.045);border-color:rgba(77,208,225,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(77,208,225,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(77,208,225,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#b0f2fa}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(77,208,225,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+
+/* ===== RGB 三色光专用 ===== */
+:root{
+  --cR:#ff5f6d;
+  --cG:#3ddc84;
+  --cB:#5b9dff;
+  --cRd:rgba(255,95,109,.55);
+  --cGd:rgba(61,220,132,.55);
+  --cBd:rgba(91,157,255,.55);
+}
+.spectrum-bar{
+  height:3px;width:100%;border-radius:2px;margin:0 0 18px;
+  background:linear-gradient(90deg,#5b9dff 0%,#3ddc84 50%,#ff5f6d 100%);
+  opacity:.85;
+}
+.rgb-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rgb-cell{background:var(--bg-2);padding:14px 14px 12px}
+.rgb-cell .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.rgb-cell .lab i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rgb-cell .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1}
+.rgb-cell .s{font-size:10px;color:var(--tx-3);font-family:var(--mono);margin-top:6px}
+.bigN.tri{display:flex;align-items:baseline;gap:2px;font-size:34px}
+.bigN.tri em{font-style:normal;font-size:19px;opacity:.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line2);background:var(--bg-3);color:var(--tx-2)}
+.chip i{width:6px;height:6px;border-radius:50%}
+.lam{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wl-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:6px;letter-spacing:.02em}
+
+
+
+/* ===== 光路页专用 ===== */
+:root{ --cRd:rgba(255,107,107,.5); }
+.opt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.opt-cell{background:var(--bg-2);padding:13px 13px 11px}
+.opt-cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);margin-bottom:6px}
+.opt-cell .v{font-family:var(--mono);font-size:19px;font-weight:500;line-height:1}
+.opt-cell .v small{font-size:11px;opacity:.5;margin-left:2px}
+.opt-cell .s{font-size:9.5px;color:var(--tx-3);font-family:var(--mono);margin-top:5px}
+.chk{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:none}
+.chk .num{font-family:var(--mono);font-size:10px;color:var(--am);width:20px;flex-shrink:0;padding-top:2px}
+.chk .tx{font-size:12.3px;line-height:1.65;color:var(--tx-2)}
+.chk .tx b{color:var(--tx)}
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 全反射门槛</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 棱镜选型</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 分界线</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 照明角度</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 色散带宽</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 折叠封装</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 误差预算</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 检查表</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>光机设计 · 临界角式</div>
+      <h1>整台仪器，<br><em>就为这 9.4 度</em></h1>
+      <p class="hero-lead">
+        便携折光计没有运动部件、没有分光元件。它只做一件事：
+        让光在棱镜与样品的界面上擦过，看哪个角度开始全反射。<br>
+        临界角随浓度从 <b>48.3°</b> 移到 <b>57.7°</b>——这 <b>9.4 度</b>里，
+        装着 0 到 85 Brix 的全部读数。
+      </p>
+
+      <div class="chain">
+        <span>LED</span><i>→</i>
+        <span>棱镜</span><i>→</i>
+        <span class="hi">全反射临界角</span><i>→</i>
+        <span>明暗分界线</span><i>→</i>
+        <span class="hi">Brix</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">角度跨度</div><div class="v">9.41<small>°</small></div></div>
+        <div class="kpi"><div class="k">棱镜 n<sub>p</sub></div><div class="v">1.785<small>—</small></div></div>
+        <div class="kpi"><div class="k">每像素</div><div class="v">0.04<small>Brix</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvHero" height="460"></canvas>
+      <div class="cv-cap"><span>临界角光路 · 明暗分界线的形成</span><span style="text-transform:none">几何严格按 Snell 计算</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================================================
+     S1 · 全反射门槛
+     ============================================================ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">一个角度，把光分成两类</div>
+      <div class="sec-sub">
+        光从光密介质射向光疏介质（棱镜 → 样品），入射角超过某个值就再也出不去，
+        全部反射回来。这个门槛叫临界角，它只由两侧的折射率决定。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>临界角公式</h3>
+      <div class="eq">
+        sin θ<sub>c</sub> <span class="o">=</span>
+        <span class="frac"><span>n<sub>s</sub></span><span>n<sub>p</sub></span></span>
+      </div>
+      <div class="eq-note">
+        n<sub>p</sub> 是棱镜折射率，n<sub>s</sub> 是样品折射率。
+        仪器测的是 θ<sub>c</sub>，要的是 n<sub>s</sub>。
+      </div>
+
+      <p style="font-size:12.5px;margin:18px 0 10px">
+        反过来解，就是仪器的全部算法：
+      </p>
+      <div class="eq sm">
+        n<sub>s</sub> <span class="o">=</span> n<sub>p</sub>
+        <span class="o">·</span> sin θ<sub>c</sub>
+      </div>
+
+      <div class="note ok" style="margin-top:18px">
+        <div class="ico">✓</div>
+        <div>
+          <b>这个方法的精度优势在这里：</b>θ<sub>c</sub> 是直接由光线的几何位置决定的，
+          不需要标定光强、不需要参考通道、不受光源老化的影响。
+          光源只负责"照亮"，亮度下降只会让分界线变暗，不会让它移动。
+        </div>
+      </div>
+
+      <div class="note warn" style="margin-top:12px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          代价是：<b>必须接触</b>。样品要与棱镜表面光学接触，中间不能有空气膜。
+          这就是为什么所有折光计都有一个"压平"的动作，也是它没法做非接触测量的原因。
+        </div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvCrit" height="380"></canvas>
+      <div class="cv-cap"><span>临界角两侧的光线命运</span><span style="text-transform:none">θ &lt; θc 透射 · θ &gt; θc 全反射</span></div>
+    </div>
+  </div>
+
+  <div class="opt-row" style="margin-top:18px">
+    <div class="opt-cell">
+      <div class="k">水的临界角</div>
+      <div class="v" style="color:var(--cy)">48.31<small>°</small></div>
+      <div class="s">n=1.33299</div>
+    </div>
+    <div class="opt-cell">
+      <div class="k">85 Brix 临界角</div>
+      <div class="v" style="color:var(--am)">57.72<small>°</small></div>
+      <div class="s">n=1.50907</div>
+    </div>
+    <div class="opt-cell">
+      <div class="k">全量程角度跨度</div>
+      <div class="v">9.41<small>°</small></div>
+      <div class="s">这就是全部信号</div>
+    </div>
+    <div class="opt-cell">
+      <div class="k">灵敏度（0 Bx）</div>
+      <div class="v">48.3<small>°/n</small></div>
+      <div class="s">每单位折射率</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S2 · 棱镜选型
+     ============================================================ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">棱镜折射率：先决定量程，再决定精度</div>
+      <div class="sec-sub">
+        n<sub>p</sub> 必须明显大于最大样品折射率。否则临界角逼近 90°，
+        光线贴着表面爬，既做不出像，也谈不上精度。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvPrism" height="400"></canvas>
+      <div class="cv-cap"><span>临界角与量程随 n<sub>p</sub> 变化</span><span style="text-transform:none">拖动滑块</span></div>
+    </div>
+
+    <div class="card">
+      <h3>为什么是 1.78 而不是 1.52</h3>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <label>棱镜折射率 n<sub>p</sub></label>
+          <span class="val" id="vNp">1.785</span>
+        </div>
+        <input type="range" id="sNp" min="1.510" max="1.950" step="0.005" value="1.785">
+      </div>
+
+      <div class="readout" style="margin-top:18px;grid-template-columns:1fr 1fr">
+        <div class="cell">
+          <div class="k">85 Brix 临界角</div>
+          <div class="v" id="oTh85">57.7</div>
+          <div class="s">度</div>
+        </div>
+        <div class="cell">
+          <div class="k">离 90° 的余量</div>
+          <div class="v" id="oMargin">32.3</div>
+          <div class="s">度</div>
+        </div>
+      </div>
+
+      <table style="margin-top:18px">
+        <thead>
+          <tr><th>玻璃</th><th class="num">n<sub>d</sub></th><th class="num">θ<sub>c</sub>@85Bx</th><th>判定</th></tr>
+        </thead>
+        <tbody id="tbGlass"></tbody>
+      </table>
+      <p style="font-size:10.5px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.7">
+        判定线取 θ<sub>c</sub> &lt; 72°：超过这个角度，出射光贴近棱镜表面，
+        透镜数值孔径跟不上，分界线会糊。
+      </p>
+
+      <div class="note" style="margin-top:16px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          <b>BK7（1.517）为什么不行：</b>测 85 Brix 时临界角是 84.1°，
+          只离全反射消失差 5.9°。这个角度下光线几乎沿着表面走，
+          任何一点表面粗糙度或样品膜厚不均都会把分界线打散。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>三种可用的材料</h3>
+    <div class="grid g3" style="gap:16px;margin-top:10px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">N-SF11 · n=1.785</div>
+        <p style="font-size:12.3px;margin:0">
+          最常用的选择。火石玻璃，含铅，透过率到 2.3 μm，加工便宜。
+          缺点是软，样品台要镀硬膜或者贴蓝宝石片。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">蓝宝石 · n=1.768</div>
+        <p style="font-size:12.3px;margin:0">
+          硬度仅次于金刚石，可以直接擦。耐刮、耐酸碱。
+          折射率略低但够用，成本是火石玻璃的十几倍。高端机型用。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">N-LASF9 · n=1.85</div>
+        <p style="font-size:12.3px;margin:0">
+          镧系重火石，折射率最高，角度余量最大。含稀土，贵且交期长。
+          只有在需要测极高浓度或特殊样品时才值得。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S3 · 分界线
+     ============================================================ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">把角度变成像素</div>
+      <div class="sec-sub">
+        全反射的光从棱镜右侧射出，经透镜聚焦到线阵 CCD。
+        临界角对应的那条光线，就是亮区与暗区的交界。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvLine" height="400"></canvas>
+      <div class="cv-cap"><span>CCD 上的光强分布</span><span style="text-transform:none">拖动样品折射率</span></div>
+    </div>
+
+    <div class="card">
+      <h3>分界线在哪，读数就是多少</h3>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <label>样品折射率 n<sub>s</sub></label>
+          <span class="val" id="vNs">1.3995</span>
+        </div>
+        <input type="range" id="sNs" min="1.33299" max="1.50907" step="0.0001" value="1.39949">
+      </div>
+
+      <div class="readout" style="margin-top:16px;grid-template-columns:1fr 1fr">
+        <div class="cell">
+          <div class="k">临界角</div>
+          <div class="v" id="oThc">51.6</div>
+          <div class="s">度</div>
+        </div>
+        <div class="cell">
+          <div class="k">读数</div>
+          <div class="v" id="oBrix">40.0</div>
+          <div class="s">Brix</div>
+        </div>
+      </div>
+
+      <p style="font-size:12.5px;margin-top:16px">
+        透镜把角度映射成位置：<b>x = f·tan(θ)</b>。焦距定下来，
+        整条角度轴上 9.4° 的跨度就被摊到 CCD 上。
+      </p>
+
+      <div class="eq sm">
+        <span class="frac"><span>dx</span><span>dθ</span></span>
+        <span class="o">=</span> f <span class="o">·</span> sec²θ
+      </div>
+      <div class="eq-note">
+        在 50° 附近，sec²θ ≈ 2.4。所以角度灵敏度被放大了约 2.4 倍。
+      </div>
+
+      <div class="note ok" style="margin-top:16px;font-size:12.2px">
+        <div class="ico">✓</div>
+        <div>
+          <b>2048 像素覆盖 9.4°，每个像素约 0.0046°，折合 0.04 Brix。</b>
+          再做 1/10 像素的亚像素插值，位置分辨率能到 0.004 Brix——
+          CCD 从来不是瓶颈，瓶颈在别处（见第 07 章）。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>为什么分界线不是一条"线"</h3>
+    <div class="grid g3" style="gap:16px;margin-top:10px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">① 光源带宽</div>
+        <p style="font-size:12.3px;margin:0">
+          不同波长的临界角不同，分界线变成一条彩色带。带宽 20 nm 时展宽约 0.034°。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">② 衍射与像差</div>
+        <p style="font-size:12.3px;margin:0">
+          棱镜边缘的衍射、透镜的球差，把几何分界线抹成几微米的过渡带。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">③ 样品膜厚</div>
+        <p style="font-size:12.3px;margin:0">
+          膜太薄，倏逝场穿透到空气；膜太厚，本身吸收。通常控制在几十微米。
+        </p>
+      </div>
+    </div>
+    <div class="eq-note" style="margin-top:12px">
+      这三项共同决定了分界线的<b>锐度</b>。仪器真正用的不是"边界在哪"，而是<b>光强分布的拐点</b>——
+      所以对模糊不敏感，对不对称才敏感。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S4 · 照明角度
+     ============================================================ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">照明要的是角度，不是亮度</div>
+      <div class="sec-sub">
+        一个理想的点光源，在棱镜里只有一条光线——也就只有一个角度，看不到任何分界线。
+        必须让光以<b>连续的一串角度</b>同时打到测量面上。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvCone" height="380"></canvas>
+      <div class="cv-cap"><span>入射角分布 → 测量面角度分布</span><span style="text-transform:none">只有跨过临界角才看得到边界</span></div>
+    </div>
+
+    <div class="card">
+      <h3>角度账要算清</h3>
+      <p style="font-size:12.5px;margin-bottom:12px">
+        棱镜是等边三角形（顶角 60°），入射面法线与测量面法线成 <b>30°</b>。
+        光在棱镜内与入射面法线的夹角最多能做到 34.1°（对应掠入射）。
+      </p>
+
+      <div class="eq sm">
+        θ<sub>measure</sub> <span class="o">=</span>
+        30° <span class="o">±</span> θ<sub>inside</sub>
+        <span class="o">,</span>
+        θ<sub>inside</sub> <span class="o">≤</span> 34.1°
+      </div>
+      <div class="eq-note">
+        所以测量面上的角度覆盖 0° ~ 64.1°，临界角 48.3°~57.7° 落在这个区间里。
+      </div>
+
+      <table style="margin-top:16px">
+        <thead>
+          <tr><th>照明方式</th><th class="num">角度范围</th><th>结果</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>准直激光</td><td class="num">≈0°</td><td style="color:var(--rd)">无分界线</td></tr>
+          <tr><td>普通 LED（±30°）</td><td class="num">0–30°</td><td style="color:var(--am)">覆盖不足</td></tr>
+          <tr><td style="color:var(--cy)">磨砂面 + LED</td><td class="num">0–90°</td><td style="color:var(--gr)">完整覆盖 ✓</td></tr>
+          <tr><td>毛玻璃 + 狭缝</td><td class="num">0–45°</td><td style="color:var(--gr)">够用，且杂散光少</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn" style="margin-top:16px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          <b>磨砂面带来一个副作用：它同时是散射源。</b>
+          散射光会绕过棱镜直接进 CCD，抬高暗区底噪，把分界线对比度拉低。
+          所以磨砂面必须做<b>挡光筒 + 光阑</b>，让散射光出不去。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>为什么用"暗边界"而不是"亮边界"</h3>
+    <div class="grid g2" style="gap:16px;align-items:center;margin-top:6px">
+      <p style="font-size:12.5px;margin:0">
+        全反射的那一侧是<b>亮</b>的，透射进样品的那一侧是<b>暗</b>的。
+        但仪器实际找的是<b>从亮到暗的下降沿</b>，而不是上升沿。<br><br>
+        原因：暗区的底噪由杂散光决定，很难压到零；亮区的上限由光源决定，可以做到很稳。
+        沿着一个<b>陡峭的下降沿</b>找拐点，比在一个接近零的区域找上升沿更可靠。
+      </p>
+      <div class="note ok" style="margin:0;font-size:12.3px">
+        <div class="ico">✓</div>
+        <div>
+          这也解释了为什么折光计都要求"样品要盖满、要压平"：
+          样品边缘的空隙会让光直接透过去，在暗区里点出一块亮斑，
+          把下降沿撕成两段。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S5 · 色散带宽
+     ============================================================ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">为什么必须用窄带光</div>
+      <div class="sec-sub">
+        不同波长的临界角不一样。用白光照明，等于把无数条分界线叠在一起，
+        边界立刻糊成一片。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>带宽 → 展宽</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>光源</th>
+            <th class="num">带宽</th>
+            <th class="num">角度展宽</th>
+            <th class="num">折合 Brix</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>单色 laser</td><td class="num">2 nm</td><td class="num">0.0035°</td><td class="num">0.03</td></tr>
+          <tr style="background:rgba(77,208,225,.06)">
+            <td style="color:var(--cy)">LED + 滤光片（推荐）</td>
+            <td class="num">10 nm</td><td class="num">0.017°</td><td class="num">0.17</td>
+          </tr>
+          <tr><td>普通 LED</td><td class="num">20 nm</td><td class="num">0.035°</td><td class="num">0.34</td></tr>
+          <tr><td>宽谱 LED</td><td class="num">50 nm</td><td class="num">0.087°</td><td class="num">0.85</td></tr>
+          <tr><td style="color:var(--rd)">白光 LED</td><td class="num">100 nm</td><td class="num">0.174°</td><td class="num" style="color:var(--rd)">1.69</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:10.5px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.7">
+        按 dn/dλ = −3.5×10⁻⁵/nm、dn/dBrix = 2.07×10⁻³ 计算。
+        这里的"折合 Brix"指边界的<b>展宽量</b>，不是定位误差。
+      </p>
+
+      <div class="note" style="margin-top:16px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          展宽 ≠ 误差。分界线的<b>质心</b>仍然准，只要光强分布对称。
+          但不对称就麻烦了——而样品的色散恰好会造成不对称（见下）。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>色散不只是噪声，它藏着另一个信息</h3>
+      <p style="font-size:12.5px;margin-bottom:12px">
+        如果样品的色散强（Abbe 数低），蓝端的临界角比红端偏得更多，
+        分界线会向一侧倾斜。<b>这个倾斜量就是样品的 Abbe 数。</b>
+      </p>
+
+      <div class="eq sm">
+        Δθ<sub>c</sub> <span class="o">=</span>
+        <span class="frac"><span>Δn<sub>s</sub></span><span>n<sub>p</sub> cos θ<sub>c</sub></span></span>
+      </div>
+      <div class="eq-note">
+        Δn<sub>s</sub> 是样品在工作波段内的色散，θ<sub>c</sub> 约 50°，cos θ<sub>c</sub> ≈ 0.64。
+      </div>
+
+      <p style="font-size:12.5px;margin:16px 0 10px">
+        对糖水（Δn = 6 mK）：
+      </p>
+      <div class="eq sm">
+        Δθ<sub>c</sub> <span class="o">=</span>
+        <span class="frac"><span>0.006</span><span>1.785 × 0.64</span></span>
+        <span class="o">=</span> 0.0053 rad <span class="o">=</span>
+        <span class="hl2">0.30°</span>
+      </div>
+      <div class="eq-note">
+        0.30° 是整条角度跨度（9.4°）的 3.2%。这不是可以忽略的量。
+      </div>
+
+      <div class="note ok" style="margin-top:16px;font-size:12.2px">
+        <div class="ico">✓</div>
+        <div>
+          <b>工业折光仪两条路线：</b><br>
+          ① <b>窄带 + 补偿</b>：把带宽压到 10 nm，色散效应降到 0.017°，
+          再用软件按经验 Abbe 数修正。<br>
+          ② <b>双波长</b>：故意测两个波长，用色散差反推 Abbe 数，
+          顺便做温度自校正。高端机型用这条。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="opt-row" style="margin-top:18px">
+    <div class="opt-cell">
+      <div class="k">工作波长</div>
+      <div class="v">589.3<small>nm</small></div>
+      <div class="s">钠 D 线，行业基准</div>
+    </div>
+    <div class="opt-cell">
+      <div class="k">典型带宽</div>
+      <div class="v">10<small>nm</small></div>
+      <div class="s">LED + 带通滤光片</div>
+    </div>
+    <div class="opt-cell">
+      <div class="k">色散致展宽</div>
+      <div class="v">0.017<small>°</small></div>
+      <div class="s">占跨度 0.18%</div>
+    </div>
+    <div class="opt-cell">
+      <div class="k">糖水的 Abbe 倾斜</div>
+      <div class="v" style="color:var(--am)">0.30<small>°</small></div>
+      <div class="s">占跨度 3.2%，必须处理</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S6 · 折叠封装
+     ============================================================ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">把一条 120 mm 的光路塞进口袋</div>
+      <div class="sec-sub">
+        临界角光路本身是直的：光源—棱镜—透镜—探测器。
+        便携化要做的，是在不改变角度的前提下把它折起来。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvFold" height="360"></canvas>
+      <div class="cv-cap"><span>直筒式与折叠式对比</span><span style="text-transform:none">同一焦距，同一像面</span></div>
+    </div>
+
+    <div class="card">
+      <h3>折叠不改变什么，改变了什么</h3>
+      <table>
+        <thead>
+          <tr><th>项目</th><th class="num">直筒</th><th class="num">折叠</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>总长度</td><td class="num">≈120 mm</td><td class="num" style="color:var(--gr)">≈58 mm</td></tr>
+          <tr><td>角度映射</td><td class="num">x=f·tanθ</td><td class="num">x=f·tanθ</td></tr>
+          <tr><td>像面照度</td><td class="num">100%</td><td class="num">92%（镜面反射率）</td></tr>
+          <tr><td>杂散光</td><td class="num">低</td><td class="num" style="color:var(--am)">较高（多一个反射面）</td></tr>
+          <tr><td>装调自由度</td><td class="num">3</td><td class="num" style="color:var(--am)">5（多两个镜面角度）</td></tr>
+          <tr><td>抗振</td><td class="num">好</td><td class="num">需镜座刚性支撑</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn" style="margin-top:16px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          <b>折叠镜的角误差会被放大两倍。</b>
+          镜子偏 α，反射光偏 2α。所以镜座的角度公差要比透镜严一倍，
+          而且要保证<b>温度变化时镜子与棱镜的相对角度不变</b>——
+          否则读数会随温度漂。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>三种折叠方案</h3>
+    <div class="grid g3" style="gap:16px;margin-top:10px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">① 单镜折返</div>
+        <p style="font-size:12.3px;margin:0">
+          一面 45° 平面镜把光路折成 L 形。结构最简单，长度减半。
+          缺点是像面会镜像翻转，软件里要把 CCD 读序反过来。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">② 屋脊棱镜</div>
+        <p style="font-size:12.3px;margin:0">
+          用一块屋脊棱镜代替平面镜，同时完成折转和镜像校正。
+          整体性好、抗振，但成本高，且会引入一点点色散。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">③ 棱镜内折</div>
+        <p style="font-size:12.3px;margin:0">
+          直接在测量棱镜内部做二次反射，把出射方向折回来。
+          最短，但棱镜形状复杂、加工贵，且内部光路长会放大材料不均匀性。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S7 · 误差预算
+     ============================================================ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">误差预算：瓶颈不在光学</div>
+      <div class="sec-sub">
+        把前面每一项折合成 Brix，排个序。结果和直觉相反——
+        CCD 和透镜都不是主要矛盾。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>逐项分解（0–85 Brix 量程）</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>误差源</th>
+          <th class="num">物理量</th>
+          <th class="num">折合 Brix</th>
+          <th>处理方式</th>
+          <th class="num">能否消除</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>温度控制 0.5 K</td>
+          <td class="num">6.5×10⁻⁵</td>
+          <td class="num">0.031</td>
+          <td style="font-size:11.8px">热敏电阻贴棱镜 + 软件补偿</td>
+          <td class="num" style="color:var(--am)">部分</td>
+        </tr>
+        <tr>
+          <td>LED 带宽 10 nm</td>
+          <td class="num">3.5×10⁻⁴</td>
+          <td class="num">0.034</td>
+          <td style="font-size:11.8px">带通滤光片，压到 10 nm 以内</td>
+          <td class="num" style="color:var(--gr)">可以</td>
+        </tr>
+        <tr>
+          <td>CCD 亚像素 0.002°</td>
+          <td class="num">4×10⁻⁵</td>
+          <td class="num">0.019</td>
+          <td style="font-size:11.8px">12 bit ADC + 插值算法</td>
+          <td class="num" style="color:var(--gr)">可以</td>
+        </tr>
+        <tr style="background:rgba(255,184,77,.05)">
+          <td style="color:var(--am)">棱镜 n<sub>p</sub> 公差 5×10⁻⁴</td>
+          <td class="num">3.7×10⁻⁴</td>
+          <td class="num" style="color:var(--am)">0.18</td>
+          <td style="font-size:11.8px">出厂逐台标定，不能用批次值</td>
+          <td class="num" style="color:var(--gr)">可以</td>
+        </tr>
+        <tr>
+          <td>样品膜厚 / 气泡</td>
+          <td class="num">—</td>
+          <td class="num">0.05–0.20</td>
+          <td style="font-size:11.8px">操作规范，压平、盖满</td>
+          <td class="num" style="color:var(--rd)">不可控</td>
+        </tr>
+        <tr>
+          <td>杂散光（磨砂面漏光）</td>
+          <td class="num">—</td>
+          <td class="num">0.010</td>
+          <td style="font-size:11.8px">挡光筒 + 视场光阑</td>
+          <td class="num" style="color:var(--gr)">可以</td>
+        </tr>
+        <tr style="border-top:1px solid var(--line2)">
+          <td><b>合计（标定后，不含样品）</b></td>
+          <td class="num">—</td>
+          <td class="num"><b style="color:var(--cy)">≈ 0.05</b></td>
+          <td style="font-size:11.8px">RSS 合成</td>
+          <td class="num">—</td>
+        </tr>
+        <tr>
+          <td><b>合计（含样品操作）</b></td>
+          <td class="num">—</td>
+          <td class="num"><b>≈ 0.11</b></td>
+          <td style="font-size:11.8px">与产品标称 ±0.1~0.2 一致</td>
+          <td class="num">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid g2" style="margin-top:18px;align-items:start;gap:18px">
+    <div class="card" style="margin:0">
+      <h3>两个和直觉相反的结论</h3>
+      <p style="font-size:12.3px">
+        <b>① 光学系统不是瓶颈。</b>
+        把 CCD 从 2048 像素换到 4096 像素，总误差几乎不动——
+        因为 0.019 这一项本来就在 RSS 里占不到 10%。花钱在这里是浪费。
+      </p>
+      <p style="font-size:12.3px">
+        <b>② 棱镜折射率公差是最大的单项，而且必须逐台标定。</b>
+        5×10⁻⁴ 的批次差异就值 0.18 Brix，比 CCD 大十倍。
+        但它是<b>系统偏差</b>，不是随机误差——用两个标准液标一下就能压到 0.01 以下。
+      </p>
+      <p style="font-size:12.3px;margin-bottom:0">
+        <b>③ 真正压不下去的是样品本身。</b>
+        膜厚不均、气泡、挥发、温度梯度——这些都发生在棱镜外面，
+        仪器管不到，只能靠操作规范。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>温度为什么排第一</h3>
+      <p style="font-size:12.3px">
+        水的 dn/dT ≈ −1.3×10⁻⁴/K，0.5 K 就值 0.031 Brix。
+        但真正的麻烦不是这个数，而是<b>热敏电阻贴在哪</b>。
+      </p>
+      <table style="margin:12px 0">
+        <thead><tr><th>贴法</th><th class="num">温度滞后</th><th>效果</th></tr></thead>
+        <tbody>
+          <tr><td>贴 PCB</td><td class="num">30–60 s</td><td style="color:var(--rd)">完全跟不上</td></tr>
+          <tr><td>贴壳体</td><td class="num">5–15 s</td><td style="color:var(--am)">勉强</td></tr>
+          <tr><td style="color:var(--cy)">贴棱镜本体（背面）</td><td class="num">&lt;2 s</td><td style="color:var(--gr)">正确做法 ✓</td></tr>
+        </tbody>
+      </table>
+      <div class="note warn" style="font-size:12px;margin:0">
+        <div class="ico">⚠</div>
+        <div>
+          便携机的热源是手。手指 37°C 贴在机身上，棱镜温度会在十几秒内爬升 1–2 K。
+          如果传感器不在棱镜上，补偿算法修正的是一个<b>并不存在的温度</b>。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S8 · 检查表
+     ============================================================ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">设计检查表</div>
+      <div class="sec-sub">按这八条过一遍，能避开大部分返工。</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <div class="chk"><div class="num">01</div><div class="tx">
+        <b>棱镜选型看余量，不看折射率本身。</b>
+        要求 n<sub>p</sub> ≥ n<sub>s,max</sub> + 0.25，即最高浓度下临界角不超过 65°。
+        别卡着 72° 设计。
+      </div></div>
+      <div class="chk"><div class="num">02</div><div class="tx">
+        <b>测量面必须能擦。</b>
+        火石玻璃镀 DLC 或贴蓝宝石片。裸玻璃用三个月就会被擦花，
+        划痕会散射光，把分界线打毛。
+      </div></div>
+      <div class="chk"><div class="num">03</div><div class="tx">
+        <b>光源带宽 ≤ 15 nm，中心锁 589.3 nm。</b>
+        用带通滤光片，不要指望 LED 本身的窄带。
+        滤光片要放在<b>棱镜之前</b>，否则荧光和散射光会漏进来。
+      </div></div>
+      <div class="chk"><div class="num">04</div><div class="tx">
+        <b>照明要有连续角度分布。</b>
+        磨砂面或毛玻璃 + 视场光阑。光阑的作用是限制角度范围的上限，
+        把不需要的掠射光挡掉，减少杂散光。
+      </div></div>
+    </div>
+
+    <div class="card" style="margin:0">
+      <div class="chk"><div class="num">05</div><div class="tx">
+        <b>CCD 不要过度设计。</b>
+        1024 像素 + 亚像素插值就够 0.02 Brix。省下的钱花在滤光片和热敏电阻上。
+      </div></div>
+      <div class="chk"><div class="num">06</div><div class="tx">
+        <b>热敏电阻贴棱镜本体。</b>
+        不是 PCB，不是壳体。用导热胶贴在棱镜背面，靠近测量面的中心。
+      </div></div>
+      <div class="chk"><div class="num">07</div><div class="tx">
+        <b>样品膜厚要有个物理限位。</b>
+        靠"盖玻片压平"或"固定间隙"，不要靠手感。
+        膜太薄倏逝场穿透，太厚自身吸收，都会让分界线偏移。
+      </div></div>
+      <div class="chk"><div class="num">08</div><div class="tx">
+        <b>逐台标定 n<sub>p</sub>，至少两个点。</b>
+        用纯水和一种标准糖液（比如 50 Brix 标准液）做两点标定，
+        同时解出 n<sub>p</sub> 和零点偏移。
+      </div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>四个最容易踩的坑</h3>
+    <div class="grid g4" style="gap:14px;margin-top:10px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--rd);letter-spacing:.08em;margin-bottom:6px">坑 1</div>
+        <p style="font-size:12px;margin:0">
+          用白光 LED 图省事。分界线糊成 1.7 Brix，软件怎么标都救不回来。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--rd);letter-spacing:.08em;margin-bottom:6px">坑 2</div>
+        <p style="font-size:12px;margin:0">
+          棱镜周围没做挡光。散射光绕过棱镜直射 CCD，暗区底噪抬高，对比度掉一半。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--rd);letter-spacing:.08em;margin-bottom:6px">坑 3</div>
+        <p style="font-size:12px;margin:0">
+          折叠镜用 UV 胶固定。胶层随温度蠕变，镜子角度漂 0.01°，读数漂 0.1 Brix。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--rd);letter-spacing:.08em;margin-bottom:6px">坑 4</div>
+        <p style="font-size:12px;margin:0">
+          用批次折射率代替逐台标定。同一炉玻璃的 n 也能差 3×10⁻⁴，值 0.15 Brix。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap" style="padding:56px 0 64px;border-top:1px solid var(--line);margin-top:40px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--tx-3);letter-spacing:.1em;margin-bottom:8px">折光计 · 工程篇</div>
+      <div style="font-size:12.5px;color:var(--tx-2);line-height:1.8">
+        单文件，零外部依赖。<br>
+        光路几何按 Snell 定律逐步计算，非示意图。
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--tx-3);text-align:right;line-height:1.9">
+      <div>蔗糖 · 加和成立</div>
+      <div>盐水 · 加和失效</div>
+      <div>三元 · 欠定</div>
+      <div>三色 · 另一条通道</div>
+      <div style="color:var(--am)">光路 · 把原理做成仪器</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 常量与光学模型
+   ============================================================ */
+const CO = {
+  cy:'#4dd0e1', am:'#ffb84d', vi:'#a78bfa', rd:'#ff6b6b', gr:'#5ee6a8',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#12172a', grid2:'#1a2033', line:'#232c44'
+};
+const D = Math.PI/180;
+
+// 向量工具
+const vadd=(a,b)=>[a[0]+b[0], a[1]+b[1]];
+const vsub=(a,b)=>[a[0]-b[0], a[1]-b[1]];
+const vmul=(a,s)=>[a[0]*s, a[1]*s];
+const vdot=(a,b)=>a[0]*b[0]+a[1]*b[1];
+const vlen=a=>Math.hypot(a[0],a[1]);
+const vnorm=a=>{ const l=vlen(a)||1; return [a[0]/l, a[1]/l]; };
+
+/* Snell 折射：d 入射方向，n 指向入射侧的外法线，eta=n1/n2
+   返回折射方向，全反射时返回 null */
+function refract(d, n, eta){
+  const ci = -vdot(d, n);
+  const k = 1 - eta*eta*(1-ci*ci);
+  if(k < 0) return null;
+  const ct = Math.sqrt(k);
+  return vnorm(vadd(vmul(d, eta), vmul(n, eta*ci - ct)));
+}
+function reflect(d, n){ return vsub(d, vmul(n, 2*vdot(d,n))); }
+
+// Brix → n（与前面几页同一套 L-L 模型）
+const MW=342.2965, KS=0.20551, KW=0.206063;
+const DENS=[[0,0.9982],[10,1.0381],[20,1.0810],[30,1.1270],[40,1.1764],
+            [50,1.2296],[60,1.2867],[70,1.3479],[80,1.4149],[85,1.4525]];
+function pchip(xs,ys){
+  const n=xs.length,h=[],d=[],m=new Array(n);
+  for(let i=0;i<n-1;i++){ h[i]=xs[i+1]-xs[i]; d[i]=(ys[i+1]-ys[i])/h[i]; }
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(d[i-1]*d[i]<=0){ m[i]=0; }
+    else{ const w1=2*h[i]+h[i-1], w2=h[i]+2*h[i-1]; m[i]=(w1+w2)/(w1/d[i-1]+w2/d[i]); }
+  }
+  return x=>{
+    if(x<=xs[0]) return ys[0]+m[0]*(x-xs[0]);
+    if(x>=xs[n-1]) return ys[n-1]+m[n-1]*(x-xs[n-1]);
+    let i=0; while(i<n-2 && x>xs[i+1]) i++;
+    const t=(x-xs[i])/h[i], t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i] + (t3-2*t2+t)*h[i]*m[i]
+         + (-2*t3+3*t2)*ys[i+1] + (t3-t2)*h[i]*m[i+1];
+  };
+}
+const rhoOf = pchip(DENS.map(r=>r[0]), DENS.map(r=>r[1]));
+const nBx = B => {
+  const w = Math.max(0, B)/100;
+  const x = rhoOf(B)*(w*KS + (1-w)*KW);
+  return Math.sqrt((1+2*x)/(1-x));
+};
+const crit = (ns, np) => Math.asin(Math.min(1, ns/np));
+
+const N_MIN = nBx(0), N_MAX = nBx(85);
+const NP_REF = 1.785;
+
+/* ============================================================
+   1 · 绘图工具
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function prep(cv, cssH){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = Math.max(200, cv.clientWidth||400);
+  const h = cssH;
+  cv.style.height = h+'px';
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+function txt(c,s,x,y,col,size,align,weight){
+  c.save();
+  c.fillStyle = col||CO.tx2;
+  c.font = (weight||400)+' '+(size||10)+'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  c.textAlign = align||'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+  c.restore();
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function dot(c,x,y,r,fill,stroke,wd){
+  c.beginPath(); c.arc(x,y,r,0,6.2832);
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.5; c.stroke(); }
+}
+function poly(c,pts,fill,stroke,wd){
+  c.beginPath();
+  pts.forEach((p,i)=> i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));
+  c.closePath();
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.2; c.stroke(); }
+}
+// 光线：带发光
+function ray(c, a, b, col, wd, alpha){
+  c.save();
+  c.strokeStyle = col; c.globalAlpha = alpha===undefined?1:alpha;
+  c.lineWidth = wd||1.6; c.lineCap='round';
+  c.shadowColor = col; c.shadowBlur = 6;
+  line(c, a[0],a[1], b[0],b[1]);
+  c.restore();
+}
+
+/* ============================================================
+   2 · 棱镜几何
+   ============================================================ */
+function prismGeom(x0, yT, W){
+  const H = W*0.8660;           // 等边三角形高
+  const A = [x0, yT], B = [x0+W, yT], C = [x0+W/2, yT+H];
+  return {
+    A,B,C,H,
+    // 面：起点、终点、外法线（指向棱镜外）
+    faces: [
+      {p:A, q:B, nIn:[0,1],  nOut:[0,-1],      name:'top'},
+      {p:A, q:C, nIn:[0.866,-0.5], nOut:[-0.866,0.5], name:'left'},
+      {p:B, q:C, nIn:[-0.866,-0.5], nOut:[0.866,0.5], name:'right'}
+    ]
+  };
+}
+
+// 射线与线段求交
+function hitSeg(p, d, a, b){
+  const e = vsub(b,a);
+  const den = d[0]*e[1] - d[1]*e[0];
+  if(Math.abs(den) < 1e-9) return null;
+  const t = ((a[0]-p[0])*e[1] - (a[1]-p[1])*e[0]) / den;
+  const u = ((a[0]-p[0])*d[1] - (a[1]-p[1])*d[0]) / den;
+  if(t <= 1e-6 || u < -1e-4 || u > 1.0001) return null;
+  return {pt:[p[0]+d[0]*t, p[1]+d[1]*t], t};
+}
+
+/* ============================================================
+   3 · Hero：完整光路
+   ============================================================ */
+let heroT = 0, heroOn = false, heroRAF = 0;
+
+function drawHero(){
+  const cv = $('#cvHero'); if(!cv) return;
+  const {c,w,h} = prep(cv, 460);
+  const t = heroT;
+
+  c.fillStyle = '#07090f'; c.fillRect(0,0,w,h);
+
+  const W = Math.min(w*0.315, 165);
+  const x0 = w*0.285, yT = h*0.26;
+  const G = prismGeom(x0, yT, W);
+  const np = NP_REF;
+  const ns = nBx(20);
+  const thc = crit(ns, np);
+
+  // 棱镜主体
+  const grd = c.createLinearGradient(x0, yT, x0+W, yT+G.H);
+  grd.addColorStop(0,'rgba(77,208,225,.10)');
+  grd.addColorStop(.6,'rgba(77,208,225,.045)');
+  grd.addColorStop(1,'rgba(77,208,225,.09)');
+  poly(c, [G.A,G.B,G.C], grd, 'rgba(77,208,225,.38)', 1.3);
+
+  // 样品膜
+  c.save();
+  c.fillStyle = 'rgba(255,184,77,.16)';
+  c.fillRect(x0-6, yT-11, W+12, 11);
+  c.strokeStyle='rgba(255,184,77,.45)'; c.lineWidth=1;
+  c.strokeRect(x0-6, yT-11, W+12, 11);
+  c.restore();
+  txt(c, '样品膜', x0+W+16, yT-6, 'rgba(255,184,77,.75)', 8.5, 'left');
+
+  // LED
+  const led = [x0-W*0.60, yT+G.H*0.98];
+  c.save();
+  const lg = c.createRadialGradient(led[0],led[1],0,led[0],led[1],22);
+  lg.addColorStop(0,'rgba(255,184,77,.95)');
+  lg.addColorStop(.35,'rgba(255,184,77,.35)');
+  lg.addColorStop(1,'rgba(255,184,77,0)');
+  c.fillStyle = lg; c.beginPath(); c.arc(led[0],led[1],22,0,6.2832); c.fill();
+  c.fillStyle = '#ffd79a'; c.beginPath(); c.arc(led[0],led[1],4.5,0,6.2832); c.fill();
+  c.restore();
+  txt(c, 'LED', led[0], led[1]+22, 'rgba(255,184,77,.7)', 8.5, 'center', 600);
+
+  // 光线扇形
+  const rays = [];
+  for(let i=0;i<10;i++){
+    const tt = 0.075 + i*0.045;
+    const P1 = [G.A[0] + (G.C[0]-G.A[0])*tt, G.A[1] + (G.C[1]-G.A[1])*tt];
+    const d0 = vnorm(vsub(P1, led));
+
+    // 入射：空气 → 棱镜
+    const d1 = refract(d0, G.faces[1].nOut, 1/np);
+    if(!d1) continue;
+
+    // 到顶面
+    const hitTop = hitSeg(P1, d1, G.A, G.B);
+    if(!hitTop) continue;
+    const P2 = hitTop.pt;
+
+    const inAng = Math.acos(clamp(-vdot(d1, G.faces[0].nIn), -1, 1));
+    const tir = inAng > thc;
+
+    if(!tir){
+      // 透射进样品
+      const d2 = refract(d1, G.faces[0].nIn, np/ns);
+      if(d2){
+        const end = vadd(P2, vmul(d2, 26));
+        rays.push({seg:[[P1,P2]], tail:[P2,end], tir:false, ang:inAng});
+      } else {
+        rays.push({seg:[[P1,P2]], tail:null, tir:false, ang:inAng});
+      }
+      continue;
+    }
+
+    // 全反射
+    const d2 = reflect(d1, G.faces[0].nIn);
+    const hitR = hitSeg(P2, d2, G.B, G.C);
+    if(!hitR) continue;
+    const P3 = hitR.pt;
+    const d3 = refract(d2, G.faces[2].nIn, np);
+    const out = d3 ? vadd(P3, vmul(d3, 92)) : vadd(P3, vmul(d2, 60));
+    rays.push({seg:[[P1,P2],[P2,P3]], tail:[P3,out], tir:true, ang:inAng});
+  }
+
+  // 画光线：先画透射（暗），再画全反射（亮）
+  rays.filter(r=>!r.tir).forEach(r=>{
+    r.seg.forEach(s=> ray(c, s[0], s[1], 'rgba(255,107,107,.55)', 1.3, .8));
+    if(r.tail) ray(c, r.tail[0], r.tail[1], 'rgba(255,107,107,.20)', 1.1, .6);
+  });
+  rays.filter(r=>r.tir).forEach(r=>{
+    r.seg.forEach(s=> ray(c, s[0], s[1], '#ffb84d', 1.9, .95));
+    if(r.tail) ray(c, r.tail[0], r.tail[1], '#ffb84d', 1.6, .8);
+  });
+
+  // 法线
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(148,165,187,.28)'; c.lineWidth=1;
+  line(c, G.A[0], G.A[1], G.A[0], G.A[1]-26);
+  line(c, G.B[0], G.B[1], G.B[0], G.B[1]-26);
+  c.restore();
+
+  // 顶面标注
+  txt(c, '测量面（全反射界面）', (G.A[0]+G.B[0])/2, yT-26, 'rgba(148,165,187,.55)', 8.5, 'center');
+
+  // CCD 光强条
+  const ccdX = w-56, ccdY0 = h*0.18, ccdH = h*0.62;
+  c.fillStyle = 'rgba(10,14,22,.9)';
+  c.fillRect(ccdX-30, ccdY0-14, 76, ccdH+28);
+  c.strokeStyle='rgba(77,208,225,.20)'; c.lineWidth=1;
+  c.strokeRect(ccdX-30, ccdY0-14, 76, ccdH+28);
+
+  // 光强分布（竖直，亮在上）
+  const xLine = ccdX-24;
+  const gradPos = (thc - crit(N_MIN,np)) / (crit(N_MAX,np) - crit(N_MIN,np));
+  const splitY = ccdY0 + ccdH*(1-gradPos);
+
+  c.save();
+  c.beginPath(); c.rect(ccdX-30, ccdY0, 76, ccdH); c.clip();
+  // 亮区
+  const bg = c.createLinearGradient(ccdX-26, 0, ccdX+4, 0);
+  bg.addColorStop(0,'rgba(255,184,77,.05)');
+  bg.addColorStop(1,'rgba(255,184,77,.55)');
+  c.fillStyle = bg;
+  c.fillRect(ccdX-26, ccdY0, 34, splitY-ccdY0);
+  // 暗区
+  c.fillStyle = 'rgba(15,20,30,.9)';
+  c.fillRect(ccdX-26, splitY, 34, ccdY0+ccdH-splitY);
+  // 分界线
+  c.save();
+  c.shadowColor = CO.rd; c.shadowBlur = 12;
+  c.strokeStyle = CO.rd; c.lineWidth = 1.8;
+  line(c, ccdX-28, splitY, ccdX+10, splitY);
+  c.restore();
+  // 光强曲线
+  c.strokeStyle = 'rgba(233,239,248,.9)'; c.lineWidth = 1.6;
+  c.beginPath();
+  for(let y=ccdY0; y<=ccdY0+ccdH; y+=2){
+    const db = (y-splitY)/18;
+    const I = 1/(1+Math.exp(db*1.1));
+    const x = ccdX-26 + I*30;
+    y===ccdY0 ? c.moveTo(x,y) : c.lineTo(x,y);
+  }
+  c.stroke();
+  c.restore();
+
+  txt(c, 'CCD', ccdX+2, ccdY0-22, 'rgba(77,208,225,.7)', 8.5, 'center', 600);
+  txt(c, '亮', ccdX+20, ccdY0+10, 'rgba(255,184,77,.55)', 8, 'center');
+  txt(c, '暗', ccdX+20, ccdY0+ccdH-8, 'rgba(148,165,187,.45)', 8, 'center');
+
+  // 流向箭头
+  const arrowY = ccdY0 + ccdH + 30;
+  c.save();
+  c.strokeStyle='rgba(148,165,187,.3)'; c.lineWidth=1; c.setLineDash([3,3]);
+  line(c, x0+W+20, arrowY, ccdX-34, arrowY);
+  c.restore();
+  txt(c, '→ 透镜 → 线阵 CCD', (x0+W+20+ccdX-34)/2, arrowY-9, 'rgba(148,165,187,.45)', 8, 'center');
+
+  // 角度标注
+  const r0 = rays.find(r=>r.tir);
+  txt(c, 'θc = '+(thc/D).toFixed(2)+'°', w*0.52, h-42,
+      'rgba(255,107,107,.95)', 10, 'center', 600);
+  txt(c, 'n_s = '+ns.toFixed(5)+'   n_p = 1.785', w*0.52, h-26,
+      'rgba(148,165,187,.55)', 8.5, 'center');
+
+  // 左上角说明
+  txt(c, '橙色 = 全反射（亮）', 8, 14, 'rgba(255,184,77,.6)', 8, 'left');
+  txt(c, '红色 = 透射进样品（暗）', 8, 28, 'rgba(255,107,107,.55)', 8, 'left');
+}
+
+function loopHero(){
+  if(!heroOn) return;
+  heroT = performance.now()/1000;
+  drawHero();
+  heroRAF = requestAnimationFrame(loopHero);
+}
+
+/* ============================================================
+   4 · 临界角原理
+   ============================================================ */
+function drawCrit(){
+  const cv = $('#cvCrit'); if(!cv) return;
+  const {c,w,h} = prep(cv, 380);
+
+  c.fillStyle='#080a14'; c.fillRect(0,0,w,h);
+
+  const yM = h*0.42;
+  const cx = w*0.50;
+
+  // 上：样品；下：棱镜
+  c.fillStyle = 'rgba(255,184,77,.055)';
+  c.fillRect(0,0,w,yM);
+  c.fillStyle = 'rgba(77,208,225,.075)';
+  c.fillRect(0,yM,w,h-yM);
+
+  c.strokeStyle='rgba(233,239,248,.35)'; c.lineWidth=1.4;
+  line(c, 0, yM, w, yM);
+
+  txt(c, '样品  n_s = 1.3635', 12, 18, 'rgba(255,184,77,.7)', 9, 'left');
+  txt(c, '棱镜  n_p = 1.785', 12, yM+20, 'rgba(77,208,225,.7)', 9, 'left');
+
+  const ns = 1.36352, np = 1.785;
+  const thc = crit(ns, np);
+  const origin = [cx, yM+118];
+
+  // 三条入射光线（在有棱镜一侧，从下往上）
+  const angs = [30, 49.8, 68];
+  const cols = [CO.rd, CO.am, CO.am];
+  angs.forEach((adeg, i)=>{
+    const a = adeg*D;
+    // 入射方向：从下方指向界面上方，与法线（竖直）成 a
+    const dIn = [Math.sin(a), -Math.cos(a)];
+    const P0 = vsub(origin, vmul(dIn, 118));
+    ray(c, P0, origin, 'rgba(255,184,77,'+(i===0?.45:.85)+')', 1.8);
+
+    // 法线
+    c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(148,165,187,.22)'; c.lineWidth=1;
+    line(c, origin[0], origin[1]-20, origin[0], origin[1]-118);
+    c.restore();
+
+    if(a > thc){
+      // 全反射
+      const dR = [Math.sin(a), Math.cos(a)];
+      const PR = vadd(origin, vmul(dR, 118));
+      ray(c, origin, PR, '#ffb84d', 2.0, .95);
+      // 倏逝场
+      c.save(); c.setLineDash([2,3]);
+      c.strokeStyle='rgba(255,184,77,.22)'; c.lineWidth=1;
+      line(c, origin[0], origin[1], origin[0], origin[1]-16);
+      c.restore();
+    } else {
+      // 透射
+      const dT = refract(dIn, [0,-1], np/ns);
+      if(dT){
+        const PT = vadd(origin, vmul(dT, 118));
+        ray(c, origin, PT, 'rgba(255,107,107,.85)', 1.8, .9);
+        dot(c, PT[0], PT[1], 3, CO.rd, null);
+      }
+    }
+
+    // 角度标注
+    txt(c, adeg.toFixed(1)+'°', origin[0]+30+i*34, origin[1]-16, i===0?CO.rd:CO.am, 8.5, 'center', 600);
+  });
+
+  // 临界角分界
+  const a = thc;
+  const dT = [Math.sin(a), -Math.cos(a)];
+  const P0 = vsub(origin, vmul(dT, 118));
+  c.save(); c.setLineDash([4,4]); c.strokeStyle='rgba(255,107,107,.55)'; c.lineWidth=1.2;
+  line(c, P0[0], P0[1], origin[0], origin[1]);
+  c.restore();
+
+  // 说明
+  txt(c, 'θ < θc：光进入样品（暗）', w-10, yM-30, 'rgba(255,107,107,.7)', 8.5, 'right');
+  txt(c, 'θ > θc：全反射（亮）', w-10, yM+26, 'rgba(255,184,77,.7)', 8.5, 'right');
+
+  // 临界角读数
+  c.fillStyle='rgba(8,10,20,.88)';
+  c.fillRect(cx-64, h-42, 128, 30);
+  txt(c, 'θc = '+(thc/D).toFixed(2)+'°', cx, h-33, 'rgba(255,107,107,.95)', 10, 'center', 600);
+  txt(c, 'sin θc = n_s / n_p', cx, h-21, 'rgba(148,165,187,.55)', 8, 'center');
+}
+
+/* ============================================================
+   5 · 棱镜选型
+   ============================================================ */
+let curNp = 1.785;
+
+function drawPrism(){
+  const cv = $('#cvPrism'); if(!cv) return;
+  const {c,w,h} = prep(cv, 400);
+  const P = {l:52, r:18, t:56, b:44};
+  const X = ns => P.l + (ns-1.32)/(1.53-1.32)*(w-P.l-P.r);
+  const Y = th => P.t + (74-th)/30*(h-P.t-P.b);
+
+  c.fillStyle='#080a14'; c.fillRect(0,0,w,h);
+
+  // 网格
+  for(let th=46; th<=74.01; th+=4){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(th), w-P.r, Y(th));
+    txt(c, String(th), P.l-7, Y(th), CO.tx3, 8, 'right');
+  }
+  for(let ns=1.34; ns<=1.521; ns+=0.04){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(ns), P.t, X(ns), h-P.b);
+    txt(c, ns.toFixed(2), X(ns), h-P.b+13, CO.tx3, 8, 'center');
+  }
+
+  // Brix 区间背景
+  const xa = X(N_MIN), xb = X(N_MAX);
+  c.fillStyle='rgba(255,184,77,.045)';
+  c.fillRect(xa, P.t, xb-xa, h-P.t-P.b);
+  txt(c, '0–85 Brix', (xa+xb)/2, P.t+12, 'rgba(255,184,77,.5)', 8.5, 'center');
+
+  // 曲线族
+  const npList = [1.55, 1.62, 1.70, 1.785, 1.85, 1.95];
+  npList.forEach(np=>{
+    const xs=[], ys=[];
+    for(let ns=1.32; ns<=1.529; ns+=0.002){
+      if(ns >= np) break;
+      xs.push(ns); ys.push(Math.asin(ns/np)/D);
+    }
+    const isCur = Math.abs(np-curNp) < 0.003;
+    const col = isCur ? CO.cy : 'rgba(148,165,187,.20)';
+    c.save();
+    if(isCur){ c.shadowColor=CO.cy; c.shadowBlur=8; }
+    c.strokeStyle=col; c.lineWidth = isCur?2.2:1.1;
+    c.setLineDash(isCur?[]:[3,3]);
+    c.beginPath();
+    for(let i=0;i<xs.length;i++){
+      const px=X(xs[i]), py=Y(ys[i]);
+      i?c.lineTo(px,py):c.moveTo(px,py);
+    }
+    c.stroke(); c.restore();
+    if(isCur){
+      txt(c, 'n_p='+np.toFixed(3), X(1.335)+6, Y(Math.asin(1.335/np)/D)-9, CO.cy, 8.5, 'left', 600);
+    }
+  });
+
+  // 72° 警戒线
+  c.save(); c.setLineDash([5,4]); c.strokeStyle='rgba(255,107,107,.55)'; c.lineWidth=1.2;
+  line(c, P.l, Y(72), w-P.r, Y(72));
+  c.restore();
+  txt(c, '72° 工程上限', w-P.r-4, Y(72)-9, 'rgba(255,107,107,.7)', 8, 'right');
+
+  // 当前 n_p 的两个端点
+  const th0 = Math.asin(N_MIN/curNp)/D, th85 = Math.asin(N_MAX/curNp)/D;
+  [N_MIN, N_MAX].forEach((ns,i)=>{
+    const th = i? th85 : th0;
+    dot(c, X(ns), Y(th), 4.2, '#080a14', CO.cy, 1.8);
+  });
+  c.save(); c.setLineDash([2,3]); c.strokeStyle='rgba(77,208,225,.30)'; c.lineWidth=1;
+  line(c, X(N_MIN), Y(th0), X(N_MAX), Y(th0));
+  line(c, X(N_MIN), Y(th85), X(N_MAX), Y(th85));
+  c.restore();
+
+  txt(c, 'θc (度)', P.l-6, P.t-28, CO.tx3, 8.5, 'left');
+  txt(c, 'n_s', w-P.r, h-P.b+27, CO.tx3, 8.5, 'right');
+
+  // 顶部读数
+  txt(c, 'θc@85Bx = '+th85.toFixed(1)+'°', P.l, P.t-30, 'rgba(77,208,225,.85)', 9, 'left', 500);
+  txt(c, '跨度 = '+(th85-th0).toFixed(2)+'°', P.l, P.t-18, 'rgba(148,165,187,.55)', 8.5, 'left');
+}
+
+/* ============================================================
+   6 · CCD 分界线
+   ============================================================ */
+let curNs = 1.39949;
+
+function drawLine(){
+  const cv = $('#cvLine'); if(!cv) return;
+  const {c,w,h} = prep(cv, 400);
+  const P = {l:52, r:18, t:56, b:52};
+
+  c.fillStyle='#080a14'; c.fillRect(0,0,w,h);
+
+  const np = NP_REF;
+  const th0 = crit(N_MIN,np), th85 = crit(N_MAX,np);
+  const thc = crit(curNs,np);
+
+  // 上：CCD 剖面
+  const yCCD = P.t;
+  const hCCD = 58;
+  const X = th => P.l + (th-th0)/(th85-th0)*(w-P.l-P.r);
+
+  c.fillStyle='rgba(10,14,22,.9)';
+  c.fillRect(P.l, yCCD, w-P.l-P.r, hCCD);
+  c.strokeStyle='rgba(77,208,225,.22)'; c.lineWidth=1;
+  c.strokeRect(P.l, yCCD, w-P.l-P.r, hCCD);
+
+  // 光强条
+  c.save();
+  c.beginPath(); c.rect(P.l+1, yCCD+1, w-P.l-P.r-2, hCCD-2); c.clip();
+  for(let px=P.l; px<w-P.r; px+=1){
+    const th = th0 + (px-P.l)/(w-P.l-P.r)*(th85-th0);
+    const d = (thc-th)/0.12;
+    const I = 1/(1+Math.exp(d*1.6));
+    c.fillStyle = 'rgba(255,184,77,'+(0.06+I*0.72)+')';
+    c.fillRect(px, yCCD+1, 1, hCCD-2);
+  }
+  c.restore();
+
+  // 分界线
+  const xc = X(thc);
+  c.save();
+  c.shadowColor=CO.rd; c.shadowBlur=10;
+  c.strokeStyle=CO.rd; c.lineWidth=2;
+  line(c, xc, yCCD-6, xc, yCCD+hCCD+6);
+  c.restore();
+  txt(c, '分界线', xc+6, yCCD-12, 'rgba(255,107,107,.95)', 8.5, 'left', 600);
+
+  txt(c, 'CCD 像面光强', P.l, yCCD-16, 'rgba(148,165,187,.6)', 8.5, 'left');
+
+  // 下：光强曲线
+  const y0 = yCCD + hCCD + 46;
+  const hPlot = h - y0 - 30;
+
+  c.strokeStyle='rgba(233,239,248,.85)'; c.lineWidth=2;
+  c.beginPath();
+  for(let px=P.l; px<=w-P.r; px+=1.5){
+    const th = th0 + (px-P.l)/(w-P.l-P.r)*(th85-th0);
+    const d = (thc-th)/0.12;
+    const I = 1/(1+Math.exp(d*1.6));
+    const py = y0 + hPlot*(1-I);
+    px===P.l ? c.moveTo(px,py) : c.lineTo(px,py);
+  }
+  c.stroke();
+
+  // 基线
+  c.save(); c.setLineDash([3,3]); c.strokeStyle='rgba(148,165,187,.22)'; c.lineWidth=1;
+  line(c, P.l, y0+hPlot, w-P.r, y0+hPlot);
+  line(c, P.l, y0, w-P.r, y0);
+  c.restore();
+  txt(c, '100%', P.l-7, y0, CO.tx3, 7.5, 'right');
+  txt(c, '0', P.l-7, y0+hPlot, CO.tx3, 7.5, 'right');
+
+  // 拐点
+  dot(c, xc, y0+hPlot*0.5, 4, '#080a14', CO.rd, 1.8);
+  c.save(); c.setLineDash([2,3]); c.strokeStyle='rgba(255,107,107,.4)'; c.lineWidth=1;
+  line(c, xc, y0, xc, y0+hPlot);
+  c.restore();
+
+  // x 轴 Brix 刻度
+  for(let B=0; B<=80; B+=20){
+    const ns = nBx(B), th = Math.asin(ns/np);
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(th), y0, X(th), y0+hPlot);
+    txt(c, String(B), X(th), h-P.b+16, CO.tx3, 8, 'center');
+  }
+  txt(c, 'Brix', w-P.r, h-P.b+32, CO.tx3, 8.5, 'right');
+  txt(c, '光强', P.l-6, y0-10, CO.tx3, 8.5, 'right');
+
+  txt(c, 'θc = '+(thc/D).toFixed(2)+'°', w-P.r-6, y0-10, 'rgba(77,208,225,.85)', 9, 'right', 600);
+}
+
+/* ============================================================
+   7 · 照明角度分布
+   ============================================================ */
+function drawCone(){
+  const cv = $('#cvCone'); if(!cv) return;
+  const {c,w,h} = prep(cv, 380);
+  const P = {l:56, r:20, t:64, b:52};
+  const X = a => P.l + a/90*(w-P.l-P.r);
+
+  c.fillStyle='#080a14'; c.fillRect(0,0,w,h);
+
+  const np = NP_REF;
+  const th0 = crit(N_MIN,np)/D;   // 48.3
+  const th85 = crit(N_MAX,np)/D;  // 57.7
+  const thMaxInside = Math.asin(1/np)/D; // 34.1
+  const limit = 30 + thMaxInside;  // 64.1
+
+  // 网格
+  for(let a=0; a<=90; a+=15){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(a), P.t-10, X(a), h-P.b);
+    txt(c, String(a), X(a), h-P.b+15, CO.tx3, 8, 'center');
+  }
+
+  // 照明角谱
+  const yBar = P.t + 18, hBar = 30;
+  txt(c, '照明提供的角度范围', P.l, P.t-16, 'rgba(255,184,77,.7)', 8.5, 'left');
+  const gBar = c.createLinearGradient(X(0),0,X(limit),0);
+  gBar.addColorStop(0,'rgba(255,184,77,.55)');
+  gBar.addColorStop(1,'rgba(255,184,77,.18)');
+  c.fillStyle=gBar;
+  c.fillRect(X(0), yBar, X(limit)-X(0), hBar);
+  c.strokeStyle='rgba(255,184,77,.5)'; c.lineWidth=1;
+  c.strokeRect(X(0), yBar, X(limit)-X(0), hBar);
+  // 不覆盖区
+  c.fillStyle='rgba(15,20,30,.8)';
+  c.fillRect(X(limit), yBar, X(90)-X(limit), hBar);
+  c.strokeStyle='rgba(255,107,107,.30)';
+  c.strokeRect(X(limit), yBar, X(90)-X(limit), hBar);
+  txt(c, limit.toFixed(1)+'°', X(limit)-4, yBar+hBar/2, 'rgba(255,184,77,.9)', 8.5, 'right', 600);
+
+  // 临界角区间
+  const yC = yBar + hBar + 54;
+  txt(c, '临界角必须落在这个区间内', P.l, yC-24, 'rgba(77,208,225,.7)', 8.5, 'left');
+  const gC = c.createLinearGradient(X(th0),0,X(th85),0);
+  gC.addColorStop(0,'rgba(77,208,225,.55)');
+  gC.addColorStop(1,'rgba(167,139,250,.55)');
+  c.fillStyle=gC;
+  c.fillRect(X(th0), yC, X(th85)-X(th0), hBar);
+  c.strokeStyle='rgba(77,208,225,.7)'; c.lineWidth=1;
+  c.strokeRect(X(th0), yC, X(th85)-X(th0), hBar);
+  txt(c, th0.toFixed(1)+'°', X(th0)-5, yC+hBar+12, 'rgba(77,208,225,.85)', 8, 'right');
+  txt(c, th85.toFixed(1)+'°', X(th85)+5, yC+hBar+12, 'rgba(167,139,250,.85)', 8, 'left');
+  txt(c, '0 Bx', X(th0)-5, yC-10, 'rgba(77,208,225,.5)', 7.5, 'right');
+  txt(c, '85 Bx', X(th85)+5, yC-10, 'rgba(167,139,250,.5)', 7.5, 'left');
+
+  // 连线：说明重叠
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(94,230,168,.35)'; c.lineWidth=1;
+  line(c, X(th0), yBar+hBar, X(th0), yC);
+  line(c, X(th85), yBar+hBar, X(th85), yC);
+  c.restore();
+
+  // 结论框
+  const yOk = yC + hBar + 42;
+  c.fillStyle='rgba(94,230,168,.07)';
+  c.fillRect(P.l, yOk-14, w-P.l-P.r, 28);
+  c.strokeStyle='rgba(94,230,168,.3)'; c.lineWidth=1;
+  c.strokeRect(P.l, yOk-14, w-P.l-P.r, 28);
+  txt(c, '48.3–57.7° 完全落在 0–64.1° 内 → 全量程可测',
+      (P.l+w-P.r)/2, yOk, 'rgba(94,230,168,.9)', 8.5, 'center', 500);
+
+  txt(c, '测量面上的入射角 (°)', (P.l+w-P.r)/2, h-P.b+32, CO.tx3, 8.5, 'center');
+
+  // 顶部关系式
+  txt(c, 'θmax = 30°（棱镜顶角效应）+ 34.1°（最大折射角）= 64.1°',
+      w/2, 16, 'rgba(148,165,187,.6)', 8.5, 'center');
+}
+
+/* ============================================================
+   8 · 折叠光路
+   ============================================================ */
+function drawFold(){
+  const cv = $('#cvFold'); if(!cv) return;
+  const {c,w,h} = prep(cv, 360);
+
+  c.fillStyle='#080a14'; c.fillRect(0,0,w,h);
+
+  const block=(x,y,ww,hh,label,col)=>{
+    c.fillStyle = col||'rgba(77,208,225,.10)';
+    c.strokeStyle = 'rgba(77,208,225,.35)';
+    c.lineWidth = 1;
+    c.fillRect(x,y,ww,hh);
+    c.strokeRect(x,y,ww,hh);
+    txt(c, label, x+ww/2, y+hh/2, 'rgba(233,239,248,.8)', 8, 'center');
+  };
+  const arrow=(x1,y1,x2,y2,col)=>{
+    c.save();
+    c.strokeStyle=col||'rgba(255,184,77,.55)'; c.lineWidth=1.4;
+    c.shadowColor=col||'rgba(255,184,77,.6)'; c.shadowBlur=5;
+    line(c,x1,y1,x2,y2);
+    const a=Math.atan2(y2-y1,x2-x1);
+    c.beginPath();
+    c.moveTo(x2,y2);
+    c.lineTo(x2-6*Math.cos(a-0.4), y2-6*Math.sin(a-0.4));
+    c.lineTo(x2-6*Math.cos(a+0.4), y2-6*Math.sin(a+0.4));
+    c.closePath();
+    c.fillStyle=col||'rgba(255,184,77,.7)'; c.fill();
+    c.restore();
+  };
+
+  // 上：直筒
+  const y1 = 58;
+  txt(c, '直筒式 · 总长 ≈120 mm', 14, y1-24, 'rgba(148,165,187,.7)', 9, 'left', 600);
+  const x0 = 30, bw = Math.min(56,(w-100)/5.2);
+  block(x0,        y1-16, bw*0.7, 32, 'LED');
+  block(x0+bw*1.0, y1-20, bw*1.0, 40, '棱镜');
+  block(x0+bw*2.4, y1-16, bw*0.8, 32, '透镜');
+  block(x0+bw*3.6, y1-16, bw*0.8, 32, 'CCD');
+  arrow(x0+bw*0.7, y1, x0+bw*1.0, y1);
+  arrow(x0+bw*2.0, y1, x0+bw*2.4, y1);
+  arrow(x0+bw*3.2, y1, x0+bw*3.6, y1);
+  // 尺寸线
+  c.save(); c.setLineDash([3,3]); c.strokeStyle='rgba(148,165,187,.28)'; c.lineWidth=1;
+  line(c, x0, y1+38, x0+bw*4.4, y1+38);
+  line(c, x0, y1+34, x0, y1+42);
+  line(c, x0+bw*4.4, y1+34, x0+bw*4.4, y1+42);
+  c.restore();
+  txt(c, '120 mm', x0+bw*2.2, y1+50, 'rgba(148,165,187,.5)', 8, 'center');
+
+  // 下：折叠
+  const y2 = h*0.66;
+  txt(c, '折叠式 · 总长 ≈58 mm', 14, y2-70, 'rgba(94,230,168,.7)', 9, 'left', 600);
+
+  const fx = 30, fy = y2-16;
+  block(fx,        fy, bw*0.7, 32, 'LED');
+  block(fx+bw*1.0, fy, bw*0.95, 40, '棱镜');
+
+  // 折镜（45°）
+  const mx = fx+bw*2.45, my = fy+20;
+  c.save();
+  c.translate(mx, my);
+  c.rotate(-Math.PI/4);
+  c.fillStyle='rgba(167,139,250,.22)';
+  c.strokeStyle='rgba(167,139,250,.65)';
+  c.lineWidth=1.3;
+  c.fillRect(-5.5,-22,11,44);
+  c.strokeRect(-5.5,-22,11,44);
+  c.restore();
+  txt(c, '折镜', mx+14, my-16, 'rgba(167,139,250,.8)', 8, 'left');
+
+  arrow(fx+bw*1.95, my, mx-10, my, null);
+  arrow(mx, my+10, mx, fy+58, 'rgba(255,184,77,.55)');
+
+  block(fx+bw*2.0, fy+62, bw*0.85, 28, '透镜');
+  block(fx+bw*3.3, fy+62, bw*0.85, 28, 'CCD');
+  arrow(fx+bw*2.85, fy+76, fx+bw*3.3, fy+76, null);
+
+  c.save(); c.setLineDash([3,3]); c.strokeStyle='rgba(148,165,187,.28)'; c.lineWidth=1;
+  line(c, fx, fy+108, fx+bw*4.15, fy+108);
+  line(c, fx, fy+104, fx, fy+112);
+  line(c, fx+bw*4.15, fy+104, fx+bw*4.15, fy+112);
+  c.restore();
+  txt(c, '58 mm', fx+bw*2.07, fy+120, 'rgba(148,165,187,.5)', 8, 'center');
+
+  // 右侧说明
+
+}
+
+/* ============================================================
+   9 · 表格与交互
+   ============================================================ */
+const GLASS = [
+  {n:'N-BK7 冕牌', np:1.517},
+  {n:'F2 火石',    np:1.620},
+  {n:'蓝宝石',      np:1.768},
+  {n:'N-SF11（常用）', np:1.785},
+  {n:'N-LASF9 镧系', np:1.850}
+];
+
+function buildGlass(){
+  const tb = $('#tbGlass'); if(!tb) return;
+  tb.innerHTML = GLASS.map(g=>{
+    const th = Math.asin(Math.min(1, N_MAX/g.np))/D;
+    const ok = th < 72;
+    const isCur = Math.abs(g.np - curNp) < 0.004;
+    const col = ok ? 'var(--gr)' : 'var(--rd)';
+    return '<tr'+(isCur?' style="background:rgba(77,208,225,.07)"':'')+'>'
+      + '<td'+(isCur?' style="color:var(--cy);font-weight:500"':'')+'>'+g.n+'</td>'
+      + '<td class="num">'+g.np.toFixed(3)+'</td>'
+      + '<td class="num">'+th.toFixed(1)+'°</td>'
+      + '<td style="color:'+col+'">'+(ok?'✓ 可行':'✗ 不可行')+'</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function updateNp(){
+  const th85 = Math.asin(Math.min(1, N_MAX/curNp))/D;
+  const e1 = $('#vNp'), e2 = $('#oTh85'), e3 = $('#oMargin');
+  if(e1) e1.textContent = curNp.toFixed(3);
+  if(e2) e2.textContent = th85.toFixed(1);
+  if(e3){
+    e3.textContent = (90-th85).toFixed(1);
+    e3.style.color = (90-th85) < 18 ? 'var(--rd)' : 'var(--cy)';
+  }
+}
+
+function updateNs(){
+  const np = NP_REF;
+  const thc = Math.asin(Math.min(1, curNs/np))/D;
+  // 反解 Brix
+  let lo=0, hi=85;
+  for(let i=0;i<40;i++){
+    const mid=(lo+hi)/2;
+    if(nBx(mid) < curNs) lo=mid; else hi=mid;
+  }
+  const B = (lo+hi)/2;
+  const e1 = $('#vNs'), e2 = $('#oThc'), e3 = $('#oBrix');
+  if(e1) e1.textContent = curNs.toFixed(4);
+  if(e2) e2.textContent = thc.toFixed(2);
+  if(e3) e3.textContent = B.toFixed(1);
+}
+
+function initNav(){
+  const links = $$('#nav a');
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec'));
+  links.forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      const el = document.getElementById(a.getAttribute('href').slice(1)+'sec');
+      if(el){
+        const y = el.getBoundingClientRect().top + window.scrollY - 14;
+        window.scrollTo({top:y, behavior:'smooth'});
+      }
+    });
+  });
+  const onScroll = ()=>{
+    const sy = window.scrollY;
+    const hgt = document.documentElement.scrollHeight - window.innerHeight;
+    const pb = $('#pbar');
+    if(pb) pb.style.width = (hgt>0 ? clamp(sy/hgt,0,1)*100 : 0)+'%';
+    let idx = 0;
+    secs.forEach((s,i)=>{ if(s && s.getBoundingClientRect().top < window.innerHeight*0.35) idx=i; });
+    links.forEach((a,i)=>a.classList.toggle('on', i===idx));
+  };
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+}
+
+function onResize(){
+  clearTimeout(onResize._t);
+  onResize._t = setTimeout(()=>{
+    drawHero(); drawCrit(); drawPrism(); drawLine(); drawCone(); drawFold();
+  }, 160);
+}
+
+function boot(){
+  buildGlass();
+
+  const sNp = $('#sNp');
+  if(sNp){
+    const upd = ()=>{
+      curNp = parseFloat(sNp.value);
+      updateNp(); drawPrism(); buildGlass();
+    };
+    sNp.addEventListener('input', upd);
+    updateNp();
+  }
+  const sNs = $('#sNs');
+  if(sNs){
+    const upd = ()=>{
+      curNs = parseFloat(sNs.value);
+      updateNs(); drawLine();
+    };
+    sNs.addEventListener('input', upd);
+    updateNs();
+  }
+
+  drawHero(); drawCrit(); drawPrism(); drawLine(); drawCone(); drawFold();
+  initNav();
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce){ heroOn = true; loopHero(); }
+
+  window.addEventListener('resize', onResize);
+
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){
+      drawCrit(); drawPrism(); drawLine(); drawCone(); drawFold();
+    }});
+  }, {threshold:.02});
+  ['#cvCrit','#cvPrism','#cvLine','#cvCone','#cvFold','#cvHero']
+    .forEach(s=>{ const el=$(s); if(el) io.observe(el); });
+
+  const hero = $('#cvHero');
+  if(hero){
+    const io2 = new IntersectionObserver(es=>{
+      es.forEach(e=>{
+        if(e.isIntersecting){
+          if(!reduce && !heroOn){ heroOn = true; loopHero(); }
+        } else { heroOn = false; cancelAnimationFrame(heroRAF); }
+      });
+    }, {threshold:.02});
+    io2.observe(hero);
+  }
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ heroOn = false; cancelAnimationFrame(heroRAF); }
+    else if(!reduce && !heroOn){ heroOn = true; loopHero(); }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else { boot(); }
+
+})();
+
+</script>
+</body>
+</html>

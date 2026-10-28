@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>折光计学 · 七页可视化笔记</title>
+<meta name="description" content="从分子极化率到便携折光计光路：七篇可交互的可视化推导，全部零依赖单文件。">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#07090f;
+  --bg2:#0b0e16;
+  --bg3:#10141e;
+  --line:rgba(148,165,187,.13);
+  --line2:rgba(148,165,187,.24);
+  --tx:#e9eff8;
+  --tx2:#9fb0c4;
+  --tx3:#6b7c92;
+  --cy:#4dd0e1;
+  --am:#ffb84d;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+}
+
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* 背景光晕 */
+body::before{
+  content:'';
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(52% 42% at 18% 0%, rgba(77,208,225,.075), transparent 68%),
+    radial-gradient(46% 38% at 88% 12%, rgba(255,184,77,.05), transparent 70%),
+    radial-gradient(60% 50% at 50% 100%, rgba(167,139,250,.04), transparent 72%);
+}
+
+.wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+
+/* ============ 顶栏 ============ */
+.top{
+  position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(14px);
+  background:rgba(7,9,15,.82);
+  border-bottom:1px solid var(--line);
+}
+.top .wrap{
+  height:54px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--tx2)}
+.brand .dg{width:7px;height:7px;border-radius:50%;background:var(--cy);box-shadow:0 0 12px var(--cy)}
+.repo{
+  font-family:var(--mono);font-size:11px;color:var(--tx3);
+  text-decoration:none;border:1px solid var(--line);border-radius:5px;
+  padding:5px 10px;transition:.2s;white-space:nowrap;
+}
+.repo:hover{color:var(--cy);border-color:rgba(77,208,225,.42);background:rgba(77,208,225,.06)}
+
+/* ============ Hero ============ */
+header.hero{padding:76px 0 54px;position:relative}
+.eyebrow{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;
+  color:var(--tx3);margin-bottom:22px;display:flex;align-items:center;gap:10px;
+}
+.eyebrow i{display:block;width:26px;height:1px;background:var(--line2)}
+
+h1{
+  font-size:clamp(34px,5.4vw,58px);
+  line-height:1.14;font-weight:600;letter-spacing:-.022em;
+  margin-bottom:26px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(96deg,#4dd0e1 0%,#7ee6f2 34%,#ffb84d 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.lead{
+  font-size:15.5px;line-height:1.85;color:var(--tx2);
+  max-width:640px;margin-bottom:14px;
+}
+.lead b{color:var(--tx);font-weight:500}
+.lead .hl{color:var(--am)}
+
+/* 统计条 */
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--line);border:1px solid var(--line);
+  border-radius:9px;overflow:hidden;margin:40px 0 0;
+}
+.stat{background:var(--bg2);padding:16px 18px}
+.stat .k{font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:var(--tx3);margin-bottom:7px}
+.stat .v{font-family:var(--mono);font-size:23px;font-weight:500;letter-spacing:-.02em;line-height:1}
+.stat .v small{font-size:11px;color:var(--tx3);margin-left:3px;letter-spacing:0}
+
+/* ============ 路线 ============ */
+.route{
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:20px 0;margin-top:52px;
+}
+.route .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.route .lb{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--tx3);flex-shrink:0}
+.paths{display:flex;gap:8px;flex-wrap:wrap}
+.pth{
+  font-family:var(--mono);font-size:11px;color:var(--tx2);
+  border:1px solid var(--line);border-radius:20px;
+  padding:5px 12px;background:var(--bg2);white-space:nowrap;
+}
+.pth b{color:var(--tx);font-weight:500}
+.pth span{color:var(--tx3);margin:0 5px}
+
+/* ============ 分组标题 ============ */
+.grp{margin:62px 0 0}
+.grp-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.grp-num{
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  color:var(--am);flex-shrink:0;
+}
+.grp-t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.grp-d{font-size:12.5px;color:var(--tx3);margin-bottom:22px;line-height:1.7}
+
+/* ============ 卡片 ============ */
+.list{display:flex;flex-direction:column;gap:10px}
+
+.card{
+  display:grid;
+  grid-template-columns:56px 1fr 132px;
+  gap:0 22px;
+  align-items:start;
+  padding:22px 24px 22px 0;
+  background:var(--bg2);
+  border:1px solid var(--line);
+  border-radius:11px;
+  text-decoration:none;color:inherit;
+  position:relative;overflow:hidden;
+  transition:border-color .22s, background .22s, transform .22s;
+}
+.card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--c);opacity:.55;transition:opacity .22s, width .22s;
+}
+.card::after{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:130px;
+  background:linear-gradient(90deg,var(--cd),transparent);
+  opacity:0;transition:opacity .25s;pointer-events:none;
+}
+.card:hover{
+  border-color:var(--cb);
+  background:#0d1119;
+  transform:translateX(3px);
+}
+.card:hover::before{opacity:1;width:3px}
+.card:hover::after{opacity:1}
+
+.card .idx{
+  font-family:var(--mono);font-size:13px;letter-spacing:.02em;
+  color:var(--c);padding-top:2px;text-align:right;position:relative;z-index:1;
+}
+.card .body{position:relative;z-index:1;min-width:0}
+.card .t{
+  font-size:17px;font-weight:600;letter-spacing:-.012em;
+  margin-bottom:5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.card .t .badge{
+  font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  padding:2px 6px;border-radius:3px;
+  color:var(--c);background:var(--cd);border:1px solid var(--cb);
+  font-weight:400;
+}
+.card .sub{font-size:13px;color:var(--tx2);line-height:1.62;margin-bottom:9px;max-width:600px}
+.card .sub b{color:var(--tx);font-weight:500}
+.card .sub .am{color:var(--am)}
+.card .meta{
+  font-family:var(--mono);font-size:10px;color:var(--tx3);
+  letter-spacing:.03em;display:flex;gap:12px;flex-wrap:wrap;align-items:center;
+}
+.card .meta i{display:block;width:1px;height:9px;background:var(--line2)}
+
+.card .ico{
+  position:absolute;right:-10px;bottom:-18px;
+  width:118px;height:118px;z-index:0;
+  opacity:.05;pointer-events:none;
+  transition:opacity .3s, transform .3s;
+}
+.card:hover .ico{opacity:.09;transform:scale(1.03)}
+.card .ico svg{width:100%;height:100%;display:block}
+
+/* 右侧关键数字 */
+.card .kpi{
+  position:relative;z-index:1;text-align:right;
+  padding-top:1px;
+}
+.card .kpi .v{
+  font-family:var(--mono);font-size:20px;font-weight:500;
+  letter-spacing:-.02em;line-height:1.15;color:var(--c);
+}
+.card .kpi .v small{font-size:11px;opacity:.62;margin-left:1px;letter-spacing:0}
+.card .kpi .l{
+  font-family:var(--mono);font-size:9px;letter-spacing:.06em;
+  color:var(--tx3);margin-top:6px;line-height:1.45;
+}
+
+/* 卡片配色 */
+.c1{--c:#3ee0cf;--cd:rgba(62,224,207,.055);--cb:rgba(62,224,207,.32)}
+.c2{--c:#3ae0c8;--cd:rgba(58,224,200,.055);--cb:rgba(58,224,200,.32)}
+.c3{--c:#4ec9e8;--cd:rgba(78,201,232,.055);--cb:rgba(78,201,232,.32)}
+.c4{--c:#e8b64c;--cd:rgba(232,182,76,.055);--cb:rgba(232,182,76,.32)}
+.c5{--c:#c8b6ff;--cd:rgba(200,182,255,.055);--cb:rgba(200,182,255,.32)}
+.c6{--c:#4dd0e1;--cd:rgba(77,208,225,.055);--cb:rgba(77,208,225,.32)}
+.c7{--c:#ffb84d;--cd:rgba(255,184,77,.055);--cb:rgba(255,184,77,.32)}
+
+/* ============ 说明区 ============ */
+.notes{
+  display:grid;grid-template-columns:1.35fr 1fr;gap:18px;
+  margin:66px 0 0;
+}
+.panel{
+  background:var(--bg2);border:1px solid var(--line);border-radius:10px;
+  padding:24px 26px;
+}
+.panel h3{
+  font-size:14px;font-weight:600;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.panel h3 .dot{width:5px;height:5px;border-radius:50%;background:var(--cy)}
+.panel p{font-size:12.8px;line-height:1.85;color:var(--tx2);margin-bottom:10px}
+.panel p:last-child{margin-bottom:0}
+.panel b{color:var(--tx);font-weight:500}
+.panel .mono{font-family:var(--mono);font-size:11.5px;color:var(--cy)}
+
+.rule{display:flex;gap:9px;font-size:12.4px;line-height:1.7;color:var(--tx2);padding:8px 0;border-bottom:1px solid var(--line)}
+.rule:last-child{border-bottom:none;padding-bottom:0}
+.rule .m{font-family:var(--mono);font-size:10px;color:var(--tx3);flex-shrink:0;padding-top:2px;width:38px}
+
+/* ============ 页脚 ============ */
+footer{
+  margin-top:70px;padding:26px 0 40px;
+  border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;color:var(--tx3);letter-spacing:.03em;
+}
+footer a{color:var(--tx3);text-decoration:none;border-bottom:1px solid var(--line2);padding-bottom:1px}
+footer a:hover{color:var(--cy);border-color:var(--cy)}
+
+/* ============ 响应式 ============ */
+@media(max-width:860px){
+  .wrap{padding:0 20px}
+  header.hero{padding:52px 0 40px}
+  .stats{grid-template-columns:1fr 1fr}
+  .notes{grid-template-columns:1fr}
+  .card{grid-template-columns:40px 1fr;padding:20px 20px 20px 0;gap:0 16px}
+  .card .ico{display:none}
+  .card .kpi{
+    grid-column:2;text-align:left;display:flex;align-items:baseline;
+    gap:9px;margin-top:10px;padding-top:0;
+  }
+  .card .kpi .v{font-size:16px}
+  .card .kpi .l{margin-top:0}
+  .card .t{font-size:15.5px}
+  .card .sub{font-size:12.5px}
+  .grp{margin-top:48px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  h1{font-size:31px}
+  .lead{font-size:14px}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat{padding:13px 14px}
+  .stat .v{font-size:19px}
+  .pth{font-size:10px;padding:4px 10px}
+  .card{grid-template-columns:32px 1fr}
+  .card .idx{font-size:11px}
+  .card .t{font-size:15px;display:block}
+  .card .t .badge{display:inline-block;margin-top:7px}
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <div class="brand"><span class="dg"></span>REFRACTOMETRY · NOTES</div>
+    <a class="repo" href="https://github.com/tigerfan/Learning_Refractometer" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><i></i>光学计量 · 系列笔记</div>
+    <h1>一杯液体<br>怎么变成<em>一个读数</em></h1>
+    <p class="lead">
+      七篇可视化推导，走通同一条链：<b>分子极化率 → 宏观折射率 → 临界角 → 像素</b>。
+      每一页都可交互，每一页都标注了哪些是实测、哪些是模型算的、哪些是拟合出来的。
+    </p>
+    <p class="lead">
+      从蔗糖的 45 个原子算出 R<sub>m</sub>=70.35，一路推到最便宜的便携折光计——
+      中间经过加和性失效、三元欠定、色散补偿，最后落在 <span class="hl">9.41°</span> 的角度跨度上。
+    </p>
+
+    <div class="stats">
+      <div class="stat"><div class="k">PAGES</div><div class="v">7<small>页</small></div></div>
+      <div class="stat"><div class="k">SECTIONS</div><div class="v">53<small>章</small></div></div>
+      <div class="stat"><div class="k">INTERACTIVE</div><div class="v">44<small>图</small></div></div>
+      <div class="stat"><div class="k">DEPENDENCY</div><div class="v">0<small>外部依赖</small></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="route">
+  <div class="wrap">
+    <div class="lb">阅读路线</div>
+    <div class="paths">
+      <div class="pth"><b>入门</b><span>·</span>01 → 02 → 05</div>
+      <div class="pth"><b>物理</b><span>·</span>01 → 02 → 03 → 04 → 05</div>
+      <div class="pth"><b>工程</b><span>·</span>02 → 06 → 07</div>
+    </div>
+  </div>
+</div>
+
+<main>
+<div class="wrap">
+
+  <!-- ================= 第一组 ================= -->
+  <div class="grp">
+    <div class="grp-head">
+      <div class="grp-num">PART I</div>
+      <div class="grp-t">从分子到读数</div>
+    </div>
+    <div class="grp-d">五页，回答同一个问题：这个数是从哪来的，能信到什么程度。</div>
+
+    <div class="list">
+
+      <a class="card c1" href="./principles.html">
+        <div class="idx">01</div>
+        <div class="body">
+          <div class="t">单一溶质液体的折射率测量 <span class="badge">三维</span></div>
+          <div class="sub">
+            可旋转的三维场景：分子在电场下极化、光在界面折射、临界角随浓度移动。
+            <b>先建立直觉，再进公式。</b>
+          </div>
+          <div class="meta"><span>3D 实时计算</span><i></i><span>n 1.3330 → 1.5090</span><i></i><span>724 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">1.5090</div><div class="l">量程上界 n</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="15" stroke="#3ee0cf" stroke-width="1.3" opacity=".5"/>
+            <circle cx="24" cy="24" r="4" fill="#3ee0cf" opacity=".8"/>
+            <circle cx="24" cy="9" r="3" fill="#3ee0cf" opacity=".45"/>
+            <circle cx="37" cy="31" r="3" fill="#3ee0cf" opacity=".45"/>
+            <circle cx="11" cy="31" r="3" fill="#3ee0cf" opacity=".45"/>
+            <path d="M24 13v7M34 29l-6-3M14 29l6-3" stroke="#3ee0cf" stroke-width="1.1" opacity=".35"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c2" href="./sucrose.html">
+        <div class="idx">02</div>
+        <div class="body">
+          <div class="t">蔗糖溶液：从分子结构推导折光读数 <span class="badge">零拟合</span></div>
+          <div class="sub">
+            12 个碳 + 22 个氢 + 8 个羟基氧 + 3 个醚氧，加出 <b>R<sub>m</sub> = 70.345</b>，
+            反解出纯蔗糖 n = 1.5659。全程没有拟合任何折射率。与 ICUMSA 标准表 0–70 Brix 逐点比对，
+            <span class="am">最大残差 1.06 mK</span>。
+          </div>
+          <div class="meta"><span>10 章</span><i></i><span>7 图</span><i></i><span>Lorenz–Lorentz</span><i></i><span>112 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">1.06</div><div class="l">最大残差 mK</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <polygon points="20,26 14,36 6,32 8,20 18,16" stroke="#3ae0c8" stroke-width="1.2" opacity=".55"/>
+            <polygon points="34,28 42,22 44,32 36,38 30,34" stroke="#3ae0c8" stroke-width="1.2" opacity=".55"/>
+            <path d="M20 26l8-2" stroke="#3ae0c8" stroke-width="1.4"/>
+            <circle cx="24" cy="25" r="2" fill="#ffb84d"/>
+            <circle cx="7" cy="18" r="1.6" fill="#3ae0c8" opacity=".7"/>
+            <circle cx="43" cy="34" r="1.6" fill="#3ae0c8" opacity=".7"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c3" href="./saltwater.html">
+        <div class="idx">03</div>
+        <div class="body">
+          <div class="t">盐水：当离子加和失效 <span class="badge">对照</span></div>
+          <div class="sub">
+            同样的公式，NaCl 却差了整整一倍：Pauling 离子折射度给出 k = 0.0780，
+            实测反推 <b>0.1570</b>，相差 <span class="am">2.01 倍</span>。
+            根源是离子把水锁进了水合层——饱和盐水收缩 3.03%，糖浆只收缩 0.07%。
+          </div>
+          <div class="meta"><span>10 章</span><i></i><span>10 图</span><i></i><span>反标定 1 参数</span><i></i><span>100 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">2.01<small>×</small></div><div class="l">加和偏差</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="6.5" stroke="#4ec9e8" stroke-width="1.4"/>
+            <circle cx="24" cy="24" r="2.4" fill="#4ec9e8"/>
+            <circle cx="24" cy="10" r="2.6" stroke="#4ec9e8" stroke-width="1" opacity=".5"/>
+            <circle cx="37" cy="18" r="2.6" stroke="#4ec9e8" stroke-width="1" opacity=".5"/>
+            <circle cx="37" cy="31" r="2.6" stroke="#4ec9e8" stroke-width="1" opacity=".5"/>
+            <circle cx="24" cy="38" r="2.6" stroke="#4ec9e8" stroke-width="1" opacity=".5"/>
+            <circle cx="11" cy="31" r="2.6" stroke="#4ec9e8" stroke-width="1" opacity=".5"/>
+            <circle cx="11" cy="18" r="2.6" stroke="#4ec9e8" stroke-width="1" opacity=".5"/>
+            <path d="M24 15v2.5M31 19.5l-2 1.5M31 28.5l-2-1.5M24 33v-2.5M17 28.5l2-1.5M17 19.5l2 1.5" stroke="#4ec9e8" stroke-width="1" opacity=".3"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c4" href="./ternary.html">
+        <div class="idx">04</div>
+        <div class="body">
+          <div class="t">糖盐水三元体系：一个读数，两个未知数 <span class="badge">欠定</span></div>
+          <div class="sub">
+            折射率只有 1 个，未知数却有 2 个，所以解出来是一条等值线而不是一个点。
+            加上密度才能定住——但两族等值线的<b>真实夹角只有 9.9°</b>，
+            这是病态问题，靠精度硬撑。
+          </div>
+          <div class="meta"><span>10 章</span><i></i><span>7 图</span><i></i><span>等比例坐标</span><i></i><span>87 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">9.9<small>°</small></div><div class="l">等值线夹角</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M8 40V12M8 40h32" stroke="#e8b64c" stroke-width="1.1" opacity=".35"/>
+            <path d="M8 34c8-4 18-8 32-9" stroke="#e8b64c" stroke-width="1.5" opacity=".85"/>
+            <path d="M8 36c8-3 18-5 32-9.5" stroke="#9d8cff" stroke-width="1.5" opacity=".7" stroke-dasharray="3 3"/>
+            <circle cx="27" cy="27" r="2.6" fill="#ff8a5c"/>
+            <path d="M31 24l4-5" stroke="#ff8a5c" stroke-width="1" opacity=".5"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c5" href="./dispersion.html">
+        <div class="idx">05</div>
+        <div class="body">
+          <div class="t">三色光：色散是另一条通道 <span class="badge">独立通道</span></div>
+          <div class="sub">
+            水的有效振子波长在 <b>91.3 nm</b> 的真空紫外，可见光只是它的长尾巴——
+            所以透明液体的色散必然小。而九种溶质里，n 挤成 0.39% 的一条线，
+            Abbe 数却散开 22%：<span class="am">色散的区分能力是折射率的 57 倍</span>。
+          </div>
+          <div class="meta"><span>9 章</span><i></i><span>8 图</span><i></i><span>RGB 三色</span><i></i><span>99 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">57<small>×</small></div><div class="l">V 的区分力</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <circle cx="21" cy="24" r="13" stroke="#c8b6ff" stroke-width="1.2" opacity=".45"/>
+            <path d="M2 24h19" stroke="#e9eff8" stroke-width="1.3" opacity=".55"/>
+            <path d="M31 17l15-6" stroke="#ff5f6d" stroke-width="1.5"/>
+            <path d="M32 22l15-2" stroke="#3ddc84" stroke-width="1.5"/>
+            <path d="M31 30l15 6" stroke="#5b9dff" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ================= 第二组 ================= -->
+  <div class="grp">
+    <div class="grp-head">
+      <div class="grp-num">PART II</div>
+      <div class="grp-t">从公式到仪器</div>
+    </div>
+    <div class="grp-d">两页，把前面算出来的东西装进一个能用、能卖、能过认证的盒子里。</div>
+
+    <div class="list">
+
+      <a class="card c6" href="./optics.html">
+        <div class="idx">06</div>
+        <div class="body">
+          <div class="t">便携折光计：光路设计与误差预算 <span class="badge">按 Snell 逐条计算</span></div>
+          <div class="sub">
+            整台仪器只测一件事：0–85 Brix 对应临界角从 48.31° 移到 57.72°，
+            <b>跨度 9.41°</b>。棱镜选型、照明角度、色散展宽、折叠封装、误差传递，逐层算下来——
+            瓶颈最后落在样品本身，不在光学。
+          </div>
+          <div class="meta"><span>8 章</span><i></i><span>6 图</span><i></i><span>误差预算 0.05 Brix</span><i></i><span>88 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">9.41<small>°</small></div><div class="l">全量程跨度</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M20 12h8l10 26H10z" stroke="#4dd0e1" stroke-width="1.3" opacity=".6"/>
+            <path d="M2 30l18-6" stroke="#ffb84d" stroke-width="1.5"/>
+            <path d="M18 24l14 2" stroke="#ffb84d" stroke-width="1.2" opacity=".45"/>
+            <path d="M32 26l13 5" stroke="#ffb84d" stroke-width="1.5"/>
+            <path d="M18 12v26" stroke="#4dd0e1" stroke-width=".8" opacity=".2" stroke-dasharray="2 2"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c7" href="./solutions.html">
+        <div class="idx">07</div>
+        <div class="body">
+          <div class="t">多组分落地方案：三种加维度的路 <span class="badge">工程</span></div>
+          <div class="sub">
+            一个折射率解不开两个未知数，那就补第二个方程：<b>加波长</b>（条件数 47.8）、
+            <b>加密度</b>（7.3）、<b>加时间</b>（零硬件增量）。
+            三种场景的响应矩阵、精度、实施路线与退出条件，全部落到可执行的数字上。
+          </div>
+          <div class="meta"><span>6 章</span><i></i><span>4 图</span><i></i><span>三阶段路线</span><i></i><span>73 KB</span></div>
+        </div>
+                <div class="kpi"><div class="v">7.3</div><div class="l">最优条件数</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <rect x="4" y="8" width="12" height="9" rx="2" stroke="#ffb84d" stroke-width="1.1" opacity=".7"/>
+            <rect x="4" y="31" width="12" height="9" rx="2" stroke="#ffb84d" stroke-width="1.1" opacity=".45"/>
+            <rect x="30" y="19" width="14" height="10" rx="2" stroke="#ffb84d" stroke-width="1.3"/>
+            <path d="M16 12.5h7v13h7M16 35.5h7V25" stroke="#ffb84d" stroke-width="1.1" opacity=".4"/>
+            <circle cx="37" cy="24" r="2.2" fill="#ffb84d" opacity=".75"/>
+          </svg>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- ================= 说明 ================= -->
+  <div class="notes">
+    <div class="panel">
+      <h3><span class="dot"></span>关于这些页面</h3>
+      <p>
+        每一页都是<b>零外部依赖的单文件 HTML</b>：没有 CDN、没有框架、没有网络请求。
+        下载下来双击就能打开，断网也能用，拷到 U 盘里照样跑。
+      </p>
+      <p>
+        所有图表用 Canvas 2D 现画，光路按 Snell 定律逐条求交、折射、判全反射，
+        不是示意插图。曲线下面的数值都有出处。
+      </p>
+      <p>
+        每页末尾都有一节<b>「这套模型在哪里会翻车」</b>：纯蔗糖算得 1.5659 而文献值 1.5376，
+        盐水色散没有实测验证，三元密度缺中间区数据——这些差异都写在页面上，没有抹掉。
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3><span class="dot"></span>可信度阶梯</h3>
+      <div class="rule"><div class="m">最强</div><div>零拟合：从原子折射度加和出发，实测只用于事后校验</div></div>
+      <div class="rule"><div class="m">次之</div><div>一参数反标定：结构算不动，用一个常数统一全浓度数据</div></div>
+      <div class="rule"><div class="m">再次</div><div>密度近似加和：两端锚定，中间区域靠插值</div></div>
+      <div class="rule"><div class="m">最弱</div><div>经验项：λ₀ 等参数从实测反推，只能解释，不能预测</div></div>
+    </div>
+  </div>
+
+  <footer>
+    <div>折光计学 · 七页可视化笔记 · 2026</div>
+    <div><a href="https://github.com/tigerfan/Learning_Refractometer" target="_blank" rel="noopener">github.com/tigerfan/Learning_Refractometer</a></div>
+  </footer>
+
+</div>
+</main>
+
+</body>
+</html>

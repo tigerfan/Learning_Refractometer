@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>糖盐水三元体系 · 一个读数两个未知数</title>
+<style>
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#06070f;
+  --bg-2:#0a0a14;
+  --surface:#0b1119;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#e8b64c;
+  --cy-soft:rgba(232,182,76,.14);
+  --cy-line:rgba(232,182,76,.35);
+  --am:#ff8a5c;
+  --am-soft:rgba(255,138,92,.13);
+  --vi:#9d8cff;
+  --vi-soft:rgba(157,140,255,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(232,182,76,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(157,140,255,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,138,92,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(232,182,76,.28),rgba(157,140,255,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#f8e3a8 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(232,182,76,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,138,92,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(232,182,76,.12);color:var(--cy);border:1px solid rgba(232,182,76,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,138,92,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(157,140,255,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,138,92,.05);border:1px solid rgba(255,138,92,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(232,182,76,.045);border-color:rgba(232,182,76,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(232,182,76,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(232,182,76,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#f8e3a8}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(232,182,76,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 三元加和</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 折射率面</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 等 n 线</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 双参数</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 密度凭什么</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 电导旁路</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 配方实例</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 温度</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 误差预算</span></a>
+  <a href="#s10"><i class="dot"></i><span>10 · 公式总表</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>计算光学 · 三元体系</div>
+      <h1>糖盐水：一个读数<br><em>两个未知数</em></h1>
+      <p class="hero-lead">
+        水 + 蔗糖 + NaCl，加和式照旧成立，只多一项。<br>
+        但自由度变成了 2，折射率只有 1 个——<b>测到 1.3700，可能是糖多、也可能是盐多</b>。
+        想定下配方，必须再加一个独立的测量。
+      </p>
+
+      <div class="chain">
+        <span>3 组分</span><i>→</i>
+        <span>2 个自由度</span><i>→</i>
+        <span class="hi">1 个 n</span><i>→</i>
+        <span>欠定</span><i>→</i>
+        <span class="hi">+ ρ 或 κ</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">自由度</div><div class="v">2</div></div>
+        <div class="kpi"><div class="k">单次读数</div><div class="v">1<small>个 n</small></div></div>
+        <div class="kpi"><div class="k">同 ρ 下的 Δn</div><div class="v">0.016</div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvHero" height="420"></canvas>
+      <div class="cv-cap"><span>折射率面：颜色 = n，横纵 = 糖度 / 盐度</span><span id="heroHover">n = 1.3700</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================================================
+     S1 · 三元加和
+     ============================================================ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">加和式照旧，只多一项</div>
+      <div class="sec-sub">
+        前面两页分别验过蔗糖和 NaCl 的二元体系。把它们放进同一杯水里，
+        Lorenz–Lorentz 的形式完全不变——溶质从 1 个变 2 个，就是多写一个 k。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>三项加和</h3>
+      <div class="eq">
+        <span class="frac"><span>n² − 1</span><span>n² + 2</span></span>
+        <span class="o">=</span> ρ [ <span class="hl">w<sub>s</sub>k<sub>s</sub></span>
+        <span class="o">+</span> <span class="hl2">w<sub>n</sub>k<sub>n</sub></span>
+        <span class="o">+</span> w<sub>w</sub>k<sub>w</sub> ]
+      </div>
+      <div class="eq-note">w<sub>s</sub> + w<sub>n</sub> + w<sub>w</sub> = 1，三个 k 都从前面两页沿用</div>
+
+      <table style="margin-top:14px">
+        <thead><tr><th>组分</th><th class="num">k (cm³/g)</th><th>来源</th></tr></thead>
+        <tbody>
+          <tr><td>蔗糖</td><td class="num hl">0.20551</td><td>原子加和，零拟合</td></tr>
+          <tr><td>NaCl</td><td class="num hl2">0.15700</td><td>表观反标定</td></tr>
+          <tr><td>水</td><td class="num">0.20606</td><td>由 n、ρ 反算</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note ok" style="margin-top:14px">
+        <div class="ico">◆</div>
+        <div>
+          <b>这个式子在本页是可检验的：</b>令 w<sub>n</sub>=0 退回蔗糖页，令 w<sub>s</sub>=0 退回盐水页。
+          两个端面都已经和实测对过（±0.0011 / ±0.0002），中间区域才是本页真正要讨论的部分。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>可行域不是整个矩形</h3>
+        <p style="font-size:12.7px">
+          糖和盐会互相挤占水的容量。纯蔗糖能到 67 %，纯盐到 26 %，但两者共存时溶解度互相压低：
+        </p>
+        <div class="eq sm">
+          <span class="frac"><span>w<sub>s</sub></span><span>67.1</span></span>
+          <span class="o">+</span>
+          <span class="frac"><span>w<sub>n</sub></span><span>26.4</span></span>
+          <span class="o">≤</span> 1
+        </div>
+        <div class="eq-note">一阶线性近似，实际边界略向外凸（盐析效应的定量形式）</div>
+
+        <div class="dl">
+          <div class="it"><b>纯糖端</b><span>w<sub>n</sub>=0 → w<sub>s</sub> 上限 67.1 %</span></div>
+          <div class="it"><b>纯盐端</b><span>w<sub>s</sub>=0 → w<sub>n</sub> 上限 26.4 %</span></div>
+          <div class="it"><b>共存</b><span>20 % 盐的卤水里，蔗糖最多只能再溶约 15 %——这就是腌渍时"加糖加不进去"的原因</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3 style="font-size:14px">密度：本页唯一的脆弱环节</h3>
+        <p style="font-size:12.5px;margin-bottom:0">
+          三元密度没有现成的标准表。本页用<b>"二元收缩加和"</b>近似——
+          把蔗糖–水、盐–水各自的体积收缩直接相加，忽略交叉项。端面因此严格锚定，
+          中间区域的不确定度估计在 0.3 % 量级。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S2 · 折射率面
+     ============================================================ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">把 n 画成一张二维地图</div>
+      <div class="sec-sub">
+        横轴糖度、纵轴盐度，颜色是折射率。整个可行域是一个三角形，
+        每一对配方落在一个点上。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:18px 22px">
+    <div class="ctrlbar">
+      <div>
+        <div class="ctrl-row"><label>蔗糖质量分数</label>
+          <span class="val"><span id="vWs">20.0</span> % w/w</span></div>
+        <input type="range" id="sWs" min="0" max="67" step="0.5" value="20">
+      </div>
+      <div>
+        <div class="ctrl-row"><label>NaCl 质量分数</label>
+          <span class="val"><span id="vWn">5.0</span> % w/w</span></div>
+        <input type="range" id="sWn" class="am" min="0" max="26" step="0.5" value="5">
+      </div>
+      <div style="text-align:right">
+        <div class="rf">n<sub>D</sub>(20 °C)</div>
+        <div class="bigN" id="bigN">1.3743</div>
+      </div>
+    </div>
+    <div class="switches" id="faceSw">
+      <label class="sw on" data-f="iso" style="--c:#e9eff8"><input type="checkbox" checked><i></i>n 等值线</label>
+      <label class="sw on" data-f="rho" style="--c:#9d8cff"><input type="checkbox" checked><i></i>ρ 等值线</label>
+      <label class="sw" data-f="edge" style="--c:#ff8a5c"><input type="checkbox"><i></i>可行域边界</label>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 288px;gap:14px;margin-top:14px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvFace" height="440"></canvas>
+      <div class="cv-cap"><span>折射率面 n(w<sub>s</sub>, w<sub>n</sub>)</span><span>20 °C · 589 nm</span></div>
+    </div>
+    <div class="card" style="padding:16px 18px">
+      <div class="rf" style="margin-bottom:4px">当前配方</div>
+      <div class="rl">
+        <div class="rl-i"><span>n<sub>D</sub></span><b class="cy" id="rN">—</b></div>
+        <div class="rl-i"><span>密度 ρ</span><b id="rRho">—</b></div>
+        <div class="rl-i"><span>水的质量分数</span><b id="rWw">—</b></div>
+        <div class="rl-i"><span>溶质总量</span><b id="rTot">—</b></div>
+        <div class="rl-i"><span>糖/盐 比</span><b id="rRatio">—</b></div>
+        <div class="rl-i"><span>距可行边界</span><b id="rEdge">—</b></div>
+      </div>
+      <div class="note" style="margin-top:14px;font-size:11px;padding:9px 11px">
+        <div class="ico">⚠</div>
+        <div>滑块可拖出可行域，此时读数<b>没有物理意义</b>，图上会用红色标出。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S3 · 等 n 线
+     ============================================================ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">同一条等值线上，配方无穷多</div>
+      <div class="sec-sub">
+        固定折射率，在可行域里画一条线。线上每一个点都是"折射仪读数完全相同"的配方——
+        仪器分不出它们。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:.85fr 1.15fr;gap:18px;align-items:start">
+    <div class="card">
+      <div class="ctrl">
+        <div class="ctrl-row"><label>设定折射率读数</label><span class="val" id="vIso">1.3700</span></div>
+        <input type="range" id="sIso" min="1.3340" max="1.4600" step="0.0005" value="1.3700">
+      </div>
+
+      <div class="formula-lab">这条线上的三个代表配方</div>
+      <table>
+        <thead><tr><th>#</th><th class="num">糖 %</th><th class="num">盐 %</th><th class="num">ρ</th></tr></thead>
+        <tbody id="tbIso"></tbody>
+      </table>
+
+      <div class="note" style="margin-top:14px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          三个配方的密度差到 <b>0.05 以上</b>——这正是下一条要用的第二个自由度。
+          折射率相同、密度不同，说明它们在水里的"堆积方式"不同。
+        </div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvIso" height="420"></canvas>
+      <div class="cv-cap"><span>等折射率线在可行域中的走向</span><span id="isoLab">n = 1.3700</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S4 · 双参数
+     ============================================================ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">再加一个数，就能定下来</div>
+      <div class="sec-sub">
+        折射率和密度是两个不同的物理量。理论上两族等值线必交于一点——
+        但等比例画出来才发现，夹角浅得让人不安。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1.05fr;gap:18px;align-items:start">
+    <div>
+      <div class="card">
+        <h3>双参数求解器</h3>
+        <div class="ctrl">
+          <div class="ctrl-row"><label>折射率 n<sub>D</sub></label><span class="val" id="vSn">1.3743</span></div>
+          <input type="range" id="sSolN" min="1.3340" max="1.4600" step="0.0001" value="1.3743">
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-row"><label>密度 ρ (g/cm³)</label><span class="val" id="vSr">1.1231</span></div>
+          <input type="range" id="sSolR" class="am" min="0.9982" max="1.3600" step="0.0001" value="1.1231">
+        </div>
+
+        <div class="readout" style="margin-top:16px">
+          <div class="cell"><div class="k">蔗糖 w<sub>s</sub></div><div class="v cy" id="oSs">—</div></div>
+          <div class="cell"><div class="k">NaCl w<sub>n</sub></div><div class="v" id="oSn">—</div></div>
+          <div class="cell"><div class="k">求解残差</div><div class="v" id="oSres" style="font-size:14px">—</div></div>
+          <div class="cell"><div class="k">与真值偏差</div><div class="v am" id="oSdev" style="font-size:14px">—</div></div>
+        </div>
+
+        <div class="note ok" style="margin-top:14px;font-size:12px">
+          <div class="ico">◆</div>
+          <div>
+            把上面两个滑块调成 <b>1.3743 / 1.1231</b>（即 20 % 糖 + 5 % 盐那个配方），
+            反解应该回到 <b>20 / 5</b>。这就是双参数法的完整闭环。
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3 style="font-size:14px">夹角只有几度：这是方法的软肋</h3>
+        <p style="font-size:12.5px;margin-bottom:0">
+          糖和盐都会同时推高 n 和 ρ，两个梯度方向很接近。在<b>等比例坐标</b>下看，
+          两族等值线的真实夹角只有 <b class="am">3–10°</b>——之前那种"交叉很漂亮"的印象，
+          是坐标轴被拉长造成的错觉。<br><br>
+          夹角小就是病态：n 差 1×10⁻⁴，配方就可能偏 0.1 % 以上。
+          这不是模型精度问题，是这套测量方案本身的信息量不够。
+        </p>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvSolve" height="440"></canvas>
+      <div class="cv-cap"><span>n 与 ρ 等值线的交点</span><span id="solveLab">20 / 5</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S5 · 密度凭什么能分开
+     ============================================================ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">密度凭什么能区分糖和盐</div>
+      <div class="sec-sub">
+        同样一升溶液、同样重 1.118 kg，糖水和盐水的折射率能差 0.016。
+        这不是巧合，是两种溶质的"折射效率 / 密度效率"之比不同。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1.1fr .9fr;gap:18px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvRhoN" height="400"></canvas>
+      <div class="cv-cap"><span>n 对 ρ 的轨迹：两条完全不同的路</span><span>20 °C</span></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>同样 1.118 g/cm³，差在哪</h3>
+        <table>
+          <thead><tr><th>溶液</th><th class="num">浓度</th><th class="num">n<sub>D</sub></th></tr></thead>
+          <tbody id="tbRho"></tbody>
+        </table>
+        <div class="formula-lab">差值的来源</div>
+        <div class="eq sm">
+          Δn <span class="o">≈</span>
+          <span class="frac"><span>∂n</span><span>∂w</span></span>
+          <span class="o">·</span> Δw
+          <span class="o">,</span>&nbsp;
+          Δw <span class="o">=</span>
+          <span class="frac"><span>Δρ</span><span>∂ρ/∂w</span></span>
+        </div>
+        <p style="font-size:12.4px;margin-top:10px;margin-bottom:0">
+          盐水要堆到同样的密度，只需 16 % 的溶质；蔗糖却要 28 %。
+          多出来的 12 % 溶质全是能极化电子云的物质，n 自然被推得更高。
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3 style="font-size:14px">灵敏度：这条竖线有多宽</h3>
+        <div class="rl">
+          <div class="rl-i"><span>Δn = 0.0001 对应 Δw<sub>s</sub></span><b id="sensS">—</b></div>
+          <div class="rl-i"><span>Δn = 0.0001 对应 Δw<sub>n</sub></span><b id="sensN">—</b></div>
+          <div class="rl-i"><span>Δρ = 0.0001 对应 Δw<sub>s</sub></span><b id="sensRS">—</b></div>
+          <div class="rl-i"><span>Δρ = 0.0001 对应 Δw<sub>n</sub></span><b id="sensRN">—</b></div>
+        </div>
+        <p style="font-size:11px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.7">
+          四行一对比：两条通道的单变量灵敏度其实相近（0.02–0.06 %）。真正的瓶颈不是灵敏度，
+          而是第 04 章那个夹角——这个体系只有 <b style="color:var(--am)">3–10°</b>，属于病态问题。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S6 · 电导旁路
+     ============================================================ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">另一条路：用电导率代替密度</div>
+      <div class="sec-sub">
+        盐水导电，糖水不导电。所以电导率几乎直接给出盐度，再把盐度代回 n 的式子，
+        糖度就出来了——比测密度更便宜、更快。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvCond" height="330"></canvas>
+      <div class="cv-cap"><span>20 °C 电导率 vs NaCl 质量分数</span><span>mS/cm</span></div>
+    </div>
+
+    <div class="card">
+      <h3>两步反解</h3>
+      <div class="steps" style="margin-top:4px">
+        <div class="step" style="padding:11px 0">
+          <div class="n">1</div>
+          <div>
+            <div class="h">κ → w<sub>n</sub></div>
+            <div class="d">
+              电导率对盐度近似分段线性，反解误差 &lt;0.2 %。糖的存在会让 κ 轻微下降（黏度效应），
+              20 % 糖时约低 3 %。
+            </div>
+          </div>
+        </div>
+        <div class="step" style="padding:11px 0">
+          <div class="n">2</div>
+          <div>
+            <div class="h">n + w<sub>n</sub> → w<sub>s</sub></div>
+            <div class="d">
+              把已求出的 w<sub>n</sub> 代回三项加和，只剩 w<sub>s</sub> 一个未知数，直接解。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:12px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          这条路只适用于<b>可电离溶质</b>。换成糖 + 甘油就没有电导可用，
+          只能回到 n + ρ。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S7 · 配方实例
+     ============================================================ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">现实中的糖盐水，读出来是什么样</div>
+      <div class="sec-sub">
+        折光仪只有一套 Brix 刻度。碰到含盐的样品，它会把盐也算成糖——
+        这个"虚高"有多大，下面这张表说清楚。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>典型配方</th>
+          <th class="num">糖 w<sub>s</sub></th>
+          <th class="num">盐 w<sub>n</sub></th>
+          <th class="num">n<sub>D</sub></th>
+          <th class="num">ρ</th>
+          <th class="num">Brix 读数</th>
+          <th class="num">虚高</th>
+        </tr>
+      </thead>
+      <tbody id="tbRecipes"></tbody>
+    </table>
+    <p style="font-size:11px;color:var(--tx-3);margin:11px 0 0;font-family:var(--mono);line-height:1.75">
+      "Brix 读数" = 把测到的 n 当成纯蔗糖溶液去查表得到的浓度；"虚高" = 读数 − 真实糖度。
+      单位均为 % w/w。
+    </p>
+  </div>
+
+  <div class="note" style="margin-top:14px">
+    <div class="ico">⚠</div>
+    <div>
+      <b>这就是工业上必须做"双参数"的原因。</b>腌渍液按 Brix 判糖量，会把盐全算成糖——
+      5 % 糖 + 10 % 盐读出来是 17.0 °Bx，误差 12.0 度，比仪器的 ±0.2 分辨率大了近 60 倍。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S8 · 温度
+     ============================================================ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">温度：三元体系里被稀释的效应</div>
+      <div class="sec-sub">
+        三元体系的 dn/dT 介于纯糖和纯盐之间。糖盐共存时，每一方对水的"锁定"
+        都被对方分走一部分，温度能撼动的余量就少了。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:14px;align-items:start">
+    <div class="cvbox">
+      <canvas id="cvT3" height="330"></canvas>
+      <div class="cv-cap"><span>dn/dT 在糖–盐平面上的分布</span><span>−10⁻⁴ /K</span></div>
+    </div>
+    <div class="card">
+      <h3>温度实验台</h3>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>温度 T</label><span class="val"><span id="tvT">25.0</span> °C</span></div>
+        <input type="range" id="sTT" min="10" max="40" step="0.5" value="25">
+      </div>
+      <div class="readout" style="margin-top:12px">
+        <div class="cell"><div class="k">n(20 °C)</div><div class="v" id="tvN20">—</div></div>
+        <div class="cell"><div class="k">n(T)</div><div class="v cy" id="tvN">—</div></div>
+        <div class="cell"><div class="k">偏移 Δn</div><div class="v" id="tvDn">—</div></div>
+        <div class="cell"><div class="k">折合糖度误差</div><div class="v am" id="tvErr">—</div></div>
+      </div>
+      <div class="note" style="margin-top:12px;font-size:11.5px">
+        <div class="ico">↳</div>
+        <div>温度取当前配方（<span id="tvP">20 / 5</span>）。补偿系数按该配方的 dn/dT 实时算，不用固定值。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S9 · 误差预算
+     ============================================================ -->
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">误差预算：三元体系多出来的那几项</div>
+      <div class="sec-sub">前两页的误差源仍然在，这里只列新增的。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th style="width:24%">误差源</th><th style="width:16%">性质</th><th class="num">量级</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>密度交叉项</b></td><td><span class="badge am">新增 · 主要</span></td>
+          <td class="num warn">±0.3 %</td>
+          <td>本页用"二元收缩加和"，忽略了糖–盐交叉项。文献指出 NaCl 会带来额外的过量体积，中间区域可能有系统偏差。</td>
+        </tr>
+        <tr>
+          <td><b>求解病态</b></td><td><span class="badge am">新增 · 主要</span></td>
+          <td class="num warn">视配方</td>
+          <td>n 与 ρ 等值线的夹角越小，交点越飘。糖盐比接近 1:1 时夹角最大、最稳；某一方趋近 0 时退化回二元，另一方的解开始发散。</td>
+        </tr>
+        <tr>
+          <td><b>第二测量的精度</b></td><td><span class="badge rd">瓶颈</span></td>
+          <td class="num" style="white-space:nowrap">Δρ 1e−4 → Δw 0.02 %</td>
+          <td>密度计的 1e−4 分辨率只能把配方定到 0.02 %，这已经比折射率通道差了。</td>
+        </tr>
+        <tr>
+          <td><b>其他溶质</b></td><td><span class="badge rd">不可修正</span></td>
+          <td class="num">视样品</td>
+          <td>真实的酱油、果汁里还有氨基酸、有机酸、胶体。三元模型已经不够，需要多波长或化学计量学方法。</td>
+        </tr>
+        <tr>
+          <td><b>温度</b></td><td><span class="badge">可补偿</span></td>
+          <td class="num">−1.0 ~ −1.2 ×10⁻⁴/K</td>
+          <td>与二元体系同量级，但因为 n 与 ρ 都随温度变，双参数法需要两个通道都用同一温度。</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">端面精度（继承）</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:24px">±0.0011 / ±0.0002</span></div>
+      <p style="font-size:12px;margin:8px 0 0">纯糖端与纯盐端的残差，来自前两页的验证。</p>
+    </div>
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">中间区域</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:24px">未校验</span></div>
+      <p style="font-size:12px;margin:8px 0 0">本页没有三元实测点，中间区域是模型预测——这是最需要补数据的地方。</p>
+    </div>
+    <div class="card flat" style="padding:18px 20px">
+      <div class="rf">信息自由度</div>
+      <div class="bigsum" style="margin-top:8px"><span class="n" style="font-size:26px">2 → 1 → 2</span></div>
+      <p style="font-size:12px;margin:8px 0 0">2 个自由度，1 个读数欠定，2 个读数可解。这是全页的主线。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S10 · 公式总表
+     ============================================================ -->
+<section id="s10sec">
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <div>
+      <div class="sec-title">一页纸的公式链</div>
+      <div class="sec-sub">从加和式到双参数求解。</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:16px;align-items:start">
+    <div class="card">
+      <div class="formula-lab">① 三项加和</div>
+      <div class="eq sm">
+        <span class="frac"><span>n² − 1</span><span>n² + 2</span></span>
+        <span class="o">=</span> ρ [ w<sub>s</sub>k<sub>s</sub> <span class="o">+</span> w<sub>n</sub>k<sub>n</sub> <span class="o">+</span> w<sub>w</sub>k<sub>w</sub> ]
+      </div>
+
+      <div class="formula-lab">② 三元密度（二元收缩加和）</div>
+      <div class="eq sm">
+        <span class="frac"><span>1</span><span>ρ</span></span>
+        <span class="o">=</span>
+        <span style="color:var(--tx-3)">Σ</span>
+        <span class="frac"><span>w<sub>i</sub></span><span>ρ<sub>i</sub></span></span>
+        <span class="o">−</span> ΔV<sub>糖</sub>(w<sub>s</sub>)
+        <span class="o">−</span> ΔV<sub>盐</sub>(w<sub>n</sub>)
+      </div>
+      <div class="eq-note">ΔV 从各自二元体系实测密度反算，交叉项未计入</div>
+
+      <div class="formula-lab">③ 可行域</div>
+      <div class="eq sm">
+        <span class="frac"><span>w<sub>s</sub></span><span>67.1</span></span>
+        <span class="o">+</span>
+        <span class="frac"><span>w<sub>n</sub></span><span>26.4</span></span>
+        <span class="o">≤</span> 1
+      </div>
+
+      <div class="formula-lab">④ 单参数反解（欠定）</div>
+      <div class="eq sm">
+        n <span class="o">=</span> 1.3700
+        <span style="color:var(--tx-3)">⟹</span>
+        <span class="bad">一条等值线，不是一点</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="formula-lab" style="margin-top:0">⑤ 双参数求解</div>
+        <div class="eq sm">
+          n(w<sub>s</sub>, w<sub>n</sub>) <span class="o">=</span> n<sub>测</sub>
+          <span class="o">,</span>&nbsp;
+          ρ(w<sub>s</sub>, w<sub>n</sub>) <span class="o">=</span> ρ<sub>测</sub>
+        </div>
+        <div class="eq-note">两式联立 → 唯一解；数值上用归一化残差最小化求</div>
+
+        <div class="formula-lab">⑥ 电导旁路（仅电解质）</div>
+        <div class="eq sm">
+          κ <span class="o">→</span> w<sub>n</sub>
+          <span class="o">→</span>
+          n <span class="o">+</span> w<sub>n</sub> <span class="o">→</span> w<sub>s</sub>
+        </div>
+
+        <div class="formula-lab">⑦ 温度</div>
+        <div class="eq sm">
+          n(T) <span class="o">=</span> n(20) <span class="o">+</span> (dn/dT)(T − 20)
+        </div>
+        <div class="eq-note">dn/dT 由三元密度通道解析给出 + 结构通道修正</div>
+      </div>
+
+      <div class="note" style="margin-top:16px">
+        <div class="ico">⚠</div>
+        <div>
+          <b>这页的诚实边界比前两页更大。</b>三元密度是近似模型，中间区域没有实测校验，
+          双参数解的病态程度取决于配方位置。它适合讲清楚"为什么需要第二个测量"，
+          不适合直接拿去标定仪表。
+        </div>
+      </div>
+
+      <div class="note ok">
+        <div class="ico">✓</div>
+        <div>
+          <b>三页连起来看：</b>蔗糖（零拟合、加和成立）→ 盐水（反标定、加和失效）→
+          糖盐水（加和恢复、但自由度变成 2）。同一套 Lorenz–Lorentz，
+          三种完全不同的局面。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="t">
+      <b>糖盐水三元体系 · 一个读数两个未知数</b><br>
+      模型：Lorenz–Lorentz 三项加和 + 二元收缩加和密度<br>
+      端面锚定：蔗糖（ICUMSA 全表）/ NaCl（0–26 % 实测）
+    </div>
+    <div class="r">
+      交互式单页 · 无外部依赖<br>
+      <span id="footStamp">—</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 常量与二元数据
+   ============================================================ */
+const MW_S = 342.2965, MW_N = 58.4428, MW_W = 18.01528;
+const RHO_S = 1.587, RHO_N = 2.165, RHO_W = 0.99821;
+const N_W = 1.33299;
+
+const KS = 0.205509;   // 蔗糖 k
+const KN = 0.157000;   // NaCl 表观 k
+const KW = 0.206059;   // 水
+
+const SAT_S = 67.1, SAT_N = 26.4;
+
+const xOf = n => (n*n - 1) / (n*n + 2);
+const nOf = x => Math.sqrt((1 + 2*x) / (1 - x));
+
+// 蔗糖二元密度
+const DS = [[0,0.9982],[5,1.0178],[10,1.0381],[15,1.0590],[20,1.0810],[25,1.1032],
+[30,1.1270],[35,1.1517],[40,1.1764],[45,1.2026],[50,1.2296],[55,1.2576],
+[60,1.2867],[65,1.3169],[70,1.3479]];
+// 盐水二元密度
+const DN = [[0,0.9982],[1,1.0053],[2,1.0125],[3,1.0196],[4,1.0268],[5,1.0340],
+[6,1.0413],[7,1.0486],[8,1.0559],[9,1.0633],[10,1.0707],[12,1.0857],[14,1.1008],
+[16,1.1162],[18,1.1319],[20,1.1478],[22,1.1643],[24,1.1807],[26,1.1972]];
+
+const CO = {
+  cy:'#e8b64c', am:'#ff8a5c', vi:'#9d8cff', rd:'#ff7185', gr:'#6ee7a0',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#151325', grid2:'#1d1a30', line:'#262238'
+};
+
+/* ============================================================
+   1 · 工具
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function pchip(xs, ys){
+  const n = xs.length, h = [], d = [], m = new Array(n);
+  for(let i=0;i<n-1;i++){ h[i]=xs[i+1]-xs[i]; d[i]=(ys[i+1]-ys[i])/h[i]; }
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(d[i-1]*d[i] <= 0){ m[i]=0; }
+    else{ const w1=2*h[i]+h[i-1], w2=h[i]+2*h[i-1]; m[i]=(w1+w2)/(w1/d[i-1]+w2/d[i]); }
+  }
+  return x => {
+    if(x <= xs[0]) return ys[0] + m[0]*(x-xs[0]);
+    if(x >= xs[n-1]) return ys[n-1] + m[n-1]*(x-xs[n-1]);
+    let i=0; while(i<n-2 && x > xs[i+1]) i++;
+    const t=(x-xs[i])/h[i], t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i] + (t3-2*t2+t)*h[i]*m[i]
+         + (-2*t3+3*t2)*ys[i+1] + (t3-t2)*h[i]*m[i+1];
+  };
+}
+const dSucFn  = pchip(DS.map(r=>r[0]), DS.map(r=>r[1]));
+const dSaltFn = pchip(DN.map(r=>r[0]), DN.map(r=>r[1]));
+
+/* ============================================================
+   2 · 三元物理模型
+   ============================================================ */
+const wMax = ws => Math.max(0, SAT_N*(1 - ws/SAT_S));   // 可行域上边界
+
+// 二元体积收缩量 (cm³/g 溶液)
+function dvSuc(ws){
+  const w = clamp(ws,0,70)/100;
+  return (w/RHO_S + (1-w)/RHO_W) - 1/dSucFn(clamp(ws,0,70));
+}
+function dvSalt(wn){
+  const w = clamp(wn,0,26)/100;
+  return (w/RHO_N + (1-w)/RHO_W) - 1/dSaltFn(clamp(wn,0,26));
+}
+
+// 三元密度：理想体积 − 二元收缩之和
+function dens3(ws, wn){
+  const s = clamp(ws,0,68)/100, n = clamp(wn,0,27)/100, w = Math.max(0.01, 1-s-n);
+  const vI = s/RHO_S + n/RHO_N + w/RHO_W;
+  return 1/Math.max(0.5, vI - dvSuc(ws) - dvSalt(wn));
+}
+
+// 三元折射率
+function n3(ws, wn){
+  const s = clamp(ws,0,68)/100, n = clamp(wn,0,27)/100, w = Math.max(0.01, 1-s-n);
+  return nOf(dens3(ws,wn)*(s*KS + n*KN + w*KW));
+}
+
+const inDom = (ws, wn) => ws >= -0.01 && wn >= -0.01 && wn <= wMax(ws)+0.01;
+
+// 温度：密度通道解析 + 结构通道经验
+function beta3(ws, wn){
+  const tot = clamp(ws+wn, 0, 60);
+  return 2.07e-4 + 0.80e-4*(tot/60);
+}
+function dndT3(ws, wn){
+  const s = ws/100, n = wn/100, w = Math.max(0.001, 1-s-n);
+  const rho = dens3(ws,wn);
+  const kmix = s*KS + n*KN + w*KW;
+  const x = rho*kmix;
+  const nn = nOf(x);
+  const dndx = 3/(2*nn*(1-x)*(1-x));
+  const dens = dndx*kmix*(-rho*beta3(ws,wn));
+  const tot = ws+wn;
+  const str = -2.3e-5*(1 - 0.88*clamp(tot,0,60)/60);
+  return dens + str;
+}
+const nT3 = (ws, wn, T) => n3(ws,wn) + dndT3(ws,wn)*(T-20);
+
+// Brix 视读数：把 n 当纯蔗糖溶液查表
+function brixApparent(nv){
+  let lo=0, hi=70;
+  for(let k=0;k<60;k++){
+    const mid=(lo+hi)/2;
+    const w=mid/100;
+    const np = nOf(dSucFn(mid)*(w*KS + (1-w)*KW));
+    if(np < nv) lo=mid; else hi=mid;
+  }
+  return (lo+hi)/2;
+}
+
+// 两族等值线在交点处的真实夹角
+function angleAt(ws, wn){
+  const h = 0.25;
+  const nws=(n3(ws+h,wn)-n3(ws-h,wn))/(2*h);
+  const nwn=(n3(ws,wn+h)-n3(ws,wn-h))/(2*h);
+  const rws=(dens3(ws+h,wn)-dens3(ws-h,wn))/(2*h);
+  const rwn=(dens3(ws,wn+h)-dens3(ws,wn-h))/(2*h);
+  const cosv = (nws*rws+nwn*rwn)/(Math.hypot(nws,nwn)*Math.hypot(rws,rwn));
+  return Math.acos(clamp(cosv,-1,1))*180/Math.PI;
+}
+
+// 等值线：固定 ws 二分求 wn
+function isoScan(target, fn, steps){
+  steps = steps || 110;
+  const out = [];
+  for(let i=0;i<=steps;i++){
+    const ws = i/steps*SAT_S;
+    const wm = wMax(ws);
+    if(wm <= 0) continue;
+    const a0 = fn(ws, 0), a1 = fn(ws, wm);
+    if(a0 > target || a1 < target) continue;
+    let a=0, b=wm;
+    for(let k=0;k<36;k++){
+      const m=(a+b)/2;
+      if(fn(ws,m) < target) a=m; else b=m;
+    }
+    out.push([ws,(a+b)/2]);
+  }
+  return out;
+}
+
+// 双参数求解（归一化残差最小化 + 坐标下降细化）
+function solve2(nT, rT){
+  let bs=0, bn=0, bd=1e9;
+  for(let i=0;i<=48;i++){
+    const ws = i/48*SAT_S;
+    const wm = wMax(ws);
+    for(let j=0;j<=28;j++){
+      const wn = j/28*wm;
+      const e = Math.pow((n3(ws,wn)-nT)/0.0008,2) + Math.pow((dens3(ws,wn)-rT)/0.0015,2);
+      if(e < bd){ bd=e; bs=ws; bn=wn; }
+    }
+  }
+  let st = 1.2;
+  for(let k=0;k<140;k++){
+    let imp=false;
+    for(const d of [[st,0],[-st,0],[0,st],[0,-st]]){
+      const a=bs+d[0], b=bn+d[1];
+      if(a<0 || b<0 || b>wMax(a)) continue;
+      const e = Math.pow((n3(a,b)-nT)/0.0008,2) + Math.pow((dens3(a,b)-rT)/0.0015,2);
+      if(e < bd-1e-13){ bd=e; bs=a; bn=b; imp=true; }
+    }
+    if(!imp) st *= 0.72;
+  }
+  return { ws:bs, wn:bn, res:Math.sqrt(bd) };
+}
+
+/* ============================================================
+   3 · Canvas 基础
+   ============================================================ */
+function prep(cv, cssH){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(240, cv.clientWidth || cv.parentElement.clientWidth || 400);
+  cv.style.height = cssH + 'px';
+  cv.width  = Math.round(w*dpr);
+  cv.height = Math.round(cssH*dpr);
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,cssH);
+  return {c, w, h: cssH};
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function txt(c,s,x,y,col,size,align,weight){
+  c.fillStyle = col || CO.tx3;
+  c.font = (weight||400)+' '+(size||10)+"px 'JetBrains Mono',ui-monospace,monospace";
+  c.textAlign = align || 'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+}
+function rrect(c,x,y,w,h,r){
+  c.beginPath();
+  if(c.roundRect){ c.roundRect(x,y,w,h,r); return; }
+  c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y); c.closePath();
+}
+
+// n → 颜色（深紫 → 金 → 亮白）
+const NMIN = 1.3320, NMAX = 1.4720;
+const STOPS = [
+  [0.00,[14,11,26]],
+  [0.20,[86,50,40]],
+  [0.44,[176,108,46]],
+  [0.66,[228,166,72]],
+  [0.84,[250,210,116]],
+  [1.00,[255,249,226]]
+];
+function nColor(t){
+  t = clamp(t,0,1);
+  for(let i=1;i<STOPS.length;i++){
+    if(t <= STOPS[i][0]){
+      const a=STOPS[i-1], b=STOPS[i];
+      const f=(t-a[0])/(b[0]-a[0]);
+      return 'rgb('+Math.round(a[1][0]+(b[1][0]-a[1][0])*f)+','
+                   +Math.round(a[1][1]+(b[1][1]-a[1][1])*f)+','
+                   +Math.round(a[1][2]+(b[1][2]-a[1][2])*f)+')';
+    }
+  }
+  return 'rgb(255,243,206)';
+}
+
+// 绘制折射率面底图
+function paintFace(c, gx, gy, gw, gh, NX, NY){
+  NX = NX||62; NY = NY||40;
+  c.save();
+  c.beginPath();
+  c.moveTo(gx, gy+gh);
+  c.lineTo(gx+gw, gy+gh);
+  c.lineTo(gx, gy);
+  c.closePath();
+  c.clip();
+  for(let i=0;i<NX;i++){
+    const ws = (i+0.5)/NX*SAT_S;
+    const jmax = Math.ceil(wMax(ws)/SAT_N*NY) + 1;
+    for(let j=0;j<jmax;j++){
+      const wn = (j+0.5)/NY*SAT_N;
+      c.fillStyle = nColor((n3(ws,wn)-NMIN)/(NMAX-NMIN));
+      c.fillRect(gx + i/NX*gw, gy + (1-(j+1)/NY)*gh, gw/NX+0.3, gh/NY+0.3);
+    }
+  }
+  c.restore();
+  // 斜边描边
+  c.save();
+  c.strokeStyle='rgba(255,138,92,.35)'; c.lineWidth=1;
+  line(c, gx+gw, gy+gh, gx, gy);
+  c.restore();
+}
+
+// 折线（带断点）
+function polyDP(c, pts, X, Y, col, wd, dash){
+  c.save(); c.strokeStyle=col; c.lineWidth=wd||1.6; c.setLineDash(dash||[]);
+  c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  let prev=null;
+  for(let i=0;i<pts.length;i++){
+    const px=X(pts[i][0]), py=Y(pts[i][1]);
+    if(!prev || Math.abs(pts[i][1]-prev[1]) > 6){ c.moveTo(px,py); }
+    else c.lineTo(px,py);
+    prev = pts[i];
+  }
+  c.stroke(); c.restore();
+}
+
+/* ============================================================
+   4 · Hero：缩略折射率面
+   ============================================================ */
+let heroSize = null;
+function sizeHero(){
+  const cv = $('#cvHero'); if(!cv) return null;
+  const cw = cv.clientWidth || 400;
+  const H = Math.max(150, 12 + (cw-46)*(SAT_N/SAT_S) + 28);
+  heroSize = prep(cv, Math.round(H));
+  return heroSize;
+}
+function drawHero(){
+  if(!heroSize && !sizeHero()) return;
+  const {c,w,h} = heroSize;
+  const P = {l:34, r:12, t:12, b:28};
+  const gx=P.l, gw=w-P.l-P.r;
+  const gh=Math.min(h-P.t-P.b, gw*(SAT_N/SAT_S));
+  const gy=h-P.b-gh;
+  const X = ws => gx + ws/SAT_S*gw;
+  const Y = wn => gy + gh - wn/SAT_N*gh;
+
+  c.fillStyle='#08060f'; c.fillRect(0,0,w,h);
+  paintFace(c, gx, gy, gw, gh, 70, 28);
+
+  // 等值线（扫过的动画）
+  const t = (performance.now()/9000) % 1;
+  const target = NMIN + t*(1.4700-NMIN);
+  const pts = isoScan(target, n3, 70);
+  if(pts.length > 2){
+    c.save();
+    c.shadowColor='rgba(255,255,255,.6)'; c.shadowBlur=8;
+    polyDP(c, pts, X, Y, 'rgba(255,255,255,.92)', 1.8, null);
+    c.restore();
+  }
+
+  // 边界
+  c.save(); c.setLineDash([3,4]); c.strokeStyle='rgba(255,138,92,.45)'; c.lineWidth=1;
+  line(c, X(SAT_S), Y(0), X(0), Y(SAT_N)); c.restore();
+
+  // 游标
+  const ws = 20 + 22*Math.sin(t*6.28), wn = 5 + 12*(0.5+0.5*Math.cos(t*6.28));
+  const cx=X(ws), cy=Y(wn);
+  c.save();
+  const gr=c.createRadialGradient(cx,cy,0,cx,cy,14);
+  gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=gr; c.beginPath(); c.arc(cx,cy,14,0,7); c.fill();
+  c.strokeStyle='#fff'; c.lineWidth=1.8; c.beginPath(); c.arc(cx,cy,4,0,7); c.stroke();
+  c.restore();
+
+  // 轴
+  txt(c, '糖', gx+4, h-14, CO.tx3, 9, 'left');
+  c.save(); c.translate(12, gy+gh/2); c.rotate(-Math.PI/2);
+  txt(c, '盐', 0,0, CO.tx3, 9, 'center'); c.restore();
+  txt(c, 'n '+target.toFixed(4), X(SAT_S)-4, gy+12, 'rgba(255,255,255,.85)', 9, 'right', 600);
+
+  const el = $('#heroHover');
+  if(el) el.textContent = 'n = ' + target.toFixed(4);
+}
+let heroRAF=0, heroOn=false;
+function startHero(){
+  if(heroOn) return;
+  heroOn = true;
+  const tick = ()=>{ if(!heroOn) return; drawHero(); heroRAF = requestAnimationFrame(tick); };
+  heroRAF = requestAnimationFrame(tick);
+}
+function stopHero(){ heroOn = false; cancelAnimationFrame(heroRAF); }
+
+/* ============================================================
+   5 · §02 折射率面
+   ============================================================ */
+const FACE_ON = { iso:true, rho:true, edge:false };
+let ISO_N = null, ISO_R = null;   // 缓存等值线
+
+function buildFaceIso(){
+  ISO_N = [];
+  for(let v=1.34; v<=1.4601; v+=0.02) ISO_N.push({v, pts:isoScan(v, n3, 54)});
+  ISO_R = [];
+  for(let v=1.02; v<=1.3401; v+=0.04) ISO_R.push({v, pts:isoScan(v, dens3, 54)});
+}
+
+function drawFace(){
+  const cv = $('#cvFace'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const P = {l: small?44:52, r:14, t:16, b:34};
+  const cw = cv.clientWidth || 500;
+  const H = Math.round(P.t + (cw-P.l-P.r)*(SAT_N/SAT_S) + P.b);
+  const {c,w,h} = prep(cv, Math.max(150, Math.min(H, small?260:400)));
+  const gx=P.l, gw=w-P.l-P.r;
+  const gh=gw*(SAT_N/SAT_S);
+  const gy=h-P.b-gh;
+  const X = ws => gx + ws/SAT_S*gw;
+  const Y = wn => gy + gh - wn/SAT_N*gh;
+
+  c.fillStyle='#08060f'; c.fillRect(0,0,w,h);
+  paintFace(c, gx, gy, gw, gh, small?54:92, small?26:38);
+
+  // ρ 等值线
+  if(FACE_ON.rho && ISO_R){
+    ISO_R.forEach(o=>{
+      if(o.pts.length>2) polyDP(c, o.pts, X, Y, 'rgba(157,140,255,.55)', 1.1, [4,4]);
+    });
+  }
+  // n 等值线
+  if(FACE_ON.iso && ISO_N){
+    ISO_N.forEach(o=>{
+      if(o.pts.length>2){
+        polyDP(c, o.pts, X, Y, 'rgba(255,255,255,.72)', 1.2, null);
+        const last = o.pts[o.pts.length-1];
+        if(last[0] < SAT_S-8){
+          c.save(); c.fillStyle='rgba(8,6,15,.8)';
+          c.fillRect(X(last[0])+2, Y(last[1])-6, 28, 12);
+          c.fillStyle='rgba(233,239,248,.85)';
+          c.font="8px 'JetBrains Mono',ui-monospace,monospace";
+          c.textAlign='left'; c.textBaseline='middle';
+          c.fillText(o.v.toFixed(2), X(last[0])+4, Y(last[1]));
+          c.restore();
+        }
+      }
+    });
+  }
+
+  // 可行域边界
+  c.save();
+  c.strokeStyle = FACE_ON.edge ? 'rgba(255,138,92,.9)' : 'rgba(255,138,92,.4)';
+  c.lineWidth = FACE_ON.edge ? 1.8 : 1.2;
+  line(c, X(SAT_S), Y(0), X(0), Y(SAT_N));
+  c.restore();
+
+  // 轴
+  c.strokeStyle=CO.line; c.lineWidth=1;
+  c.strokeRect(gx+0.5, gy+0.5, gw-1, gh-1);
+  for(let b=0;b<=60;b+=10) txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  for(let b=0;b<=25;b+=5) txt(c, String(b), gx-7, Y(b), CO.tx3, 8.5, 'right');
+  txt(c, '蔗糖 (% w/w)', gx+gw/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(11, gy+gh/2); c.rotate(-Math.PI/2);
+  txt(c, 'NaCl (% w/w)', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 当前点
+  const ws = parseFloat($('#sWs').value), wn = parseFloat($('#sWn').value);
+  const ok = inDom(ws, wn);
+  const cx = X(clamp(ws,0,SAT_S)), cy = Y(clamp(wn,0,SAT_N));
+  c.save();
+  const gr=c.createRadialGradient(cx,cy,0,cx,cy,16);
+  gr.addColorStop(0, ok?'rgba(255,255,255,.85)':'rgba(255,113,133,.85)');
+  gr.addColorStop(1,'rgba(0,0,0,0)');
+  c.fillStyle=gr; c.beginPath(); c.arc(cx,cy,16,0,7); c.fill();
+  c.strokeStyle = ok ? '#fff' : CO.rd; c.lineWidth=2;
+  c.beginPath(); c.arc(cx,cy,5,0,7); c.stroke();
+  c.restore();
+
+  if(!ok){
+    txt(c, '超出可行域', cx+10, cy-12, CO.rd, 9, 'left', 600);
+  }
+
+  // 图例
+  c.fillStyle='rgba(8,6,15,.72)';
+  c.fillRect(gx+gw-96, gy+4, 92, 32);
+  const lg = [[CO.tx,'n 等值线',null],[CO.vi,'ρ 等值线',[4,4]]];
+  lg.forEach((it,i)=>{
+    const y0=gy+11+i*13, x0=gx+gw-90;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=1.3; c.setLineDash(it[2]||[]);
+    line(c, x0, y0, x0+16, y0); c.restore();
+    txt(c, it[1], x0+21, y0, CO.tx2, 8.5, 'left');
+  });
+}
+
+function updateFaceStats(){
+  const ws = parseFloat($('#sWs').value), wn = parseFloat($('#sWn').value);
+  const ok = inDom(ws, wn);
+  const nv = n3(ws, wn), rho = dens3(ws, wn);
+  $('#vWs').textContent = ws.toFixed(1);
+  $('#vWn').textContent = wn.toFixed(1);
+  $('#bigN').textContent = nv.toFixed(4);
+  $('#rN').textContent = nv.toFixed(4);
+  $('#rRho').innerHTML = rho.toFixed(4)+'<em>g/cm³</em>';
+  $('#rWw').innerHTML = Math.max(0,100-ws-wn).toFixed(1)+'<em>%</em>';
+  $('#rTot').innerHTML = (ws+wn).toFixed(1)+'<em>%</em>';
+  $('#rRatio').textContent = wn>0.1 ? (ws/wn).toFixed(2)+' : 1' : '∞';
+  const m = wMax(ws);
+  $('#rEdge').innerHTML = ok ? (m-wn).toFixed(1)+'<em>% 余量</em>' : '<span style="color:#ff7185">超出</span>';
+  if(!ok) $('#bigN').style.color = CO.rd; else $('#bigN').style.color = CO.cy;
+}
+
+/* ============================================================
+   6 · §03 等 n 线
+ *//* ============================================================ */
+function drawIso(){
+  const cv = $('#cvIso'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const P = {l: small?44:52, r:14, t:16, b:34};
+  const cw = cv.clientWidth || 500;
+  const H = Math.round(P.t + (cw-P.l-P.r)*(SAT_N/SAT_S) + P.b);
+  const {c,w,h} = prep(cv, Math.max(150, Math.min(H, small?260:400)));
+  const gx=P.l, gw=w-P.l-P.r;
+  const gh=gw*(SAT_N/SAT_S);
+  const gy=h-P.b-gh;
+  const X = ws => gx + ws/SAT_S*gw;
+  const Y = wn => gy + gh - wn/SAT_N*gh;
+
+  const target = parseFloat($('#sIso').value);
+  $('#vIso').textContent = target.toFixed(4);
+  $('#isoLab').textContent = 'n = ' + target.toFixed(4);
+
+  c.fillStyle='#08060f'; c.fillRect(0,0,w,h);
+
+  // 淡化底图
+  c.save(); c.globalAlpha=0.28;
+  paintFace(c, gx, gy, gw, gh, small?46:76, small?22:32);
+  c.restore();
+
+  // 可行域填充
+  c.save();
+  c.beginPath(); c.moveTo(X(0),Y(0)); c.lineTo(X(SAT_S),Y(0)); c.lineTo(X(0),Y(SAT_N)); c.closePath();
+  c.strokeStyle='rgba(255,138,92,.45)'; c.lineWidth=1.2; c.stroke();
+  c.restore();
+
+  // 等值线
+  const pts = isoScan(target, n3, 90);
+  if(pts.length > 2){
+    c.save();
+    c.shadowColor='rgba(232,182,76,.7)'; c.shadowBlur=12;
+    polyDP(c, pts, X, Y, '#f5d27e', 2.4, null);
+    c.restore();
+
+    // 三个代表点
+    const picks = [pts[0], pts[Math.floor(pts.length/2)], pts[pts.length-1]];
+    const tb = $('#tbIso');
+    if(tb) tb.innerHTML = '';
+    picks.forEach((p, i)=>{
+      const ws=p[0], wn=p[1];
+      c.save();
+      c.fillStyle='#08060f'; c.strokeStyle='#fff'; c.lineWidth=1.8;
+      c.beginPath(); c.arc(X(ws), Y(wn), 4.5, 0, 7); c.fill(); c.stroke();
+      c.restore();
+      txt(c, String(i+1), X(ws)+9, Y(wn)-9, 'rgba(255,255,255,.8)', 9, 'left', 600);
+      if(tb) tb.insertAdjacentHTML('beforeend',
+        '<tr><td>#'+(i+1)+'</td>'
+        +'<td class="num hl">'+ws.toFixed(1)+'</td>'
+        +'<td class="num hl2">'+wn.toFixed(1)+'</td>'
+        +'<td class="num">'+dens3(ws,wn).toFixed(4)+'</td></tr>');
+    });
+  } else {
+    txt(c, '该折射率在可行域内无解', gx+gw/2, gy+gh/2, CO.rd, 10, 'center');
+    const tb = $('#tbIso'); if(tb) tb.innerHTML='';
+  }
+
+  c.strokeStyle=CO.line; c.lineWidth=1;
+  c.strokeRect(gx+0.5, gy+0.5, gw-1, gh-1);
+  for(let b=0;b<=60;b+=10) txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  for(let b=0;b<=25;b+=5) txt(c, String(b), gx-7, Y(b), CO.tx3, 8.5, 'right');
+  txt(c, '蔗糖 (% w/w)', gx+gw/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(11, gy+gh/2); c.rotate(-Math.PI/2);
+  txt(c, 'NaCl (% w/w)', 0,0, CO.tx3, 9, 'center'); c.restore();
+}
+
+/* ============================================================
+   7 · §04 双参数求解
+   ============================================================ */
+function drawSolve(){
+  const cv = $('#cvSolve'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const P = {l: small?44:52, r:14, t:16, b:34};
+  const cw = cv.clientWidth || 500;
+  const H = Math.round(P.t + (cw-P.l-P.r)*(SAT_N/SAT_S) + P.b);
+  const {c,w,h} = prep(cv, Math.max(150, Math.min(H, small?260:400)));
+  const gx=P.l, gw=w-P.l-P.r;
+  const gh=gw*(SAT_N/SAT_S);
+  const gy=h-P.b-gh;
+  const X = ws => gx + ws/SAT_S*gw;
+  const Y = wn => gy + gh - wn/SAT_N*gh;
+
+  const nT = parseFloat($('#sSolN').value);
+  const rT = parseFloat($('#sSolR').value);
+  $('#vSn').textContent = nT.toFixed(4);
+  $('#vSr').textContent = rT.toFixed(4);
+
+  c.fillStyle='#08060f'; c.fillRect(0,0,w,h);
+  c.save(); c.globalAlpha=0.18;
+  paintFace(c, gx, gy, gw, gh, small?44:72, small?22:30);
+  c.restore();
+
+  // 两条等值线
+  const nPts = isoScan(nT, n3, 80);
+  const rPts = isoScan(rT, dens3, 80);
+  c.save(); c.shadowColor='rgba(232,182,76,.6)'; c.shadowBlur=10;
+  if(nPts.length>2) polyDP(c, nPts, X, Y, '#f5d27e', 2.2, null);
+  c.restore();
+  c.save(); c.shadowColor='rgba(157,140,255,.6)'; c.shadowBlur=10;
+  if(rPts.length>2) polyDP(c, rPts, X, Y, '#b3a5ff', 2.2, [6,4]);
+  c.restore();
+
+  // 求解
+  const sol = solve2(nT, rT);
+  const cx = X(sol.ws), cy = Y(sol.wn);
+  const ok = sol.res < 3;
+
+  // 十字线
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(255,255,255,.22)'; c.lineWidth=1;
+  line(c, cx, gy, cx, gy+gh); line(c, gx, cy, gx+gw, cy); c.restore();
+
+  c.save();
+  const gr=c.createRadialGradient(cx,cy,0,cx,cy,20);
+  gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=gr; c.beginPath(); c.arc(cx,cy,20,0,7); c.fill();
+  c.strokeStyle='#fff'; c.lineWidth=2.4;
+  c.beginPath(); c.arc(cx,cy,6,0,7); c.stroke();
+  c.restore();
+
+  // 读数
+  $('#oSs').innerHTML = sol.ws.toFixed(2)+'<span class="u">%</span>';
+  $('#oSn').innerHTML = sol.wn.toFixed(2)+'<span class="u">%</span>';
+  $('#oSres').textContent = sol.res < 1 ? '收敛' : (sol.res < 5 ? '勉强' : '可行域内无解');
+  $('#oSres').style.color = sol.res < 1 ? CO.gr : (sol.res < 5 ? CO.am : CO.rd);
+  $('#solveLab').textContent = sol.ws.toFixed(1)+' / '+sol.wn.toFixed(1);
+
+  // 与当前配方比较
+  const tws = parseFloat($('#sWs').value), twn = parseFloat($('#sWn').value);
+  const dv = Math.hypot(sol.ws-tws, sol.wn-twn);
+  $('#oSdev').textContent = ok ? dv.toFixed(2)+' %' : '—';
+
+  // 真实夹角
+  const ang = angleAt(sol.ws, sol.wn);
+  c.fillStyle='rgba(8,6,15,.75)';
+  c.fillRect(gx+gw-118, gy+4, 114, 17);
+  txt(c, '真实夹角 '+ang.toFixed(1)+'°', gx+gw-8, gy+12.5,
+      ang<15 ? 'rgba(255,138,92,.95)' : 'rgba(110,231,160,.95)', 9, 'right', 600);
+
+  // 坐标
+  c.strokeStyle=CO.line; c.lineWidth=1;
+  c.strokeRect(gx+0.5, gy+0.5, gw-1, gh-1);
+  for(let b=0;b<=60;b+=10) txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  for(let b=0;b<=25;b+=5) txt(c, String(b), gx-7, Y(b), CO.tx3, 8.5, 'right');
+  txt(c, '蔗糖 (% w/w)', gx+gw/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(11, gy+gh/2); c.rotate(-Math.PI/2);
+  txt(c, 'NaCl (% w/w)', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 图例
+  c.fillStyle='rgba(8,6,15,.72)';
+  c.fillRect(gx+4, gy+4, 88, 32);
+  const lg = [['#f5d27e','n 等值线'],['#b3a5ff','ρ 等值线']];
+  lg.forEach((it,i)=>{
+    const y0=gy+11+i*13, x0=gx+10;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=1.8; c.setLineDash(i===1?[6,4]:[]);
+    line(c, x0, y0, x0+16, y0); c.restore();
+    txt(c, it[1], x0+21, y0, CO.tx2, 8.5, 'left');
+  });
+}
+
+/* ============================================================
+   8 · §05 n–ρ 轨迹
+   ============================================================ */
+function drawRhoN(){
+  const cv = $('#cvRhoN'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?300:400);
+  const P = {l: small?48:56, r:16, t:18, b:38};
+  const XMIN=0.996, XMAX=1.360, YMIN=1.330, YMAX=1.480;
+  const X = r => P.l + (r-XMIN)/(XMAX-XMIN)*(w-P.l-P.r);
+  const Y = n => h-P.b - (n-YMIN)/(YMAX-YMIN)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let r=1.00;r<=1.36;r+=0.04){
+    c.strokeStyle=CO.grid;
+    line(c, X(r), P.t, X(r), h-P.b);
+    txt(c, r.toFixed(2), X(r), h-P.b+12, CO.tx3, 8.5, 'center');
+  }
+  for(let n=1.33;n<=1.48;n+=0.02){
+    c.strokeStyle=CO.grid;
+    line(c, P.l, Y(n), w-P.r, Y(n));
+    txt(c, n.toFixed(2), P.l-8, Y(n), CO.tx3, 8.5, 'right');
+  }
+  txt(c, '密度 ρ (g/cm³)', (P.l+w-P.r)/2, h-P.b+28, CO.tx3, 9, 'center');
+  c.save(); c.translate(12,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'n', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 蔗糖轨迹
+  const sX=[], sY=[], nX=[], nY=[];
+  for(let b=0;b<=67.001;b+=1){
+    sX.push(dens3(b,0)); sY.push(n3(b,0));
+  }
+  for(let b=0;b<=26.001;b+=0.5){
+    nX.push(dens3(0,b)); nY.push(n3(0,b));
+  }
+
+  c.save(); c.shadowColor='rgba(232,182,76,.5)'; c.shadowBlur=9;
+  c.save(); c.strokeStyle=CO.cy; c.lineWidth=2.2;
+  c.beginPath(); for(let i=0;i<sX.length;i++){ const px=X(sX[i]),py=Y(sY[i]); i?c.lineTo(px,py):c.moveTo(px,py); }
+  c.stroke(); c.restore();
+  c.restore();
+
+  c.save(); c.shadowColor='rgba(157,140,255,.5)'; c.shadowBlur=9;
+  c.save(); c.strokeStyle=CO.vi; c.lineWidth=2.2;
+  c.beginPath(); for(let i=0;i<nX.length;i++){ const px=X(nX[i]),py=Y(nY[i]); i?c.lineTo(px,py):c.moveTo(px,py); }
+  c.stroke(); c.restore();
+  c.restore();
+
+  // ρ = 1.118 竖线
+  const rT = 1.118;
+  c.save(); c.setLineDash([3,4]); c.strokeStyle='rgba(255,255,255,.32)'; c.lineWidth=1;
+  line(c, X(rT), P.t, X(rT), h-P.b); c.restore();
+
+  // 交点
+  function at(w0, fn){
+    let lo=0, hi=w0;
+    for(let k=0;k<40;k++){
+      const m=(lo+hi)/2;
+      if(fn(m) < rT) lo=m; else hi=m;
+    }
+    return (lo+hi)/2;
+  }
+  const wsH = at(68, b=>dens3(b,0));
+  const wnH = at(27, b=>dens3(0,b));
+  const nS = n3(wsH,0), nN = n3(0,wnH);
+
+  [[X(rT),Y(nS),CO.cy,'糖 '+wsH.toFixed(1)+'%'],[X(rT),Y(nN),CO.vi,'盐 '+wnH.toFixed(1)+'%']].forEach(([px,py,col,lab],i)=>{
+    c.save(); c.fillStyle='#08060f'; c.strokeStyle=col; c.lineWidth=2;
+    c.beginPath(); c.arc(px,py,5,0,7); c.fill(); c.stroke(); c.restore();
+    txt(c, lab, px+(i?-8:8), py+(i?22:-14), col, 9, i?'right':'left', 600);
+    txt(c, nS>nN ? (i?nN.toFixed(4):nS.toFixed(4)) : (i?nN.toFixed(4):nS.toFixed(4)),
+        px+(i?-8:8), py+(i?34:-26), 'rgba(148,165,187,.8)', 8, i?'right':'left');
+  });
+
+  // Δn 标注
+  const mx = X(rT), my=(Y(nS)+Y(nN))/2;
+  txt(c, 'Δn = '+Math.abs(nS-nN).toFixed(4), mx+10, my, 'rgba(255,138,92,.95)', 9.5, 'left', 600);
+
+  // 图例
+  const lg = [[CO.cy,'蔗糖–水'],[CO.vi,'NaCl–水']];
+  lg.forEach((it,i)=>{
+    const y0=P.t+10+i*15, x0=P.l+10;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=2; line(c, x0, y0, x0+17, y0); c.restore();
+    txt(c, it[1], x0+23, y0, CO.tx2, 9, 'left');
+  });
+}
+
+/* ============================================================
+   9 · §06 电导率
+   ============================================================ */
+const COND = [[0,0],[5,70],[10,126],[15,168],[20,204],[25,222],[26,226]];
+
+function drawCond(){
+  const cv = $('#cvCond'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?280:330);
+  const P = {l: small?48:54, r:16, t:18, b:36};
+  const XMAX=27, YMAX=240;
+  const X = b => P.l + (b/XMAX)*(w-P.l-P.r);
+  const Y = v => h-P.b - (v/YMAX)*(h-P.t-P.b);
+
+  c.lineWidth=1;
+  for(let b=0;b<=25;b+=5){
+    c.strokeStyle=CO.grid;
+    line(c, X(b), P.t, X(b), h-P.b);
+    txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  }
+  for(let v=0;v<=200;v+=50){
+    c.strokeStyle=CO.grid;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    txt(c, String(v), P.l-8, Y(v), CO.tx3, 8.5, 'right');
+  }
+  txt(c, 'NaCl (% w/w)', (P.l+w-P.r)/2, h-P.b+26, CO.tx3, 9, 'center');
+  c.save(); c.translate(12,(P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'κ (mS/cm)', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 纯糖线（几乎为 0）
+  c.save(); c.setLineDash([4,4]); c.strokeStyle='rgba(232,182,76,.75)'; c.lineWidth=2;
+  line(c, X(0), Y(0), X(26), Y(1.5)); c.restore();
+  txt(c, '蔗糖溶液 ≈ 0', X(13), Y(24), 'rgba(232,182,76,.85)', 8.5, 'center');
+
+  // 盐水曲线
+  c.save(); c.shadowColor='rgba(157,140,255,.55)'; c.shadowBlur=9;
+  c.strokeStyle=CO.vi; c.lineWidth=2.2;
+  c.beginPath();
+  COND.forEach((p,i)=>{ const px=X(p[0]),py=Y(p[1]); i?c.lineTo(px,py):c.moveTo(px,py); });
+  c.stroke(); c.restore();
+
+  COND.forEach(p=>{
+    c.save(); c.fillStyle='#08060f'; c.strokeStyle=CO.vi; c.lineWidth=1.5;
+    c.beginPath(); c.arc(X(p[0]), Y(p[1]), 3.6, 0, 7); c.fill(); c.stroke(); c.restore();
+  });
+
+  txt(c, '糖的黏度效应使 κ 降约 3 %（20 % 糖时）', P.l+8, P.t+10, 'rgba(148,165,187,.6)', 8, 'left');
+}
+
+/* ============================================================
+   10 · §08 温度面
+   ============================================================ */
+function drawT3(){
+  const cv = $('#cvT3'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const P = {l: small?44:50, r:14, t:16, b:32};
+  const cw = cv.clientWidth || 500;
+  const H = Math.round(P.t + (cw-P.l-P.r)*(SAT_N/SAT_S) + P.b);
+  const {c,w,h} = prep(cv, Math.max(140, Math.min(H, small?240:340)));
+  const gx=P.l, gw=w-P.l-P.r;
+  const gh=gw*(SAT_N/SAT_S);
+  const gy=h-P.b-gh;
+  const X = ws => gx + ws/SAT_S*gw;
+  const Y = wn => gy + gh - wn/SAT_N*gh;
+
+  const NX = small?40:58, NY = small?20:28;
+  const DMIN=0.9, DMAX=1.35;
+  const col = t => {
+    t=clamp(t,0,1);
+    const a=[10,10,24], b2=[157,140,255], c2=[232,182,76], d2=[255,243,206];
+    let r,g,bl;
+    if(t<0.5){
+      const f=t/0.5;
+      r=a[0]+(b2[0]-a[0])*f; g=a[1]+(b2[1]-a[1])*f; bl=a[2]+(b2[2]-a[2])*f;
+    } else if(t<0.82){
+      const f=(t-0.5)/0.32;
+      r=b2[0]+(c2[0]-b2[0])*f; g=b2[1]+(c2[1]-b2[1])*f; bl=b2[2]+(c2[2]-b2[2])*f;
+    } else {
+      const f=(t-0.82)/0.18;
+      r=c2[0]+(d2[0]-c2[0])*f; g=c2[1]+(d2[1]-c2[1])*f; bl=c2[2]+(d2[2]-c2[2])*f;
+    }
+    return 'rgb('+Math.round(r)+','+Math.round(g)+','+Math.round(bl)+')';
+  };
+
+  for(let i=0;i<NX;i++){
+    const ws=(i+0.5)/NX*SAT_S;
+    const wm=wMax(ws);
+    for(let j=0;j<NY;j++){
+      const wn=(j+0.5)/NY*SAT_N;
+      if(wn>wm) continue;
+      const v = Math.abs(dndT3(ws,wn))*1e4;
+      c.fillStyle = col((v-DMIN)/(DMAX-DMIN));
+      c.fillRect(gx+i/NX*gw, gy+(1-(j+1)/NY)*gh, gw/NX+0.7, gh/NY+0.7);
+    }
+  }
+
+  c.save(); c.setLineDash([3,4]); c.strokeStyle='rgba(255,138,92,.4)'; c.lineWidth=1;
+  line(c, X(SAT_S), Y(0), X(0), Y(SAT_N)); c.restore();
+
+  c.strokeStyle=CO.line; c.lineWidth=1;
+  c.strokeRect(gx+0.5, gy+0.5, gw-1, gh-1);
+  for(let b=0;b<=60;b+=20) txt(c, String(b), X(b), h-P.b+12, CO.tx3, 8.5, 'center');
+  for(let b=0;b<=25;b+=5) txt(c, String(b), gx-7, Y(b), CO.tx3, 8.5, 'right');
+  txt(c, '糖 (%)', gx+gw/2, h-P.b+25, CO.tx3, 9, 'center');
+  c.save(); c.translate(11, gy+gh/2); c.rotate(-Math.PI/2);
+  txt(c, '盐 (%)', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  // 色标
+  const bwd=64, bx=gx+gw-bwd-8, by=gy+8;
+  for(let i=0;i<bwd;i++){
+    c.fillStyle = col(i/bwd);
+    c.fillRect(bx+i, by, 1.4, 7);
+  }
+  txt(c, DMIN.toFixed(1), bx-3, by+3.5, 'rgba(255,255,255,.6)', 7.5, 'right');
+  txt(c, DMAX.toFixed(1), bx+bwd+3, by+3.5, 'rgba(255,255,255,.6)', 7.5, 'left');
+}
+
+/* ============================================================
+   11 · 交互与初始化
+   ============================================================ */
+function initTables(){
+  // 同密度对比
+  const tb = $('#tbRho');
+  if(tb){
+    const rT = 1.118;
+    function at(hi, fn){
+      let lo=0;
+      for(let k=0;k<44;k++){ const m=(lo+hi)/2; if(fn(m)<rT) lo=m; else hi=m; }
+      return (lo+hi)/2;
+    }
+    const wsH = at(68, b=>dens3(b,0));
+    const wnH = at(27, b=>dens3(0,b));
+    tb.insertAdjacentHTML('beforeend',
+      '<tr><td>蔗糖溶液</td><td class="num hl">'+wsH.toFixed(1)+' %</td><td class="num hl">'+n3(wsH,0).toFixed(4)+'</td></tr>'
+      +'<tr><td>NaCl 溶液</td><td class="num hl2">'+wnH.toFixed(1)+' %</td><td class="num hl2">'+n3(0,wnH).toFixed(4)+'</td></tr>'
+      +'<tr style="border-top:1px solid var(--line)"><td><b>差值</b></td><td class="num">'+(wsH-wnH).toFixed(1)+' %</td>'
+      +'<td class="num am"><b>'+Math.abs(n3(wsH,0)-n3(0,wnH)).toFixed(4)+'</b></td></tr>');
+  }
+
+  // 配方实例
+  const tr = $('#tbRecipes');
+  if(tr){
+    const recs = [
+      ['口服补液盐 ORS', 3.5, 0.9],
+      ['腌渍卤水', 5, 10],
+      ['酱油（近似）', 10, 17],
+      ['蜜饯糖渍', 40, 3],
+      ['饱和混合卤', 15, 11],
+      ['纯糖对照', 20, 0]
+    ];
+    recs.forEach(([nm, ws, wn])=>{
+      const nv = n3(ws,wn), rho = dens3(ws,wn);
+      const ba = brixApparent(nv);
+      const over = ba - ws;
+      tr.insertAdjacentHTML('beforeend',
+        '<tr><td>'+nm+'</td>'
+        +'<td class="num">'+ws.toFixed(1)+'</td>'
+        +'<td class="num">'+wn.toFixed(1)+'</td>'
+        +'<td class="num hl">'+nv.toFixed(4)+'</td>'
+        +'<td class="num">'+rho.toFixed(4)+'</td>'
+        +'<td class="num">'+ba.toFixed(1)+'</td>'
+        +'<td class="num '+(over>0.5?'bad':'')+'">'+(over>=0.05?'+':(over<=-0.05?'−':''))+Math.abs(over).toFixed(1)+'</td></tr>');
+    });
+  }
+}
+
+function updateSens(){
+  const ws = parseFloat($('#sWs').value), wn = parseFloat($('#sWn').value);
+  const h = 0.05;
+  const dndws = (n3(Math.min(ws+h,SAT_S),wn) - n3(Math.max(ws-h,0),wn))/((Math.min(ws+h,SAT_S))-(Math.max(ws-h,0)));
+  const dndwn = (n3(ws,Math.min(wn+h,wMax(ws))) - n3(ws,Math.max(wn-h,0)))/((Math.min(wn+h,wMax(ws)))-(Math.max(wn-h,0)));
+  const drdws = (dens3(Math.min(ws+h,SAT_S),wn) - dens3(Math.max(ws-h,0),wn))/((Math.min(ws+h,SAT_S))-(Math.max(ws-h,0)));
+  const drdwn = (dens3(ws,Math.min(wn+h,wMax(ws))) - dens3(ws,Math.max(wn-h,0)))/((Math.min(wn+h,wMax(ws)))-(Math.max(wn-h,0)));
+
+  const f = (v, u) => isFinite(v) ? (1e-4/Math.abs(v)).toFixed(3)+' '+u : '—';
+  $('#sensS').textContent = f(dndws, '% 糖');
+  $('#sensN').textContent = f(dndwn, '% 盐');
+  $('#sensRS').textContent = f(drdws, '% 糖');
+  $('#sensRN').textContent = f(drdwn, '% 盐');
+}
+
+function updateTemp(){
+  const T = parseFloat($('#sTT').value);
+  const ws = parseFloat($('#sWs').value), wn = parseFloat($('#sWn').value);
+  const n20 = n3(ws,wn);
+  const nTv = nT3(ws,wn,T);
+  $('#tvT').textContent = T.toFixed(1);
+  $('#tvP').textContent = ws.toFixed(0)+' / '+wn.toFixed(0);
+  $('#tvN20').textContent = n20.toFixed(4);
+  $('#tvN').textContent = nTv.toFixed(4);
+  $('#tvDn').textContent = (nTv-n20>=0?'+':'−')+Math.abs(nTv-n20).toFixed(4);
+  const dh=0.5;
+  const a1=(ws+dh>SAT_S)?SAT_S:ws+dh, a0=(ws-dh<0)?0:ws-dh;
+  const sw = (n3(a1,wn)-n3(a0,wn))/Math.max(0.01,(a1-a0));
+  const d = (nTv-n20)/sw;
+  $('#tvErr').textContent = (d>=0?'+':'−')+Math.abs(d).toFixed(2)+' %';
+}
+
+function initNav(){
+  const links = $$('.nav a');
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec')).filter(Boolean);
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting) return;
+      const i = secs.indexOf(e.target);
+      links.forEach((l,k)=> l.classList.toggle('on', k===i));
+    });
+  }, {rootMargin:'-42% 0px -50% 0px'});
+  secs.forEach(s=>io.observe(s));
+
+  const bar = $('#pbar');
+  const onScroll = ()=>{
+    const st = window.scrollY;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = clamp(st/Math.max(max,1)*100,0,100)+'%';
+  };
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+}
+
+let rzT = 0;
+function onResize(){
+  clearTimeout(rzT);
+  rzT = setTimeout(()=>{
+    heroSize = null; sizeHero();
+    buildFaceIso();
+    if(!heroOn) drawHero();
+    drawFace(); drawIso(); drawSolve(); drawRhoN(); drawCond(); drawT3();
+  }, 150);
+}
+
+function boot(){
+  initTables();
+
+  $('#sWs').addEventListener('input', ()=>{ updateFaceStats(); updateSens(); updateTemp(); drawFace(); });
+  $('#sWn').addEventListener('input', ()=>{ updateFaceStats(); updateSens(); updateTemp(); drawFace(); });
+  $('#sIso').addEventListener('input', drawIso);
+  $('#sSolN').addEventListener('input', drawSolve);
+  $('#sSolR').addEventListener('input', drawSolve);
+  $('#sTT').addEventListener('input', updateTemp);
+
+  $$('#faceSw .sw').forEach(el=>{
+    el.addEventListener('click', e=>{
+      e.preventDefault();
+      el.classList.toggle('on');
+      FACE_ON[el.dataset.f] = el.classList.contains('on');
+      drawFace();
+    });
+  });
+
+  buildFaceIso();
+  updateFaceStats(); updateSens(); updateTemp();
+  drawFace(); drawIso(); drawSolve(); drawRhoN(); drawCond(); drawT3();
+  initNav();
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const heroCv = $('#cvHero');
+  if(heroCv){
+    sizeHero();
+    if(reduce) drawHero();
+    else{
+      const hio = new IntersectionObserver(es=>{
+        es.forEach(e=>{ e.isIntersecting ? startHero() : stopHero(); });
+      }, {threshold:0});
+      hio.observe(heroCv);
+    }
+  }
+
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){
+      drawFace(); drawIso(); drawSolve(); drawRhoN(); drawCond(); drawT3();
+    }});
+  }, {threshold:.05});
+  ['#cvFace','#cvIso','#cvSolve','#cvRhoN','#cvCond','#cvT3']
+    .forEach(s=>{ const el=$(s); if(el) io.observe(el); });
+
+  window.addEventListener('resize', onResize);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden) stopHero();
+    else if(!reduce && heroCv && heroCv.getBoundingClientRect().bottom > 0) startHero();
+  });
+
+  const d = new Date();
+  $('#footStamp').textContent = d.getFullYear()+'-'
+    + String(d.getMonth()+1).padStart(2,'0')+'-'
+    + String(d.getDate()).padStart(2,'0');
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+}else{
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>

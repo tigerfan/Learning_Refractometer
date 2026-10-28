@@ -1,0 +1,2443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三色光下的折射率 · 色散是另一条通道</title>
+<style>
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#06070e;
+  --bg-2:#0a0b14;
+  --surface:#0b1119;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#e0e8f5;
+  --cy-soft:rgba(224,232,245,.14);
+  --cy-line:rgba(224,232,245,.35);
+  --am:#ffc453;
+  --am-soft:rgba(255,196,83,.13);
+  --vi:#a78bfa;
+  --vi-soft:rgba(167,139,250,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(224,232,245,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(167,139,250,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,196,83,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(224,232,245,.28),rgba(167,139,250,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#f8fbff 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(224,232,245,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,196,83,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(224,232,245,.12);color:var(--cy);border:1px solid rgba(224,232,245,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,196,83,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(167,139,250,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,196,83,.05);border:1px solid rgba(255,196,83,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(224,232,245,.045);border-color:rgba(224,232,245,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(224,232,245,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(224,232,245,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#f8fbff}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(224,232,245,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+
+/* ===== RGB 三色光专用 ===== */
+:root{
+  --cR:#ff5f6d;
+  --cG:#3ddc84;
+  --cB:#5b9dff;
+  --cRd:rgba(255,95,109,.55);
+  --cGd:rgba(61,220,132,.55);
+  --cBd:rgba(91,157,255,.55);
+}
+.spectrum-bar{
+  height:3px;width:100%;border-radius:2px;margin:0 0 18px;
+  background:linear-gradient(90deg,#5b9dff 0%,#3ddc84 50%,#ff5f6d 100%);
+  opacity:.85;
+}
+.rgb-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rgb-cell{background:var(--bg-2);padding:14px 14px 12px}
+.rgb-cell .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.rgb-cell .lab i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rgb-cell .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1}
+.rgb-cell .s{font-size:10px;color:var(--tx-3);font-family:var(--mono);margin-top:6px}
+.bigN.tri{display:flex;align-items:baseline;gap:2px;font-size:34px}
+.bigN.tri em{font-style:normal;font-size:19px;opacity:.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line2);background:var(--bg-3);color:var(--tx-2)}
+.chip i{width:6px;height:6px;border-radius:50%}
+.lam{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wl-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:6px;letter-spacing:.02em}
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 六个毫开</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 尾巴的源头</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 单参数</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 九种指纹</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 反向而行</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 结构效应</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 双波长</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 精度边界</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 公式总表</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>计算光学 · 色散</div>
+      <h1>同一个液滴，<br><em>三种颜色三个角度</em></h1>
+      <p class="hero-lead">
+        白光穿过溶液，红绿蓝并不走同一条路。差值只有 <b>0.006</b>——
+        肉眼看不见，却足以让一条彩虹分出颜色。<br>
+        这 0.006 从哪来？答案藏在 <b>91 纳米</b>的远紫外：
+        可见光只是水分子共振曲线末端的一小段尾巴。
+      </p>
+
+      <div class="chain">
+        <span>白光</span><i>→</i>
+        <span>单振子</span><i>→</i>
+        <span class="hi">λ₀ = 91 nm</span><i>→</i>
+        <span>色散 1.6%</span><i>→</i>
+        <span class="hi">Abbe 数</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">Δn（蓝 − 红）</div><div class="v">6.03<small>mK</small></div></div>
+        <div class="kpi"><div class="k">有效振子 λ₀</div><div class="v">91.3<small>nm</small></div></div>
+        <div class="kpi"><div class="k">Abbe 数 V</div><div class="v">55.5<small>—</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvDrop" height="420"></canvas>
+      <div class="cv-cap"><span>球形液滴中的主虹光路</span><span style="text-transform:none">角距已放大 10×</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================================================
+     S1 · 六个毫开
+     ============================================================ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">先量一下：三种颜色差多少</div>
+      <div class="sec-sub">
+        取三条标准光谱线——氢的 F 线（486.1 nm，蓝）、汞的 e 线（546.1 nm，绿）、
+        氢的 C 线（656.3 nm，红）。同一个液滴，三束光折射率各不相同。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>水的三色折射率（20 °C）</h3>
+      <div class="rgb-row" style="margin-bottom:16px">
+        <div class="rgb-cell">
+          <div class="lab" style="color:var(--cB)"><i style="background:var(--cB)"></i>蓝 F 线</div>
+          <div class="v" style="color:var(--cB)">1.33726</div>
+          <div class="s">486.1 nm</div>
+        </div>
+        <div class="rgb-cell">
+          <div class="lab" style="color:var(--cG)"><i style="background:var(--cG)"></i>绿 e 线</div>
+          <div class="v" style="color:var(--cG)">1.33449</div>
+          <div class="s">546.1 nm</div>
+        </div>
+        <div class="rgb-cell">
+          <div class="lab" style="color:var(--cR)"><i style="background:var(--cR)"></i>红 C 线</div>
+          <div class="v" style="color:var(--cR)">1.33123</div>
+          <div class="s">656.3 nm</div>
+        </div>
+      </div>
+
+      <div class="eq sm">
+        Δn <span class="o">=</span> n<sub>B</sub> <span class="o">−</span> n<sub>R</sub>
+        <span class="o">=</span> 1.33726 <span class="o">−</span> 1.33123
+        <span class="o">=</span> <span class="hl2">0.00603</span>
+      </div>
+      <div class="eq-note">
+        6.03 个毫开（10⁻³）。这个数字比仪器的分辨率大 60 倍，所以它测得到——但它只有折射率本身的 <b>1.8%</b>。
+      </div>
+
+      <div class="note" style="margin-top:16px">
+        <div class="ico">◆</div>
+        <div>
+          <b>为什么用这三条线，而不是 LED 的"纯红纯绿纯蓝"？</b><br>
+          F、e、C 是原子光谱线，波长精确到 0.1 nm，全世界通用。LED 的峰值波长有 ±10 nm 的批次差异，
+          用它测色散，误差比信号本身还大。
+        </div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvCurve" height="330"></canvas>
+      <div class="cv-cap"><span>n(λ) 曲线与三个采样点</span><span style="text-transform:none">400–700 nm</span></div>
+    </div>
+  </div>
+
+  <div class="grid g3" style="margin-top:18px;align-items:stretch">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:14px">色散是"导数"，不是"数值"</h3>
+      <p style="font-size:12.5px;margin-bottom:0">
+        n 本身是个绝对量，它告诉你分子有多少电子、堆得多密。
+        Δn 是 n 对波长的<b>斜率</b>，它告诉你这些电子<b>被束缚得多紧</b>。
+        两个量测的是不同的事——这正是第 07 章要用到的地方。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:14px">6 mK 有多小</h3>
+      <p style="font-size:12.5px;margin-bottom:0">
+        如果把水的折射率画成一条 1 米长的线，6 mK 只占 6 毫米。
+        但就是这个 6 毫米，让牛顿把白光拆成了七色，让彩虹有了宽度。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:14px">为什么不是"紫到红"</h3>
+      <p style="font-size:12.5px;margin-bottom:0">
+        紫光在 400 nm 附近，n 更高、偏折更大，本该是彩虹的外圈。
+        但水在紫端开始吸收，加上人眼对紫不敏感，所以主虹的外缘看起来是红的——
+        那是<b>反射光路</b>的几何反转，不是色散方向反了。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S2 · 尾巴的源头
+     ============================================================ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">这 6 mK 的来源，在 91 纳米</div>
+      <div class="sec-sub">
+        把水看成一个受迫振子：电子云被交变电场推着晃。晃得最厉害的时候（共振）在远紫外，
+        可见光离那里还有五倍远——所以它只能看到共振曲线的末端。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvTail" height="340"></canvas>
+      <div class="cv-cap"><span>单振子色散曲线</span><span style="text-transform:none">共振与透明窗口</span></div>
+    </div>
+
+    <div class="card">
+      <h3>单振子模型：一个公式说清全部</h3>
+      <div class="eq">
+        n² <span class="o">−</span> 1 <span class="o">=</span>
+        <span class="frac"><span>S λ²</span><span>λ² − λ₀²</span></span>
+      </div>
+      <div class="eq-note">
+        两个参数：振子强度 S 管"有多强"，共振波长 λ₀ 管"在哪里"。
+      </div>
+
+      <p style="font-size:12.5px;margin:16px 0 10px">
+        当 λ 远大于 λ₀ 时，把它展开：
+      </p>
+      <div class="eq sm">
+        n² <span class="o">−</span> 1 <span class="o">≈</span> S
+        <span class="brk">(</span>1 <span class="o">+</span>
+        <span class="frac"><span>λ₀²</span><span>λ²</span></span>
+        <span class="brk">)</span>
+      </div>
+      <div class="eq-note">
+        这就是 Cauchy 公式 n = A + B/λ² 的来源，其中 B = S λ₀²。
+      </div>
+
+      <div class="note ok" style="margin-top:16px">
+        <div class="ico">✓</div>
+        <div>
+          对水反解得 <b>λ₀ = 91.3 nm</b>，落在真空紫外。
+          可见光最短的 486 nm 是它的 <b>5.3 倍</b>，平方之后 λ₀²/λ² 只剩 <b>2.8%</b>。
+          色散小，不是水的性质特殊，是<b>所有透明液体都这样</b>——
+          透明的前提，就是离吸收带足够远。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>把这句话算成一个数</h3>
+    <div class="eq">
+      <span class="frac"><span>Δn</span><span>n − 1</span></span>
+      <span class="o">≈</span>
+      <span class="hi">1.10</span>
+      <span class="o">·</span>
+      λ₀²
+      <span class="brk">(</span>
+      <span class="frac"><span>1</span><span>λ<sub>R</sub>²</span></span>
+      <span class="o">−</span>
+      <span class="frac"><span>1</span><span>λ<sub>B</sub>²</span></span>
+      <span class="brk">)</span>
+      <span class="o">=</span>
+      1.10 <span class="o">×</span> 8362 <span class="o">×</span> 1.910×10⁻⁶
+      <span class="o">=</span> <span class="hl2">1.76%</span>
+    </div>
+    <div class="eq-note">
+      实测 1.80%，差 2%。前面那个 1.10 是 Lorentz–Lorenz 变换的雅可比 (n+1)(n²+2)/6n，
+      对水正好是 1.10。<b>色散率 = λ₀² × 波长跨度</b>——材料只通过 λ₀ 这一个数参与。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S3 · 单参数
+     ============================================================ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">整条曲线，只有一个自由度</div>
+      <div class="sec-sub">
+        上一节那个公式说明了一件事：给定 λ₀，色散的<b>大小</b>就定了；
+        而 n 的<b>高低</b>由振子强度 S 另外决定。两个参数，分工明确。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvL0" height="360"></canvas>
+      <div class="cv-cap"><span>拖动 λ₀，看曲线怎么转</span><span style="text-transform:none">S 固定</span></div>
+    </div>
+
+    <div class="card">
+      <h3>调 λ₀：曲线的"斜度"</h3>
+      <div class="ctrl">
+        <div class="ctrl-row">
+          <label>有效振子波长 λ₀</label>
+          <span class="val" id="vL0">91.3 nm</span>
+        </div>
+        <input type="range" id="sL0" min="50" max="150" step="0.1" value="91.3">
+      </div>
+
+      <div class="readout" style="margin-top:18px;grid-template-columns:1fr 1fr">
+        <div class="cell">
+          <div class="k">色散 Δn(B−R)</div>
+          <div class="v" id="oL0dn">6.03</div>
+          <div class="s">mK</div>
+        </div>
+        <div class="cell">
+          <div class="k">Abbe 数 V</div>
+          <div class="v" id="oL0v">55.5</div>
+          <div class="s">—</div>
+        </div>
+      </div>
+
+      <p style="font-size:12.5px;margin-top:16px;margin-bottom:10px">
+        λ₀ 变大，曲线在可见光区就更陡，V 更小。玻璃工业正是这么调色散的：
+        往冕牌玻璃里加铅，把有效振子推向长波，就得到火石玻璃。V 从 60 掉到 30 左右。
+      </p>
+
+      <div class="note warn" style="font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          <b>但 λ₀ 不是随便能调的。</b>它由分子里最强的电子跃迁决定。水的 91 nm 来自氧的孤对电子，
+          有机物的 95–105 nm 来自 C–O、O–H 的 σ 键。想大幅改它，得换分子，不是换浓度。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>这个"单参数"事实，后面要用</h3>
+    <div class="grid g3" style="gap:16px;margin-top:12px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">推论一</div>
+        <p style="font-size:12.3px;margin:0">
+          色散<b>不能</b>独立告诉我浓度。因为浓度同时抬高 n 和 Δn，两者按固定比例走——
+          多测一个数字，得到的还是同一条信息。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">推论二</div>
+        <p style="font-size:12.3px;margin:0">
+          但色散<b>能</b>告诉我溶质是什么。因为不同溶质的 λ₀ 不同，
+          同样的 n 增量会带来不同的 Δn 增量。这就是第 04 章的分组。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">推论三</div>
+        <p style="font-size:12.3px;margin:0">
+          如果两种溶质的色散响应方向相反，那两个数字就构成了<b>独立的二维坐标</b>——
+          上一页那个 9.9° 的病态问题，有解了。见第 07 章。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S4 · 九种指纹
+     ============================================================ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">九种溶质：n 挤成一条线，V 散成一片</div>
+      <div class="sec-sub">
+        同一个浓度（约 10%）下，把九种甜味剂和甘油的折射率画在横轴、Abbe 数画在纵轴。
+        结果很干净：<b>横轴几乎分不开，纵轴按分子家族分层。</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvFinger" height="400"></canvas>
+      <div class="cv-cap"><span>n 与 Abbe 数的二维分布 · 点色对应分子族</span><span style="text-transform:none">约 10% · 室温</span></div>
+    </div>
+
+    <div class="card">
+      <h3>三组，按分子量排</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>溶质</th>
+            <th class="num">n<sub>G</sub></th>
+            <th class="num">Δn mK</th>
+            <th class="num">V</th>
+          </tr>
+        </thead>
+        <tbody id="tbSweet"></tbody>
+      </table>
+      <p style="font-size:10.5px;color:var(--tx-3);margin:10px 0 0;font-family:var(--mono);line-height:1.7">
+        数据：IOP Conf. Ser. 794 (2017) 012033，405/532/632.8 nm 三点激光拟合。<br>
+        原文的 V<sub>d</sub> 与这里的 V<sub>RGB</sub>（G 取 546.1）相差 0.2–0.9，属波长定义差异。
+      </p>
+
+      <div class="note ok" style="margin-top:16px">
+        <div class="ico">✓</div>
+        <div>
+          n<sub>G</sub> 的极差只有 <b>5.2 mK</b>（0.39%），V 的极差有 <b>13.3</b>（22%）。
+          论区分能力，<b>Abbe 数是折射率的 57 倍</b>。
+          同样一台仪器，测 n 分不开的两种糖，测 V 一眼就分开。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g3" style="margin-top:18px;align-items:stretch">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:14px">单糖：V ≈ 56–57</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        葡萄糖、果糖。分子小、羟基密度高，有效振子偏长波，色散强。
+        果糖的 V 比葡萄糖还低 1.5——两者用折射率几乎分不开，但果糖的色散更强。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:14px">二糖：V ≈ 65–67</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        蔗糖、乳糖。两个环通过糖苷键连起来，分子量翻倍，但色散<b>反而更弱</b>。
+        这不符合"电子越多色散越强"的直觉——原因见第 06 章。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:14px">糖醇与甘油：V ≈ 59–69</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        山梨醇 59.3、异麦芽酮糖醇 60.0、甘油 69.1。
+        甘油只有三个碳，V 却比蔗糖还高——<b>链状分子比环状分子色散弱</b>，这是结构而不是大小的效应。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S5 · 反向而行
+     ============================================================ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">糖把色散压下去，盐把它抬起来</div>
+      <div class="sec-sub">
+        这是整页最反直觉的地方。蔗糖让折射率升高 1.4%，同时让色散<b>下降</b> 14%；
+        盐让折射率升高 1.3%，色散却<b>上升</b> 7%。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvPhase" height="400"></canvas>
+      <div class="cv-cap"><span>n 增量 与 色散变化 的相图</span><span style="text-transform:none">零线上下分组</span></div>
+    </div>
+
+    <div class="card">
+      <h3>10% 浓度下的对照</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>溶质</th>
+            <th class="num">n 增量 mK</th>
+            <th class="num">Δn 变化</th>
+            <th class="num">V</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>水（基准）</td>
+            <td class="num">0.0</td>
+            <td class="num">—</td>
+            <td class="num">55.5</td>
+          </tr>
+          <tr>
+            <td style="color:var(--am)">蔗糖 10%</td>
+            <td class="num">+14.2</td>
+            <td class="num" style="color:var(--am)">−14.1%</td>
+            <td class="num">67.3</td>
+          </tr>
+          <tr>
+            <td style="color:var(--cB)">NaCl 10%</td>
+            <td class="num">+17.5</td>
+            <td class="num" style="color:var(--cB)">+7.4%</td>
+            <td class="num">54.3</td>
+          </tr>
+          <tr>
+            <td style="color:var(--cB)">NaCl 26%（饱和）</td>
+            <td class="num">+46.9</td>
+            <td class="num" style="color:var(--cB)">+20.5%</td>
+            <td class="num">52.5</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="eq sm" style="margin-top:18px">
+        <span class="frac"><span>d Δn</span><span>d n</span></span>
+        <span class="o">=</span>
+        <span class="hl2">−0.060</span>（蔗糖）
+        <span style="opacity:.4;margin:0 6px">/</span>
+        <span class="hl">+0.026</span>（盐）
+      </div>
+      <div class="eq-note">
+        同样换来 1 mK 的折射率增量，蔗糖让色散减少 0.06 mK，盐让它增加 0.026 mK。
+        <b>符号相反</b>——这才是两条通道能联立求解的根本原因。
+      </div>
+
+      <div class="note" style="margin-top:16px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          26% 盐水的 n 增量（+46.9 mK）是蔗糖 10% 的 3.3 倍，但色散只多涨了 20.5%。
+          拆开看：密度从 0.998 涨到 1.197（<b>+19.9%</b>），而归一化色散只 <b>+5.7%</b>——
+          这 20.5% 里大部分是密度堆出来的，不是"盐让水变得更色散"。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>拆开看：一个靠结构，一个靠密度</h3>
+    <table style="margin-bottom:4px">
+      <thead>
+        <tr>
+          <th>分量</th>
+          <th class="num">蔗糖 10%</th>
+          <th class="num">NaCl 26%</th>
+          <th>含义</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>n<sub>G</sub> − 1 的相对变化</td>
+          <td class="num">+4.2%</td>
+          <td class="num">+14.0%</td>
+          <td style="font-size:11.5px;color:var(--tx-2)">溶液变"厚"了多少</td>
+        </tr>
+        <tr>
+          <td>归一化色散 1/V 的变化</td>
+          <td class="num" style="color:var(--am)">−17.6%</td>
+          <td class="num" style="color:var(--cB)">+5.7%</td>
+          <td style="font-size:11.5px;color:var(--tx-2)">色散强度本身变了多少</td>
+        </tr>
+        <tr style="border-top:1px solid var(--line2)">
+          <td><b>Δn 的相对变化</b></td>
+          <td class="num"><b>−14.1%</b></td>
+          <td class="num"><b>+20.5%</b></td>
+          <td style="font-size:11.5px;color:var(--tx-2)">两者相乘</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note warn" style="margin-top:16px;font-size:12.3px">
+      <div class="ico">⚠</div>
+      <div>
+        <b>盐那 +20.5% 有水分。</b>拆开看，色散强度本身只涨了 5.7%，
+        其余来自 n 的抬升（密度多塞了 20% 的分子）。换句话说，<b>盐水并没有让水变得更色散，
+        只是变得更密</b>。<br><br>
+        蔗糖正相反：n 只涨 4.2%，归一化色散却掉了 17.6%——这是<b>真正的结构变化</b>，
+        稀释效应解释不了。
+      </div>
+    </div>
+
+    <div class="eq-note" style="margin-top:12px">
+      蔗糖只有 10% 一个浓度点有公开的三波长数据，无法给出趋势线。盐水有 0–26% 的模型曲线，
+      但它是用 k<sub>app</sub> 加和算的，本身已含假设。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S6 · 结构效应
+     ============================================================ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">色散看的是"电子云有多难推"，不是"有多少电子"</div>
+      <div class="sec-sub">
+        折射率正比于极化率的总量，色散正比于极化率对频率的<b>导数</b>。
+        前者数电子，后者看这些电子被束缚在多深的势阱里。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvL0Pos" height="320"></canvas>
+      <div class="cv-cap"><span>三种介质的有效振子位置</span><span style="text-transform:none">可见光区已标出</span></div>
+    </div>
+
+    <div class="card">
+      <h3>把 Abbe 数换算成 λ₀</h3>
+      <table style="margin-bottom:14px">
+        <thead>
+          <tr>
+            <th>介质</th>
+            <th class="num">V</th>
+            <th class="num">λ₀ 反推</th>
+            <th class="num">相对水</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color:var(--am)">蔗糖 10%</td>
+            <td class="num">67.3</td>
+            <td class="num">82.9 nm</td>
+            <td class="num" style="color:var(--am)">−9.2%</td>
+          </tr>
+          <tr>
+            <td>水</td>
+            <td class="num">55.5</td>
+            <td class="num">91.3 nm</td>
+            <td class="num">—</td>
+          </tr>
+          <tr>
+            <td style="color:var(--cB)">NaCl 26%</td>
+            <td class="num">52.5</td>
+            <td class="num">93.9 nm</td>
+            <td class="num" style="color:var(--cB)">+2.8%</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="font-size:12.5px;margin-bottom:10px">
+        <b style="color:var(--am)">糖把振子推向短波（蓝移）。</b>
+        常见解释是：蔗糖挤进水分子之间，把连续的氢键网络切碎；氢键会拉低 O–H 反键轨道的能量，
+        网络碎了，有效跃迁就回升到更高能量。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        <b style="color:var(--tx)">但这个解释有漏洞。</b>
+        葡萄糖和果糖的羟基比蔗糖<b>更密</b>（5 个 OH / 180 g，蔗糖是 8 个 / 342 g），
+        按"破坏氢键"的逻辑应该压得更狠——实测却几乎不动（V 57.3 和 55.8，水是 55.5）。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        <b style="color:var(--cB)">盐把振子推向长波（红移），但幅度很小。</b>
+        离子水合增强了局部静电结构，Cl⁻ 电子云大、束缚松，λ₀ 只 +2.8%。
+        这 2.8% 在 26% 浓度下只换来 5.7% 的归一化色散变化——前面那 +20.5% 有约三分之二来自 n 的抬升。
+      </p>
+
+      <div class="note warn" style="margin-top:14px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          <b>方向是实测的，机制是假说。</b>
+          λ₀ 的移动量是从实测 V 反推的，再倒过来"解释"它，逻辑上是循环的。
+          真正的第一性计算需要含时密度泛函，这里没有做。<br>
+          可以确证的只有两件事：<b>符号相反</b>（糖降盐升），以及
+          <b>它对分子连接方式敏感</b>（见下）。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>最干净的对照：蔗糖 vs 乳糖</h3>
+    <p style="font-size:12.5px;margin-bottom:14px">
+      这两个分子<b>完全同分异构</b>：分子式一样、分子量一样、羟基数量一样。
+      差别只有糖苷键的连接方式——蔗糖是 α1→2（葡萄糖 + 果糖），乳糖是 β1→4（半乳糖 + 葡萄糖）。
+    </p>
+    <table style="margin-bottom:10px">
+      <thead>
+        <tr>
+          <th>项目</th>
+          <th class="num">蔗糖</th>
+          <th class="num">乳糖</th>
+          <th class="num">差</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>分子式</td><td class="num">C₁₂H₂₂O₁₁</td><td class="num">C₁₂H₂₂O₁₁</td><td class="num">无</td></tr>
+        <tr><td>摩尔质量</td><td class="num">342.30</td><td class="num">342.30</td><td class="num">无</td></tr>
+        <tr><td>羟基个数</td><td class="num">8</td><td class="num">8</td><td class="num">无</td></tr>
+        <tr style="border-top:1px solid var(--line2)">
+          <td>n<sub>G</sub></td><td class="num">1.34865</td><td class="num">1.34890</td>
+          <td class="num" style="color:var(--tx-3)">0.25 mK</td></tr>
+        <tr>
+          <td>Δn(B−R)</td><td class="num">5.18</td><td class="num">5.33</td>
+          <td class="num" style="color:var(--am)">+0.15 mK</td></tr>
+        <tr>
+          <td><b>Abbe 数 V</b></td><td class="num"><b>67.3</b></td><td class="num"><b>65.4</b></td>
+          <td class="num" style="color:var(--am)"><b>−1.9</b></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note ok" style="margin:0;font-size:12.3px">
+      <div class="ico">✓</div>
+      <div>
+        <b>这是整个系列最干净的一条边界。</b>
+        折射率几乎完全一样（差 0.25 mK），Abbe 数却差 1.9（3%）。<br>
+        换句话说：<b>原子加和能算出 n，算不出 V。</b>
+        因为 n 只看"有多少电子"，而 V 看"这些电子被摆在什么能级上"——
+        后者由连接方式决定，不是组分之和。
+      </div>
+    </div>
+    <div class="eq-note" style="margin-top:12px">
+      这也回收了第一页的结论：蔗糖的 R<sub>m</sub> 能从 45 个原子加成出来，是因为 R<sub>m</sub> 是总量；
+      一旦问"色散有多强"，加和就失效了。同一套分子，两种命运。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S7 · 双波长
+     ============================================================ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">两条通道，能不能解开上一页的死结</div>
+      <div class="sec-sub">
+        三元体系那一页的结论是：n 和 ρ 的等值线夹角只有 9.9°，方程组病态。
+        现在换一条通道试试——用 n 和 Δn，方向和密度法完全不同。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvSep" height="420"></canvas>
+      <div class="cv-cap"><span>n–Δn 平面上的浓度网格</span><span style="text-transform:none">糖 / 盐 两个方向</span></div>
+    </div>
+
+    <div class="card">
+      <h3>夹角只有 4.9°，但方向相反</h3>
+      <div class="eq sm">
+        <span class="frac"><span>∂Δn</span><span>∂n</span></span>
+        <span class="o">=</span>
+        <span class="hl2">−0.060</span>（糖）
+        <span style="opacity:.4;margin:0 5px">/</span>
+        <span class="hl">+0.026</span>（盐）
+      </div>
+      <div class="eq-note">
+        换算成方向角：糖 −3.4°，盐 +1.5°。夹角 4.9°——
+        <b>比密度法的 9.9° 还窄</b>。
+      </div>
+
+      <p style="font-size:12.5px;margin:16px 0 10px">
+        那为什么还要用它？因为<b>可测精度不同</b>：
+      </p>
+      <table style="margin-bottom:6px">
+        <thead>
+          <tr><th>通道</th><th class="num">典型精度</th><th class="num">折算到糖度</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>密度 ρ</td><td class="num">±0.0002 g/cm³</td><td class="num">±0.05%</td></tr>
+          <tr><td>折射率 n</td><td class="num">±1×10⁻⁵</td><td class="num">±0.007%</td></tr>
+          <tr><td style="color:var(--cy)">色散 Δn</td><td class="num">±1×10⁻⁶</td><td class="num">±0.012%</td></tr>
+        </tbody>
+      </table>
+      <div class="eq-note" style="margin-bottom:14px">
+        色散用差分法测：同一束光分两路，比相移，共模的温度漂移和光源波动全部抵消。
+        这比测密度高两个量级，正好补上 4.9° 的窄角。
+      </div>
+
+      <div class="note ok" style="font-size:12.2px">
+        <div class="ico">✓</div>
+        <div>
+          综合下来：糖度 ±0.08%、盐度 ±0.07%。比单组分测量差 10 倍，
+          但换来的是<b>两个未知数都有解</b>——而单靠 n 一个数，这个方程组无解。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>和密度法正面比一次</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>方案</th>
+          <th class="num">等值线夹角</th>
+          <th>通道精度</th>
+          <th>主要误差源</th>
+          <th>结论</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>n + ρ（三元页）</td>
+          <td class="num">9.9°</td>
+          <td>ρ ±0.0002 g/cm³</td>
+          <td>温度对密度的影响（0.02%/K）</td>
+          <td style="font-size:11.8px">可用，但需恒温</td>
+        </tr>
+        <tr>
+          <td style="color:var(--cy)">n + Δn（本页）</td>
+          <td class="num" style="color:var(--am)">4.9°</td>
+          <td>Δn ±1×10⁻⁶</td>
+          <td>色散本身的模型误差</td>
+          <td style="font-size:11.8px">更窄，但通道更准</td>
+        </tr>
+        <tr>
+          <td>三波长全用</td>
+          <td class="num">—</td>
+          <td>n<sub>R</sub>, n<sub>G</sub>, n<sub>B</sub></td>
+          <td>过定，可自校正</td>
+          <td style="font-size:11.8px">工业仪的实际做法</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="eq-note" style="margin-top:12px">
+      商业多波长折光仪（如 PAL-BX-SALT 一类）用的就是第三行：测三个波长，
+      用 n<sub>G</sub> 定总量、用 n<sub>B</sub>−n<sub>R</sub> 定成分，再用第三个波长做温度自校正。
+      本章的 4.9° 是这套方案的下限——真实仪器靠"多测一个波长"把信息量补回来。
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S8 · 精度边界
+     ============================================================ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">这一页哪些是真数据，哪些是我算的</div>
+      <div class="sec-sub">
+        和前几页不同，这页的"色散"没法从头第一性推——它需要一个 λ₀，
+        而 λ₀ 只能从实测反推。所以数据来源必须逐条标清楚。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>数据来源与可信度</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>内容</th>
+          <th>来源</th>
+          <th>性质</th>
+          <th>可信度</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>水的 RGB 折射率</td>
+          <td style="font-size:11.8px">Kedenburg 2012 Sellmeier；D/F/C 线锚定标准值</td>
+          <td><span class="chip" style="color:var(--gr);border-color:rgba(94,230,168,.35)"><i style="background:var(--gr)"></i>实测</span></td>
+          <td>±1×10⁻⁵</td>
+        </tr>
+        <tr>
+          <td>九种甜味剂的 n 与 V</td>
+          <td style="font-size:11.8px">IOP Conf. Ser. 794 (2017) 012033，405/532/632.8 nm 激光</td>
+          <td><span class="chip" style="color:var(--gr);border-color:rgba(94,230,168,.35)"><i style="background:var(--gr)"></i>实测</span></td>
+          <td>n ±1×10⁻⁴</td>
+        </tr>
+        <tr>
+          <td>蔗糖溶液色散随浓度</td>
+          <td style="font-size:11.8px">仅 10% 一个点；无高浓度三波长数据</td>
+          <td><span class="chip" style="color:var(--am);border-color:rgba(255,196,83,.35)"><i style="background:var(--am)"></i>单点</span></td>
+          <td>趋势不可外推</td>
+        </tr>
+        <tr>
+          <td>NaCl 溶液色散</td>
+          <td style="font-size:11.8px">本页模型：k<sub>app</sub> 加和 + 单振子 λ₀ 插值</td>
+          <td><span class="chip" style="color:var(--cR);border-color:rgba(255,95,109,.35)"><i style="background:var(--cR)"></i>模型</span></td>
+          <td>未实测验证</td>
+        </tr>
+        <tr>
+          <td>双波长分离精度</td>
+          <td style="font-size:11.8px">误差传播，假设 Δn 精度 10⁻⁶</td>
+          <td><span class="chip" style="color:var(--cB);border-color:rgba(91,157,255,.35)"><i style="background:var(--cB)"></i>推算</span></td>
+          <td>依赖仪器假设</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid g2" style="margin-top:18px;align-items:start;gap:18px">
+    <div class="card" style="margin:0">
+      <h3>三个必须说清的限制</h3>
+      <p style="font-size:12.3px">
+        <b>① 盐水的色散是模型，不是实测。</b>
+        我用 k<sub>app</sub>=0.1570 加上晶体的 λ₀ 做插值，算出 26% 时 V=52.5。
+        这个数在合理范围（水 55.5、晶体 42.9 之间），但没有一篇文献能直接对上。
+        如果你要用它做定量，先找一台能测 Δn 的仪器校一下。
+      </p>
+      <p style="font-size:12.3px">
+        <b>② 蔗糖只有一个浓度点。</b>
+        10% 的数据来自三点激光拟合，参数（s, λ₀）是三个点解两个数，自由度只有 1。
+        说"糖让 V 涨 21%"是从这一个点算的，<b>不能说它随浓度线性变化</b>。
+      </p>
+      <p style="font-size:12.3px;margin-bottom:0">
+        <b>③ λ₀ 的反推用了两项 Cauchy。</b>
+        真实曲线还带 λ⁻⁴ 项。我检查过：在 400–700 nm 内，两项与三项的差 &lt; 3×10⁻⁶，
+        对 V 的影响 &lt; 0.05。这个近似是安全的。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>和前几页的关系</h3>
+      <p style="font-size:12.3px">
+        蔗糖页从 45 个原子算出 R<sub>m</sub>，<b>零拟合</b>。
+        盐水页的 k=0.1570 是<b>一个拟合参数</b>。
+        三元页的密度是<b>近似加和</b>。
+        这一页的 λ₀ 是<b>从实测反推</b>——自由度最少，但依赖最多。
+      </p>
+      <div class="note" style="font-size:12.2px;margin-top:14px">
+        <div class="ico">◆</div>
+        <div>
+          这正好是一条可信度的阶梯：<br>
+          <b>原子加和</b>（可预测）→ <b>表观参数</b>（可拟合）→ <b>反推参数</b>（可描述）。<br>
+          越往下，"算出来"的成分越少，"测出来"的成分越多。
+        </div>
+      </div>
+      <p style="font-size:12.3px;margin-top:14px;margin-bottom:0">
+        但即使在这一层，仍然有一件事是<b>算出来的</b>而不是测出来的：
+        色散率的 1.6% 这个量级，完全由 λ₀/λ ≈ 0.17 决定。<br>
+        换句话说——<b>透明液体的色散必然很小</b>，这是可以推的；
+        小到多少，才需要测。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     S9 · 公式总表
+     ============================================================ -->
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">公式总表</div>
+      <div class="sec-sub">按推导顺序排列，每一步的输入输出都可复算。</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <div class="formula-lab">① 单振子色散</div>
+      <div class="eq sm">
+        n² <span class="o">−</span> 1 <span class="o">=</span>
+        <span class="frac"><span>S λ²</span><span>λ² − λ₀²</span></span>
+      </div>
+      <div class="eq-note">S 为振子强度，λ₀ 为有效共振波长</div>
+
+      <div class="formula-lab">② 长波展开（Cauchy）</div>
+      <div class="eq sm">
+        n <span class="o">≈</span> A <span class="o">+</span>
+        <span class="frac"><span>B</span><span>λ²</span></span>
+        <span class="o">,</span>
+        B <span class="o">=</span> S λ₀² <span class="o">/</span> 2√A
+      </div>
+      <div class="eq-note">水的 A=1.32390，B=3156.4 nm²</div>
+
+      <div class="formula-lab">③ 色散率</div>
+      <div class="eq sm">
+        <span class="frac"><span>Δn</span><span>n − 1</span></span>
+        <span class="o">≈</span>
+        J <span class="o">·</span> λ₀²
+        <span class="brk">(</span>
+        <span class="frac"><span>1</span><span>λ<sub>R</sub>²</span></span>
+        <span class="o">−</span>
+        <span class="frac"><span>1</span><span>λ<sub>B</sub>²</span></span>
+        <span class="brk">)</span>
+      </div>
+      <div class="eq-note">J = (n+1)(n²+2)/6n，对水取 1.10</div>
+
+      <div class="formula-lab">④ Abbe 数</div>
+      <div class="eq sm">
+        V <span class="o">=</span>
+        <span class="frac"><span>n<sub>G</sub> − 1</span><span>n<sub>B</sub> − n<sub>R</sub></span></span>
+      </div>
+      <div class="eq-note">G=546.1，B=486.1，R=656.3 nm</div>
+    </div>
+
+    <div class="card" style="margin:0">
+      <div class="formula-lab">⑤ 彩虹角（球形液滴）</div>
+      <div class="eq sm">
+        θ <span class="o">=</span> 4r <span class="o">−</span> 2i
+        <span class="o">,</span>
+        sin²i <span class="o">=</span>
+        <span class="frac"><span>4 − n²</span><span>3</span></span>
+      </div>
+      <div class="eq-note">水 42.3°，60 Brix 糖浆 28.6°</div>
+
+      <div class="formula-lab">⑥ 双波长分离</div>
+      <div class="eq sm">
+        n <span class="o">=</span> 1.416 c<sub>糖</sub> <span class="o">+</span> 1.748 c<sub>盐</sub>
+      </div>
+      <div class="eq sm" style="margin-top:6px">
+        Δn <span class="o">=</span> <span class="hl2">−0.085</span> c<sub>糖</sub>
+        <span class="o">+</span> <span class="hl">0.045</span> c<sub>盐</sub>
+      </div>
+      <div class="eq-note">
+        系数单位 mK/%。第一列符号相反，是方程组可解的根本原因。行列式 0.214，条件数 760——可解，但放大误差。
+      </div>
+
+      <div class="formula-lab">⑦ 三色波长</div>
+      <div class="eq sm" style="font-size:11.5px">
+        λ<sub>B</sub> <span class="o">=</span> 486.1 nm　<span style="color:var(--tx-3)">F 线 · 氢</span>
+      </div>
+      <div class="eq sm" style="font-size:11.5px;margin-top:4px">
+        λ<sub>G</sub> <span class="o">=</span> 546.1 nm　<span style="color:var(--tx-3)">e 线 · 汞</span>
+      </div>
+      <div class="eq sm" style="font-size:11.5px;margin-top:4px">
+        λ<sub>R</sub> <span class="o">=</span> 656.3 nm　<span style="color:var(--tx-3)">C 线 · 氢</span>
+      </div>
+      <div class="eq-note">
+        工业上更常用 d 线 587.6 nm（氦）或 D 线 589.3 nm（钠）作参考，
+        与本章的 V<sub>RGB</sub> 换算差异 &lt; 0.5。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>一页纸的结论</h3>
+    <div class="grid g3" style="gap:16px;margin-top:8px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cB);letter-spacing:.08em;margin-bottom:6px">01 / 大小</div>
+        <p style="font-size:12.3px;margin:0">
+          三色光的折射率只差 6 mK。原因不是水特殊，而是<b>可见光离水的电子共振还差五倍</b>——
+          所有透明液体都这样。色散率 ∝ (λ₀/λ)²，λ₀/λ≈0.17，所以只有 1.6%。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--am);letter-spacing:.08em;margin-bottom:6px">02 / 方向</div>
+        <p style="font-size:12.3px;margin:0">
+          糖让色散<b>变弱</b>（V 55.5→67.3），盐让它<b>变强</b>（V 55.5→52.5）。
+          前者是真结构效应（归一化色散 −17.6%），后者主要是密度（+19.9%）。
+        </p>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--cy);letter-spacing:.08em;margin-bottom:6px">03 / 用途</div>
+        <p style="font-size:12.3px;margin:0">
+          色散测不了浓度（它和 n 共线），但能测<b>成分</b>。
+          和 n 联立，夹角 4.9°，靠 Δn 的差分精度补回来——这是多波长折光仪的原理。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="wrap" style="padding:56px 0 64px;border-top:1px solid var(--line);margin-top:40px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--tx-3);letter-spacing:.1em;margin-bottom:8px">折光计 · 系列之四</div>
+      <div style="font-size:12.5px;color:var(--tx-2);line-height:1.8">
+        单文件，零外部依赖。<br>
+        数据：Kedenburg 2012（水）、Li 1976（NaCl 晶体）、IOP Conf. Ser. 794 012033（甜味剂）。
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--tx-3);text-align:right;line-height:1.9">
+      <div>蔗糖 · 加和成立</div>
+      <div>盐水 · 加和失效</div>
+      <div>三元 · 欠定</div>
+      <div style="color:var(--am)">三色 · 另一条通道</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 常量
+   ============================================================ */
+const CO = {
+  cy:'#e0e8f5', am:'#ffc453', vi:'#a78bfa', rd:'#ff7185', gr:'#5ee6a8',
+  cR:'#ff5f6d', cG:'#3ddc84', cB:'#5b9dff',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#12172a', grid2:'#1a2033', line:'#232c44'
+};
+
+// 三条标准光谱线 + D 线
+const LR = 656.3, LG = 546.1, LB = 486.1, LD = 589.3;
+
+// 水：Cauchy 两项式，锚定 20 °C 标准值 n_D=1.33299、n_F-n_C=0.00603
+const WA = 1.323901, WB = 3156.4;
+const nW = lam => WA + WB/(lam*lam);
+
+// 单振子有效波长（由 F/C 反推）
+const L0W = 91.3;
+const Y0W = L0W*L0W;
+
+// 溶液 Sellmeier：n²−1 = s λ²/(λ²−λs²)
+const nSol = (s, ls, lam) => {
+  const L2 = lam*lam, l2 = ls*ls;
+  return Math.sqrt(1 + s*L2/(L2-l2));
+};
+
+// IOP 2017 甜味剂实测参数
+const SW = [
+  {n:'葡萄糖',      s:0.786, ls:100.68, g:'单糖'},
+  {n:'果糖',        s:0.789, ls:102.03, g:'单糖'},
+  {n:'蔗糖',        s:0.795, ls: 93.19, g:'二糖'},
+  {n:'乳糖',        s:0.795, ls: 94.47, g:'二糖'},
+  {n:'山梨醇',      s:0.792, ls: 99.04, g:'糖醇'},
+  {n:'异麦芽酮糖醇', s:0.793, ls: 98.55, g:'糖醇'},
+  {n:'甘油',        s:0.788, ls: 91.98, g:'甘油'},
+  {n:'糖精钠',      s:0.797, ls:100.80, g:'人工'},
+  {n:'甜蜜素钠',    s:0.790, ls: 94.23, g:'人工'}
+];
+const GC = {'单糖':'#5b9dff','二糖':'#ffc453','糖醇':'#3ddc84','甘油':'#a78bfa','人工':'#ff7185'};
+
+SW.forEach(o=>{
+  o.R = nSol(o.s,o.ls,LR);
+  o.G = nSol(o.s,o.ls,LG);
+  o.B = nSol(o.s,o.ls,LB);
+  o.D = nSol(o.s,o.ls,LD);
+  o.dn = o.B - o.R;
+  o.V = (o.G-1)/o.dn;
+});
+
+// 水的基准
+const WR = nW(LR), WG = nW(LG), WBn = nW(LB), WD = nW(LD);
+const WDN = WBn - WR;
+const WV = (WG-1)/WDN;
+
+// 盐水：k_app 加和 + 单振子 λ0 插值
+const DENS = [[0,0.9982],[5,1.0340],[10,1.0707],[15,1.1085],[20,1.1478],[26,1.1972]];
+const KS = 0.1570, KW = 0.206063;
+const Y0S = 98.79*98.79;
+const fD = (lam,y0) => (lam*lam/(lam*lam-y0))/(LD*LD/(LD*LD-y0));
+
+function nSalt(c, lam){
+  const w = c/100;
+  const rho = dens(c);
+  const x = rho*(w*KS*fD(lam,Y0S) + (1-w)*KW*fD(lam,Y0W));
+  return Math.sqrt((1+2*x)/(1-x));
+}
+
+/* ============================================================
+   1 · 工具
+   ============================================================ */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+const lerp = (a,b,t) => a+(b-a)*t;
+
+function pchip(xs, ys){
+  const n = xs.length, h = [], d = [], m = new Array(n);
+  for(let i=0;i<n-1;i++){ h[i]=xs[i+1]-xs[i]; d[i]=(ys[i+1]-ys[i])/h[i]; }
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(d[i-1]*d[i] <= 0){ m[i]=0; }
+    else{
+      const w1 = 2*h[i]+h[i-1], w2 = h[i]+2*h[i-1];
+      m[i] = (w1+w2)/(w1/d[i-1] + w2/d[i]);
+    }
+  }
+  return x => {
+    if(x <= xs[0]) return ys[0] + m[0]*(x-xs[0]);
+    if(x >= xs[n-1]) return ys[n-1] + m[n-1]*(x-xs[n-1]);
+    let i=0; while(i<n-2 && x>xs[i+1]) i++;
+    const t=(x-xs[i])/h[i], t2=t*t, t3=t2*t;
+    return (2*t3-3*t2+1)*ys[i] + (t3-2*t2+t)*h[i]*m[i]
+         + (-2*t3+3*t2)*ys[i+1] + (t3-t2)*h[i]*m[i+1];
+  };
+}
+const dens = pchip(DENS.map(r=>r[0]), DENS.map(r=>r[1]));
+
+function prep(cv, cssH){
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(200, cv.clientWidth || 400);
+  const h = cssH || 300;
+  cv.style.height = h + 'px';
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width  = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+
+function txt(c, s, x, y, col, size, align, weight){
+  c.save();
+  c.fillStyle = col || CO.tx2;
+  c.font = (weight||400) + ' ' + (size||10) + 'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  c.textAlign = align || 'left';
+  c.textBaseline = 'middle';
+  c.fillText(s, x, y);
+  c.restore();
+}
+
+function line(c,x1,y1,x2,y2){
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+}
+
+function path(c, xs, ys, X, Y, col, wd, dash){
+  c.save();
+  c.strokeStyle=col; c.lineWidth=wd||1.6; c.setLineDash(dash||[]);
+  c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  for(let i=0;i<xs.length;i++){
+    const px=X(xs[i]), py=Y(ys[i]);
+    i ? c.lineTo(px,py) : c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+
+function dot(c, x, y, r, fill, stroke, wd){
+  c.beginPath(); c.arc(x,y,r,0,6.2832);
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.5; c.stroke(); }
+}
+
+/* ============================================================
+   2 · Hero：液滴中的主虹
+   ============================================================ */
+let heroT = 0, heroOn = false, heroRAF = 0;
+
+function drawDrop(){
+  const cv = $('#cvDrop'); if(!cv) return;
+  const {c,w,h} = prep(cv, Math.min(430, Math.max(340, w0(cv))));
+  function w0(el){ return el.clientWidth * 0.92; }
+
+  const cx = w*0.40, cy = h*0.385;
+  const R  = Math.min(w*0.212, h*0.255);
+  const t  = heroT;
+
+  c.fillStyle = '#05060d'; c.fillRect(0,0,w,h);
+
+  // 液滴
+  const dg = c.createRadialGradient(cx-R*0.3, cy-R*0.35, R*0.1, cx, cy, R);
+  dg.addColorStop(0,'rgba(224,232,245,.115)');
+  dg.addColorStop(.72,'rgba(224,232,245,.035)');
+  dg.addColorStop(1,'rgba(224,232,245,.015)');
+  c.fillStyle = dg;
+  c.beginPath(); c.arc(cx,cy,R,0,6.2832); c.fill();
+  c.strokeStyle='rgba(224,232,245,.42)'; c.lineWidth=1.2;
+  c.beginPath(); c.arc(cx,cy,R,0,6.2832); c.stroke();
+
+  // 几何（入射角 59.3°，折射率取 1.335）
+  const P1 = [cx - 0.511*R, cy - 0.860*R];
+  const a1 = 19.0*Math.PI/180;
+  const P2 = [P1[0] + 1.532*R*Math.cos(a1), P1[1] + 1.532*R*Math.sin(a1)];
+  const a2 = 119.0*Math.PI/180;
+  const P3 = [P2[0] + 1.534*R*Math.cos(a2), P2[1] + 1.534*R*Math.sin(a2)];
+
+  // 平行光束（淡）
+  c.save();
+  c.strokeStyle='rgba(224,232,245,.10)'; c.lineWidth=1;
+  for(let i=1;i<=3;i++){
+    const yy = P1[1] - i*13;
+    const xe = cx - Math.sqrt(Math.max(0,R*R-(yy-cy)*(yy-cy)));
+    line(c, 0, yy, xe, yy);
+  }
+  c.restore();
+
+  // 入射主光线
+  const pulse = (Math.sin(t*1.6)*0.5+0.5);
+  c.save();
+  c.shadowColor='rgba(255,255,255,.55)'; c.shadowBlur=9;
+  c.strokeStyle='rgba(240,246,255,'+(0.72+pulse*0.2)+')'; c.lineWidth=1.9;
+  line(c, 0, P1[1], P1[0], P1[1]);
+  c.restore();
+
+  // 内部光路
+  c.save();
+  c.strokeStyle='rgba(255,196,83,.52)'; c.lineWidth=1.4; c.setLineDash([3.5,3]);
+  c.beginPath();
+  c.moveTo(P1[0],P1[1]); c.lineTo(P2[0],P2[1]); c.lineTo(P3[0],P3[1]);
+  c.stroke();
+  c.restore();
+
+  // 法线（虚线）
+  c.save();
+  c.setLineDash([2,4]); c.strokeStyle='rgba(148,165,187,.22)'; c.lineWidth=1;
+  [[P1,1],[P2,1],[P3,1]].forEach(([p])=>{
+    const dx=p[0]-cx, dy=p[1]-cy, L=Math.hypot(dx,dy)||1;
+    line(c, p[0]-dx/L*14, p[1]-dy/L*14, p[0]+dx/L*14, p[1]+dy/L*14);
+  });
+  c.restore();
+
+  // 出射三色（角距放大 8×）
+  const base = 138*Math.PI/180;
+  const col = [
+    {c:CO.cR, d:-5.0*Math.PI/180, lab:'42.3°'},
+    {c:CO.cG, d: 0,               lab:'41.9°'},
+    {c:CO.cB, d:+5.0*Math.PI/180, lab:'41.5°'}
+  ];
+  const LEN = Math.min(w-P3[0]-14, h-P3[1]-14) * 1.05;
+  col.forEach((e,i)=>{
+    const a = base + e.d;
+    const ex = P3[0] + Math.cos(a)*LEN;
+    const ey = P3[1] + Math.sin(a)*LEN;
+    c.save();
+    c.shadowColor = e.c; c.shadowBlur = 13;
+    c.strokeStyle = e.c; c.lineWidth = 2.1; c.globalAlpha = 0.92;
+    line(c, P3[0], P3[1], ex, ey);
+    c.restore();
+    // 端点光斑
+    const g = c.createRadialGradient(ex,ey,0,ex,ey,7);
+    g.addColorStop(0, e.c); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(ex,ey,7,0,6.2832); c.fill();
+  });
+
+  // 沿光路移动的光点
+  const ph = (t*0.34) % 1;
+  let mx, my, seg;
+  if(ph < 0.20){ const k=ph/0.20; mx=lerp(0,P1[0],k); my=P1[1]; seg=0; }
+  else if(ph < 0.47){ const k=(ph-0.20)/0.27; mx=lerp(P1[0],P2[0],k); my=lerp(P1[1],P2[1],k); seg=1; }
+  else if(ph < 0.74){ const k=(ph-0.47)/0.27; mx=lerp(P2[0],P3[0],k); my=lerp(P2[1],P3[1],k); seg=2; }
+  else { const k=(ph-0.74)/0.26; mx=lerp(P3[0],P3[0]+Math.cos(base)*90,k); my=lerp(P3[1],P3[1]+Math.sin(base)*90,k); seg=3; }
+  const gg = c.createRadialGradient(mx,my,0,mx,my,10);
+  gg.addColorStop(0,'rgba(255,255,255,.98)');
+  gg.addColorStop(.3, seg===3?'rgba(255,196,83,.8)':'rgba(224,232,245,.7)');
+  gg.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=gg; c.beginPath(); c.arc(mx,my,10,0,6.2832); c.fill();
+
+  // 标注
+  txt(c, '白光', 5, P1[1]-13, CO.tx3, 9, 'left');
+  txt(c, '球形液滴 n = 1.335', w*0.5, 13, 'rgba(148,165,187,.5)', 9, 'center');
+  txt(c, '入射 59.3°', P1[0]+8, P1[1]-15, 'rgba(224,232,245,.42)', 8, 'left');
+
+  // 出射角度：右下角图例（避免压在光线上）
+  const lgx = w-104, lgy = h-58;
+  c.fillStyle = 'rgba(6,8,16,.72)';
+  c.fillRect(lgx-8, lgy-13, 100, 50);
+  col.forEach((e,i)=>{
+    const yy = lgy + i*14;
+    dot(c, lgx, yy, 3.2, e.c, null);
+    txt(c, e.lab, lgx+9, yy, e.c, 8.5, 'left', 600);
+    txt(c, ['红 C', '绿 e', '蓝 F'][i], lgx+52, yy, hexA(e.c,.45), 7.5, 'left');
+  });
+
+  txt(c, '主虹张角', w-8, 14, 'rgba(148,165,187,.45)', 8, 'right');
+}
+
+function loopHero(){
+  if(!heroOn) return;
+  heroT = performance.now()/1000;
+  drawDrop();
+  heroRAF = requestAnimationFrame(loopHero);
+}
+
+/* ============================================================
+   3 · n(λ) 曲线
+   ============================================================ */
+function drawCurve(){
+  const cv = $('#cvCurve'); if(!cv) return;
+  const {c,w,h} = prep(cv, 330);
+  const P = {l:58, r:16, t:44, b:34};
+  const X = lam => P.l + (lam-400)/(700-400)*(w-P.l-P.r);
+  const Y = dv  => P.t + (0.0120-dv)/(0.0120+0.0025)*(h-P.t-P.b);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  // 网格
+  for(let v=-2; v<=12.01; v+=2){
+    const y = Y(v/1000);
+    c.strokeStyle = Math.abs(v)<0.01 ? CO.grid2 : CO.grid;
+    c.lineWidth = 1;
+    line(c, P.l, y, w-P.r, y);
+    txt(c, (v>0?'+':'')+v, P.l-8, y, CO.tx3, 8.5, 'right');
+  }
+  for(let lam=400; lam<=700; lam+=50){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(lam), P.t, X(lam), h-P.b);
+    txt(c, String(lam), X(lam), h-P.b+14, CO.tx3, 8.5, 'center');
+  }
+
+  const lams = [];
+  for(let lam=400; lam<=700; lam+=1.5) lams.push(lam);
+
+  const series = [
+    {f:lam=>nW(lam)-WD, col:'rgba(224,232,245,.95)', wd:2.0, lab:'水'},
+    {f:lam=>nSol(0.795,93.19,lam)-nSol(0.795,93.19,LD), col:CO.am, wd:1.8, lab:'蔗糖 10%'},
+    {f:lam=>nSalt(26,lam)-nSalt(26,LD), col:CO.cB, wd:1.8, lab:'NaCl 26%'}
+  ];
+  series.forEach(s=>{
+    const ys = lams.map(s.f);
+    c.save(); c.shadowColor = s.col; c.shadowBlur = 7;
+    path(c, lams, ys, X, Y, s.col, s.wd);
+    c.restore();
+  });
+
+  // 三个采样点
+  const marks = [
+    {lam:LB, n:WBn-WD, col:CO.cB, lab:'B 486'},
+    {lam:LG, n:WG-WD,  col:CO.cG, lab:'G 546'},
+    {lam:LR, n:WR-WD,  col:CO.cR, lab:'R 656'}
+  ];
+  c.save(); c.setLineDash([2,4]); c.strokeStyle='rgba(224,232,245,.16)'; c.lineWidth=1;
+  marks.forEach(m=>{ line(c, X(m.lam), P.t, X(m.lam), h-P.b); });
+  c.restore();
+  marks.forEach(m=>{
+    dot(c, X(m.lam), Y(m.n), 4.0, '#080a14', m.col, 1.7);
+    txt(c, m.lab, X(m.lam), P.t-9, m.col, 8.5, 'center', 600);
+  });
+
+  // 图例：右上角
+  const lgx = w-P.r-92, lgy = P.t+14;
+  c.fillStyle='rgba(8,10,20,.8)';
+  c.fillRect(lgx-6, lgy-11, 94, 46);
+  series.forEach((s,i)=>{
+    const y0 = lgy + i*14;
+    c.save(); c.strokeStyle=s.col; c.lineWidth=s.wd;
+    line(c, lgx, y0, lgx+13, y0); c.restore();
+    txt(c, s.lab, lgx+18, y0, CO.tx2, 8.3, 'left');
+  });
+
+  // 轴标
+  txt(c, '(n − n_D) × 10³', P.l-6, P.t-30, CO.tx3, 8.5, 'left');
+  txt(c, 'λ (nm)', w-P.r, h-P.b+27, CO.tx3, 8.5, 'right');
+
+  
+}
+
+/* ============================================================
+   4 · 单振子尾巴
+   ============================================================ */
+function drawTail(){
+  const cv = $('#cvTail'); if(!cv) return;
+  const {c,w,h} = prep(cv, 340);
+  const P = {l:50, r:16, t:30, b:40};
+  const lamMax = 780;
+  const X = lam => P.l + lam/lamMax*(w-P.l-P.r);
+  const Y = n => P.t + (1.455-n)/(1.455-1.315)*(h-P.t-P.b);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  // 网格
+  for(let n=1.32; n<=1.451; n+=0.04){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(n), w-P.r, Y(n));
+    txt(c, n.toFixed(2), P.l-7, Y(n), CO.tx3, 8, 'right');
+  }
+  for(let lam=0; lam<=lamMax; lam+=100){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(lam), P.t, X(lam), h-P.b);
+    if(lam>0) txt(c, String(lam), X(lam), h-P.b+14, CO.tx3, 8, 'center');
+  }
+
+  // 可见光区带（横轴底部）
+  const vg = c.createLinearGradient(X(400),0,X(700),0);
+  vg.addColorStop(0,'rgba(91,157,255,.85)');
+  vg.addColorStop(.34,'rgba(61,220,132,.85)');
+  vg.addColorStop(.55,'rgba(255,214,80,.8)');
+  vg.addColorStop(1,'rgba(255,95,109,.85)');
+  c.fillStyle = vg;
+  c.fillRect(X(400), h-P.b+2, X(700)-X(400), 4);
+  txt(c, '可见光', (X(400)+X(700))/2, h-P.b+22, 'rgba(148,165,187,.8)', 8.5, 'center');
+
+  // 共振带
+  c.fillStyle = 'rgba(167,139,250,.10)';
+  c.fillRect(X(60), P.t, X(130)-X(60), h-P.t-P.b);
+
+  // 曲线
+  const S = 0.85;
+  const nAt = lam => {
+    const L2 = lam*lam, d = L2-Y0W;
+    const v = 1 + S*L2/d;
+    return v > 0 ? Math.sqrt(v) : NaN;
+  };
+  c.save();
+  c.beginPath(); c.rect(P.l, P.t-2, w-P.l-P.r, h-P.t-P.b+2); c.clip();
+
+  const xs=[], ys=[];
+  for(let lam=60; lam<=lamMax; lam+=1){
+    const v = nAt(lam);
+    if(!isFinite(v)) continue;
+    xs.push(lam); ys.push(v);
+  }
+  path(c, xs, ys, X, Y, 'rgba(224,232,245,.92)', 2.0);
+  c.restore();
+
+  // 共振线
+  c.save();
+  c.setLineDash([4,4]); c.strokeStyle='rgba(167,139,250,.75)'; c.lineWidth=1.2;
+  line(c, X(L0W), P.t, X(L0W), h-P.b);
+  c.restore();
+  txt(c, 'λ₀ = 91.3', X(L0W)+6, P.t+12, 'rgba(167,139,250,.98)', 9.5, 'left', 600);
+  txt(c, '真空紫外', X(L0W)+6, P.t+26, 'rgba(167,139,250,.6)', 8, 'left');
+  txt(c, '共振↑', X(L0W)-4, P.t+12, 'rgba(167,139,250,.55)', 8, 'right');
+
+  // 可见光段：突出显示
+  const x486=X(486.1), x656=X(656.3);
+  const y486=Y(nAt(486.1)), y656=Y(nAt(656.3));
+  c.save();
+  c.strokeStyle='rgba(255,196,83,.85)'; c.lineWidth=2.6;
+  c.beginPath(); c.moveTo(x486,y486); c.lineTo(x656,y656); c.stroke();
+  c.restore();
+  dot(c, x486, y486, 3.4, '#080a14', CO.cB, 1.5);
+  dot(c, x656, y656, 3.4, '#080a14', CO.cR, 1.5);
+  txt(c, '1.3373', x486+7, y486-12, CO.cB, 8, 'left');
+  txt(c, '1.3312', x656-4, y656+14, CO.cR, 8, 'right');
+
+  // 差值括注
+  const mx = (x486+x656)/2;
+  c.save();
+  c.strokeStyle='rgba(255,196,83,.5)'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(mx, y486-4); c.lineTo(mx, y656+8); c.stroke();
+  c.restore();
+  txt(c, '差 6 mK', mx+8, (y486+y656)/2+2, 'rgba(255,196,83,.95)', 8.5, 'left', 600);
+
+  txt(c, '曲线冲出画面 = 共振区（强吸收）', P.l+8, P.t-14, 'rgba(148,165,187,.5)', 8.3, 'left');
+  txt(c, 'n', P.l-7, P.t-14, CO.tx3, 9, 'right');
+  txt(c, 'λ (nm)', w-P.r, h-P.b+33, CO.tx3, 8.5, 'right');
+}
+
+/* ============================================================
+   5 · λ₀ 交互
+   ============================================================ */
+function l0Curve(l0){
+  const y0 = l0*l0;
+  const xD = (WD*WD-1)/(WD*WD+2);
+  const A = xD*(LD*LD-y0)/(LD*LD);
+  return lam => {
+    const y = lam*lam;
+    const x = A*y/(y-y0);
+    if(x >= 1 || x <= -0.5) return NaN;
+    return Math.sqrt((1+2*x)/(1-x));
+  };
+}
+
+let curL0 = 91.3;
+
+function drawL0(){
+  const cv = $('#cvL0'); if(!cv) return;
+  const {c,w,h} = prep(cv, 360);
+  const P = {l:58, r:16, t:44, b:40};
+  const X = lam => P.l + (lam-420)/(700-420)*(w-P.l-P.r);
+  const Y = dv  => P.t + (0.0090-dv)/(0.0090+0.0025)*(h-P.t-P.b);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  for(let v=-2; v<=9.01; v+=1){
+    c.strokeStyle = Math.abs(v)<0.01 ? CO.grid2 : CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(v/1000), w-P.r, Y(v/1000));
+    if(v%2===0 || v===9) txt(c, (v>0?'+':'')+v, P.l-8, Y(v/1000), CO.tx3, 8.5, 'right');
+  }
+  for(let lam=450; lam<=700; lam+=50){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(lam), P.t, X(lam), h-P.b);
+    txt(c, String(lam), X(lam), h-P.b+14, CO.tx3, 8.5, 'center');
+  }
+
+  const lams=[]; for(let lam=420; lam<=700; lam+=2) lams.push(lam);
+
+  // 参考：水的曲线（虚线）
+  const fw = l0Curve(91.3);
+  const yw = lams.map(l=>fw(l)-WD);
+  path(c, lams, yw, X, Y, 'rgba(224,232,245,.30)', 1.2, [3,4]);
+
+  // 当前 λ0 曲线
+  const f = l0Curve(curL0);
+  const ys = lams.map(l=>f(l)-WD);
+  const col = curL0 > 100 ? CO.cR : (curL0 < 80 ? CO.cB : CO.am);
+  c.save(); c.shadowColor=col; c.shadowBlur=9;
+  path(c, lams, ys, X, Y, col, 2.2);
+  c.restore();
+
+  // 三色采样
+  [[LB,CO.cB],[LG,CO.cG],[LR,CO.cR]].forEach(([lam,cc])=>{
+    const v = f(lam)-WD;
+    if(!isFinite(v)) return;
+    dot(c, X(lam), Y(v), 3.6, '#080a14', cc, 1.6);
+  });
+
+  // 图例：右上
+  const lgx = w-P.r-100, lgy = P.t+14;
+  c.fillStyle='rgba(8,10,20,.8)';
+  c.fillRect(lgx-6, lgy-11, 102, 32);
+  c.save(); c.strokeStyle=col; c.lineWidth=2; line(c, lgx, lgy, lgx+13, lgy); c.restore();
+  txt(c, 'λ₀ = '+curL0.toFixed(1)+' nm', lgx+18, lgy, col, 8.3, 'left', 600);
+  c.save(); c.strokeStyle='rgba(224,232,245,.35)'; c.lineWidth=1.2; c.setLineDash([3,4]);
+  line(c, lgx, lgy+14, lgx+13, lgy+14); c.restore();
+  txt(c, '水（91.3）', lgx+18, lgy+14, 'rgba(148,165,187,.7)', 8, 'left');
+
+  txt(c, '(n − n_D) × 10³', P.l-6, P.t-30, CO.tx3, 8.5, 'left');
+  txt(c, 'λ (nm)', w-P.r, h-P.b+27, CO.tx3, 8.5, 'right');
+
+  
+}
+
+function updateL0(){
+  const f = l0Curve(curL0);
+  const nb = f(LB), nr = f(LR), ng = f(LG);
+  const dn = (nb-nr)*1000;
+  const v  = (ng-1)/(nb-nr);
+  const e1 = $('#oL0dn'), e2 = $('#oL0v');
+  if(e1) e1.textContent = isFinite(dn) ? dn.toFixed(2) : '—';
+  if(e2) e2.textContent = isFinite(v)  ? v.toFixed(1)  : '—';
+}
+
+/* ============================================================
+   6 · 九种指纹
+   ============================================================ */
+function drawFinger(){
+  const cv = $('#cvFinger'); if(!cv) return;
+  const {c,w,h} = prep(cv, 436);
+  const small = w < 520;
+  const P = {l: small?44:54, r: small?12:18, t:26, b:62};
+  const nx0 = 1.3440, nx1 = 1.3522;
+  const vy0 = 52, vy1 = 71;
+  const X = n => P.l + (n-nx0)/(nx1-nx0)*(w-P.l-P.r);
+  const Y = v => P.t + (vy1-v)/(vy1-vy0)*(h-P.t-P.b);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  for(let v=52; v<=70.01; v+=3){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    txt(c, String(v), P.l-7, Y(v), CO.tx3, 8.5, 'right');
+  }
+  for(let n=1.344; n<=1.3521; n+=0.002){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(n), P.t, X(n), h-P.b);
+    txt(c, n.toFixed(3), X(n), h-P.b+13, CO.tx3, 8.5, 'center');
+  }
+
+  // 三组色带（标签放左侧，避开数据点）
+  const bands = [
+    {a:55.4, b:57.5, col:GC['单糖'], lab:'单糖'},
+    {a:64.9, b:67.5, col:GC['二糖'], lab:'二糖'},
+    {a:58.9, b:60.2, col:GC['糖醇'], lab:'糖醇'}
+  ];
+  bands.forEach(bd=>{
+    c.fillStyle = hexA(bd.col, .04);
+    c.fillRect(P.l, Y(bd.b), w-P.l-P.r, Y(bd.a)-Y(bd.b));
+    txt(c, bd.lab, P.l+9, (Y(bd.a)+Y(bd.b))/2, hexA(bd.col,.62), 8.5, 'left', 600);
+    txt(c, bd.a.toFixed(1)+'–'+bd.b.toFixed(1), P.l+9, (Y(bd.a)+Y(bd.b))/2+11, hexA(bd.col,.32), 7.5, 'left');
+  });
+
+  // 点（不标名，颜色对应族；数值见右侧表）
+  const pts = SW.map(o=>({o, x:X(o.G), y:Y(o.V), col:GC[o.g]||CO.tx2}));
+  pts.forEach(p=>{
+    dot(c, p.x, p.y, 3.9, '#080a14', p.col, 1.7);
+  });
+
+  // 水的参照（在横轴范围之外）
+  c.save();
+  c.fillStyle='rgba(224,232,245,.8)';
+  const wy = h-P.b+46;
+  c.beginPath(); c.moveTo(P.l, wy); c.lineTo(P.l+6, wy-4); c.lineTo(P.l+6, wy+4); c.closePath(); c.fill();
+  c.restore();
+  txt(c, '← 水 n=1.33449，在本图左侧 10 mK 之外', P.l+10, h-P.b+46, 'rgba(224,232,245,.55)', 8, 'left');
+
+  txt(c, 'n (546 nm)', (P.l+w-P.r)/2, h-P.b+27, CO.tx3, 9, 'center');
+  c.save(); c.translate(13, (P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'Abbe 数 V', 0,0, CO.tx3, 9, 'center'); c.restore();
+
+  txt(c, '横轴 8 mK 的跨度里塞了 9 个点', P.l+4, P.t-14,
+      'rgba(148,165,187,.5)', 8.2, 'left');
+}
+
+function hexA(hex, a){
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return 'rgba('+r+','+g+','+b+','+a+')';
+}
+
+/* ============================================================
+   7 · 相图
+   ============================================================ */
+const PHASE = [
+  {n:'水',           dn:0,     dd:0,     g:'ref',  lab:[-8,16,'right']},
+  {n:'蔗糖',         dn:14.16, dd:-14.1, g:'二糖', lab:[10,4,'left']},
+  {n:'葡萄糖',       dn:12.23, dd:0.3,   g:'单糖', lab:[-8,-12,'right']},
+  {n:'果糖',         dn:13.67, dd:3.5,   g:'单糖'},
+  {n:'乳糖',         dn:14.41, dd:-11.6, g:'二糖'},
+  {n:'山梨醇',       dn:14.19, dd:-2.5,  g:'糖醇'},
+  {n:'异麦芽酮糖醇',  dn:14.47, dd:-3.5,  g:'糖醇'},
+  {n:'甘油',         dn:11.25, dd:-16.9, g:'甘油', lab:[8,16,'left']},
+  {n:'糖精钠',       dn:16.48, dd:1.6,   g:'人工'},
+  {n:'甜蜜素钠',     dn:12.45, dd:-12.4, g:'人工'},
+  {n:'NaCl 10%',    dn:17.48, dd:7.5,   g:'盐'},
+  {n:'NaCl 26%',    dn:46.92, dd:20.6,  g:'盐',   lab:[-10,16,'right']}
+];
+
+function drawPhase(){
+  const cv = $('#cvPhase'); if(!cv) return;
+  const {c,w,h} = prep(cv, 400);
+  const small = w < 520;
+  const P = {l: small?44:50, r:18, t:26, b:46};
+  const dx0 = -4, dx1 = 52;
+  const dy0 = -20, dy1 = 25;
+  const X = t => P.l + (t-dx0)/(dx1-dx0)*(w-P.l-P.r);
+  const Y = t => P.t + (dy1-t)/(dy1-dy0)*(h-P.t-P.b);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  // 零线上下分区
+  c.fillStyle = 'rgba(255,95,109,.045)';
+  c.fillRect(P.l, P.t, w-P.l-P.r, Y(0)-P.t);
+  c.fillStyle = 'rgba(255,196,83,.05)';
+  c.fillRect(P.l, Y(0), w-P.l-P.r, h-P.b-Y(0));
+
+  txt(c, '色散增强（盐）', w-P.r-8, P.t+13, 'rgba(91,157,255,.55)', 9, 'right', 600);
+  txt(c, '色散减弱（糖）', w-P.r-8, h-P.b-10, 'rgba(255,196,83,.6)', 9, 'right', 600);
+
+  for(let t=-16; t<=24; t+=8){
+    c.strokeStyle = Math.abs(t)<1e-9 ? 'rgba(224,232,245,.28)' : CO.grid;
+    c.lineWidth = Math.abs(t)<1e-9 ? 1.3 : 1;
+    line(c, P.l, Y(t), w-P.r, Y(t));
+    txt(c, (t>0?'+':'')+t+'%', P.l-7, Y(t), CO.tx3, 8.5, 'right');
+  }
+  for(let t=0; t<=50; t+=10){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(t), P.t, X(t), h-P.b);
+    txt(c, String(t), X(t), h-P.b+14, CO.tx3, 8.5, 'center');
+  }
+
+  // 点
+  const placed = [];
+  PHASE.forEach(o=>{
+    const col = o.g==='ref' ? '#e9eff8' : (o.g==='盐' ? '#5b9dff' : (GC[o.g]||CO.tx2));
+    const x = X(o.dn), y = Y(o.dd);
+    const r = o.g==='ref' ? 5 : (o.n.indexOf('26%')>0 ? 5.2 : 3.9);
+    if(o.g==='盐'){
+      c.save(); c.shadowColor=col; c.shadowBlur=10;
+      dot(c, x, y, r, '#080a14', col, 2.0); c.restore();
+    } else {
+      dot(c, x, y, r, '#080a14', col, o.g==='ref'?2.1:1.6);
+    }
+    placed.push({x,y,o,col});
+  });
+
+  placed.forEach(p=>{
+    if(!p.o.lab) return;
+    const [dx,dy,al] = p.o.lab;
+    txt(c, p.o.n, p.x+dx, p.y+dy, hexA(p.col,.95), 8.2, al, 500);
+  });
+  txt(c, '其余 6 个溶质点未标注，数值见第 04 章表格', P.l+6, h-P.b-8,
+      'rgba(148,165,187,.45)', 7.8, 'left');
+
+  // 参考线：糖与盐的"斜率"示意
+  c.save();
+  c.strokeStyle='rgba(255,196,83,.35)'; c.lineWidth=1.2; c.setLineDash([5,4]);
+  line(c, X(0), Y(0), X(24), Y(-16.9*24/14.16));
+  c.strokeStyle='rgba(91,157,255,.35)';
+  line(c, X(0), Y(0), X(50), Y(20.6*50/46.92));
+  c.restore();
+
+  txt(c, 'n 增量 (mK)', (P.l+w-P.r)/2, h-P.b+30, CO.tx3, 9, 'center');
+  c.save(); c.translate(13, (P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'Δn 相对变化', 0,0, CO.tx3, 9, 'center'); c.restore();
+}
+
+/* ============================================================
+   8 · 三个 λ₀ 的位置
+   ============================================================ */
+function drawL0Pos(){
+  const cv = $('#cvL0Pos'); if(!cv) return;
+  const {c,w,h} = prep(cv, 320);
+  const P = {l:76, r:60, t:52, b:56};
+  const ev0 = 12.6, ev1 = 15.4;
+  const X = ev => P.l + (ev-ev0)/(ev1-ev0)*(w-P.l-P.r);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  // 网格
+  for(let ev=13; ev<=15.01; ev+=0.5){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(ev), P.t-8, X(ev), h-P.b);
+    txt(c, ev.toFixed(1), X(ev), h-P.b+15, CO.tx3, 8.5, 'center');
+  }
+  txt(c, '光子能量 (eV)', w-P.r+4, h-P.b+15, CO.tx3, 8.5, 'right');
+
+  const rows = [
+    {nm:'蔗糖 10%', ev:14.96, V:67.3, col:CO.am},
+    {nm:'水',       ev:13.58, V:55.5, col:'#e9eff8'},
+    {nm:'NaCl 26%', ev:13.21, V:52.5, col:CO.cB}
+  ];
+  const yTop = P.t + 12, gap = 58, bh = 18;
+
+  rows.forEach((r,i)=>{
+    const y = yTop + i*gap;
+    // 轨道
+    c.fillStyle='rgba(255,255,255,.028)';
+    c.fillRect(P.l, y, w-P.l-P.r, bh);
+    // 条
+    const gr = c.createLinearGradient(P.l,0,X(r.ev),0);
+    gr.addColorStop(0, hexA(r.col, .10));
+    gr.addColorStop(1, hexA(r.col, .55));
+    c.fillStyle = gr;
+    c.fillRect(P.l, y, X(r.ev)-P.l, bh);
+    // 端点
+    c.fillStyle = r.col;
+    c.fillRect(X(r.ev)-1.5, y-3, 3, bh+6);
+
+    // 名称
+    txt(c, r.nm, P.l-10, y+bh/2, hexA(r.col,.9), 9, 'right', 500);
+    // 数值
+    txt(c, r.ev.toFixed(2)+' eV', X(r.ev)+8, y+bh/2-5, r.col, 9, 'left', 600);
+    txt(c, 'V = '+r.V.toFixed(1), X(r.ev)+8, y+bh/2+7, 'rgba(148,165,187,.6)', 8, 'left');
+  });
+
+  // λ₀ 变短 → 色散增强（水平箭头，向左）
+  const ay = yTop + 3*gap - 4;
+  const xR = X(15.1), xL = X(12.9);
+  c.save();
+  c.strokeStyle='rgba(255,196,83,.30)'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(xR, ay); c.lineTo(xL+8, ay); c.stroke();
+  c.beginPath(); c.moveTo(xL, ay); c.lineTo(xL+8, ay-4); c.lineTo(xL+8, ay+4); c.closePath();
+  c.fillStyle='rgba(255,196,83,.42)'; c.fill();
+  c.restore();
+  txt(c, '光子能量降低 → 色散增强', (xL+xR)/2, ay-9, 'rgba(255,196,83,.6)', 8, 'center');
+
+  // 顶部说明
+  txt(c, '三个 λ₀ 都落在真空紫外，彼此只差 11 nm', w/2, 16, 'rgba(148,165,187,.72)', 9.5, 'center');
+  txt(c, '但排序方向相反：糖 ← 水 → 盐', w/2, 32, 'rgba(148,165,187,.45)', 8.5, 'center');
+
+  // 底部：可见光对比
+  txt(c, '可见光只有 1.8–3.1 eV —— 在图的左边界之外，还差 10 eV',
+      w/2, h-20, 'rgba(255,196,83,.55)', 8.5, 'center');
+}
+
+/* ============================================================
+   9 · n–Δn 平面
+   ============================================================ */
+const S_NS = 1.416e-3, S_DN = -0.085;   // 糖：n 单位/%，Δn mK/%
+const T_NS = 1.749e-3, T_DN =  0.045;   // 盐
+
+function drawSep(){
+  const cv = $('#cvSep'); if(!cv) return;
+  const {c,w,h} = prep(cv, 420);
+  const small = w < 520;
+  const P = {l: small?46:56, r:20, t:36, b:48};
+  const nx0 = 1.3335, nx1 = 1.3615;
+  const dy0 = 4.5, dy1 = 7.5;
+  const X = n => P.l + (n-nx0)/(nx1-nx0)*(w-P.l-P.r);
+  const Y = t => P.t + (dy1-t)/(dy1-dy0)*(h-P.t-P.b);
+
+  c.fillStyle = '#080a14'; c.fillRect(0,0,w,h);
+
+  for(let v=4.6; v<=7.41; v+=0.4){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    txt(c, v.toFixed(1), P.l-8, Y(v), CO.tx3, 8.5, 'right');
+  }
+  for(let n=1.334; n<=1.3611; n+=0.004){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(n), P.t, X(n), h-P.b);
+    txt(c, n.toFixed(3), X(n), h-P.b+14, CO.tx3, 8.5, 'center');
+  }
+
+  // 盐的等浓度网格（虚）
+  c.save();
+  for(let cc=5; cc<=25; cc+=5){
+    c.strokeStyle='rgba(91,157,255,.13)'; c.lineWidth=1;
+    line(c, X(1.33449+T_NS*cc), Y(6.03), X(1.33449+T_NS*cc), Y(6.03+T_DN*cc));
+  }
+  c.restore();
+
+  // 两条轨迹
+  const slope = (a,b,ca,cb)=>{
+    const xs=[],ys=[];
+    for(let cc=0; cc<=ca; cc+=0.5){ xs.push(1.33449+a*cc); ys.push(6.03+b*cc); }
+    return {xs,ys};
+  };
+  const sug = slope(S_NS,S_DN,18,0);
+  const sal = slope(T_NS,T_DN,15,0);
+
+  c.save(); c.shadowColor=CO.am; c.shadowBlur=9;
+  path(c, sug.xs, sug.ys, X, Y, CO.am, 2.2);
+  c.restore();
+  c.save(); c.shadowColor=CO.cB; c.shadowBlur=9;
+  path(c, sal.xs, sal.ys, X, Y, CO.cB, 2.2);
+  c.restore();
+
+  // 刻度点
+  for(let cc=5; cc<=18; cc+=5){
+    const x=X(1.33449+S_NS*cc), y=Y(6.03+S_DN*cc);
+    dot(c,x,y,2.8,CO.am,null);
+    txt(c, cc+'%', x+7, y+8, hexA(CO.am,.55), 8, 'left');
+  }
+  for(let cc=5; cc<=15; cc+=5){
+    const x=X(1.33449+T_NS*cc), y=Y(6.03+T_DN*cc);
+    dot(c,x,y,2.8,CO.cB,null);
+    txt(c, cc+'%', x+7, y-8, hexA(CO.cB,.6), 8, 'left');
+  }
+
+  // 起点
+  dot(c, X(1.33449), Y(6.03), 5, '#080a14', '#e9eff8', 2.0);
+  txt(c, '纯水', X(1.33449)-9, Y(6.03)-13, '#e9eff8', 9, 'right', 600);
+
+  // 夹角标注（画在起点附近的小扇形）
+  const ox = X(1.33449), oy = Y(6.03);
+  const aSug = Math.atan2(Y(6.03+S_DN*12)-oy, X(1.33449+S_NS*12)-ox);
+  const aSal = Math.atan2(Y(6.03+T_DN*12)-oy, X(1.33449+T_NS*12)-ox);
+  c.save();
+  c.strokeStyle='rgba(224,232,245,.45)'; c.lineWidth=1;
+  c.beginPath(); c.arc(ox, oy, 42, Math.min(aSug,aSal), Math.max(aSug,aSal)); c.stroke();
+  c.restore();
+  txt(c, '视觉夹角被纵向放大约 7 倍', ox-14, oy-42, 'rgba(148,165,187,.5)', 8, 'right');
+
+  // 图例
+  const lg = [[CO.am,'糖 0–18%'],[CO.cB,'盐 0–15%']];
+  lg.forEach((it,i)=>{
+    const y0 = P.t + 12 + i*15, x0 = P.l + 8;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth=2; line(c, x0, y0, x0+15, y0); c.restore();
+    txt(c, it[1], x0+20, y0, hexA(it[0],.8), 8.5, 'left');
+  });
+
+  // 真实夹角
+  c.fillStyle='rgba(8,10,20,.85)';
+  c.fillRect(w-P.r-108, P.t+4, 104, 30);
+  txt(c, '真实夹角 4.9°', w-P.r-8, P.t+14, 'rgba(255,196,83,.95)', 9, 'right', 600);
+  txt(c, '方向相反', w-P.r-8, P.t+26, 'rgba(148,165,187,.6)', 8.2, 'right');
+
+  txt(c, 'n (546 nm)', (P.l+w-P.r)/2, h-P.b+31, CO.tx3, 9, 'center');
+  c.save(); c.translate(13, (P.t+h-P.b)/2); c.rotate(-Math.PI/2);
+  txt(c, 'Δn(B−R)', 0,0, CO.tx3, 9, 'center'); c.restore();
+  txt(c, 'mK', 13, (P.t+h-P.b)/2 + 34, CO.tx3, 7.5, 'center');
+}
+
+/* ============================================================
+   10 · 表格
+   ============================================================ */
+function buildTable(){
+  const tb = $('#tbSweet'); if(!tb) return;
+  const rows = [{n:'水', G:WG, dn:WDN, V:WV, g:'ref'}].concat(SW);
+  rows.sort((a,b)=>a.G-b.G);
+  tb.innerHTML = rows.map(o=>{
+    const col = o.g==='ref' ? '#e9eff8' : (GC[o.g]||'#94a5bb');
+    return '<tr>'
+      + '<td style="color:'+col+'">'+o.n+'</td>'
+      + '<td class="num">'+o.G.toFixed(5)+'</td>'
+      + '<td class="num">'+(o.dn*1000).toFixed(2)+'</td>'
+      + '<td class="num" style="font-weight:500">'+o.V.toFixed(1)+'</td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ============================================================
+   11 · 交互与初始化
+   ============================================================ */
+function initNav(){
+  const nav = $('#nav');
+  const links = $$('#nav a');
+  const secs = links.map(a=>{
+    const id = a.getAttribute('href').slice(1);
+    return document.getElementById(id+'sec');
+  }).filter(Boolean);
+
+  links.forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      const id = a.getAttribute('href').slice(1);
+      const el = document.getElementById(id+'sec');
+      if(el){
+        const y = el.getBoundingClientRect().top + window.scrollY - 14;
+        window.scrollTo({top:y, behavior:'smooth'});
+      }
+    });
+  });
+
+  const onScroll = ()=>{
+    const sy = window.scrollY;
+    const hgt = document.documentElement.scrollHeight - window.innerHeight;
+    const pb = $('#pbar');
+    if(pb) pb.style.width = (hgt>0 ? clamp(sy/hgt,0,1)*100 : 0) + '%';
+
+    let idx = 0;
+    secs.forEach((s,i)=>{ if(s && s.getBoundingClientRect().top < window.innerHeight*0.35) idx = i; });
+    links.forEach((a,i)=>a.classList.toggle('on', i===idx));
+  };
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+}
+
+function onResize(){
+  clearTimeout(onResize._t);
+  onResize._t = setTimeout(()=>{
+    drawDrop(); drawCurve(); drawTail(); drawL0();
+    drawFinger(); drawPhase(); drawL0Pos(); drawSep();
+  }, 160);
+}
+
+function boot(){
+  buildTable();
+
+  const sL0 = $('#sL0');
+  if(sL0){
+    const upd = ()=>{
+      curL0 = parseFloat(sL0.value);
+      const el = $('#vL0');
+      if(el) el.textContent = curL0.toFixed(1)+' nm';
+      drawL0(); updateL0();
+    };
+    sL0.addEventListener('input', upd);
+    upd();
+  } else {
+    drawL0(); updateL0();
+  }
+
+  drawDrop(); drawCurve(); drawTail();
+  drawFinger(); drawPhase(); drawL0Pos(); drawSep();
+  initNav();
+
+  // Hero 动画
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce){
+    heroOn = true;
+    loopHero();
+  }
+
+  window.addEventListener('resize', onResize);
+
+  // 首屏进入视口后重绘（防 display 切换导致宽度为 0）
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){
+      drawCurve(); drawTail(); drawL0();
+      drawFinger(); drawPhase(); drawL0Pos(); drawSep();
+    }});
+  }, {threshold:.02});
+  ['#cvCurve','#cvTail','#cvL0','#cvFinger','#cvPhase','#cvL0Pos','#cvSep','#cvDrop']
+    .forEach(s=>{ const el=$(s); if(el) io.observe(el); });
+
+  // Hero 移出视口时暂停
+  const hero = $('#cvDrop');
+  if(hero){
+    const io2 = new IntersectionObserver(es=>{
+      es.forEach(e=>{
+        if(e.isIntersecting){
+          if(!reduce && !heroOn){ heroOn = true; loopHero(); }
+        } else {
+          heroOn = false; cancelAnimationFrame(heroRAF);
+        }
+      });
+    }, {threshold:.02});
+    io2.observe(hero);
+  }
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ heroOn = false; cancelAnimationFrame(heroRAF); }
+    else if(!reduce && !heroOn){ heroOn = true; loopHero(); }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>
