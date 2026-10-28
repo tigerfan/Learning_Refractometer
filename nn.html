@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>液体分析中的神经网络 · 边界与方法</title>
+<meta name="description" content="神经网络在液体分析中能做什么、不能做什么。">
+<style>
+
+
+
+
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#05070a;
+  --bg-2:#090c13;
+  --surface:#0a0f1a;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#a3e635;
+  --cy-soft:rgba(163,230,53,.14);
+  --cy-line:rgba(163,230,53,.35);
+  --am:#ffb84d;
+  --am-soft:rgba(255,184,77,.13);
+  --vi:#f472b6;
+  --vi-soft:rgba(244,114,182,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(163,230,53,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(244,114,182,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,184,77,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(163,230,53,.28),rgba(244,114,182,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#b0f2fa 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(163,230,53,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,184,77,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(163,230,53,.12);color:var(--cy);border:1px solid rgba(163,230,53,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,184,77,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(244,114,182,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,184,77,.05);border:1px solid rgba(255,184,77,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(163,230,53,.045);border-color:rgba(163,230,53,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(163,230,53,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(163,230,53,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#b0f2fa}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(163,230,53,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+
+/* ===== RGB 三色光专用 ===== */
+:root{
+  --cR:#ff5f6d;
+  --cG:#3ddc84;
+  --cB:#5b9dff;
+  --cRd:rgba(255,95,109,.55);
+  --cGd:rgba(61,220,132,.55);
+  --cBd:rgba(91,157,255,.55);
+}
+.spectrum-bar{
+  height:3px;width:100%;border-radius:2px;margin:0 0 18px;
+  background:linear-gradient(90deg,#5b9dff 0%,#3ddc84 50%,#ff5f6d 100%);
+  opacity:.85;
+}
+.rgb-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rgb-cell{background:var(--bg-2);padding:14px 14px 12px}
+.rgb-cell .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.rgb-cell .lab i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rgb-cell .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1}
+.rgb-cell .s{font-size:10px;color:var(--tx-3);font-family:var(--mono);margin-top:6px}
+.bigN.tri{display:flex;align-items:baseline;gap:2px;font-size:34px}
+.bigN.tri em{font-style:normal;font-size:19px;opacity:.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line2);background:var(--bg-3);color:var(--tx-2)}
+.chip i{width:6px;height:6px;border-radius:50%}
+.lam{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wl-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:6px;letter-spacing:.02em}
+
+
+
+/* ===== 光路页专用 ===== */
+:root{ --cRd:rgba(255,107,107,.5); }
+.opt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.opt-cell{background:var(--bg-2);padding:13px 13px 11px}
+.opt-cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);margin-bottom:6px}
+.opt-cell .v{font-family:var(--mono);font-size:19px;font-weight:500;line-height:1}
+.opt-cell .v small{font-size:11px;opacity:.5;margin-left:2px}
+.opt-cell .s{font-size:9.5px;color:var(--tx-3);font-family:var(--mono);margin-top:5px}
+.chk{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:none}
+.chk .num{font-family:var(--mono);font-size:10px;color:var(--am);width:20px;flex-shrink:0;padding-top:2px}
+.chk .tx{font-size:12.3px;line-height:1.65;color:var(--tx-2)}
+.chk .tx b{color:var(--tx)}
+
+
+
+/* ===== 色谱页专用 ===== */
+.flow-wrap{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+.flow-wrap svg{min-width:700px;display:block}
+.flow-hint{display:none;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:8px;text-align:center;letter-spacing:.06em}
+@media(max-width:640px){
+  .flow-hint{display:block}
+  .m-hide3 th:nth-child(3),.m-hide3 td:nth-child(3){display:none}
+  .m-hide3 td:first-child{white-space:nowrap}
+}
+
+
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 先算维度账</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 病态</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 五个场景</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 软测量</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 域外检测</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 标定设计</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 算力账</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 四条红线</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 决策树</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>液体分析 · 机器学习</div>
+      <h1>它不提高精度，<br><em>它扩大适用范围</em></h1>
+      <p class="hero-lead">
+        神经网络在液体分析里最容易被误用的地方，是把它当成"更高的精度"。
+        物理上限摆在那里——<b>9.41°</b> 的角度跨度、<b>0.05 Brix</b> 的误差预算，
+        任何模型都改不了。<br>
+        NN 真正能做的是另一件事：<b>把原来测不了的样品，变成能测的</b>。
+        而这件事有个前提——<b>先补齐物理通道，再谈算法</b>。
+      </p>
+
+      <div class="chain">
+        <span>物理通道</span><i>→</i>
+        <span class="hi">标定数据</span><i>→</i>
+        <span class="hi">模型</span><i>→</i>
+        <span>反演</span><i>→</i>
+        <span class="hi">域外检测</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">病态放大</div><div class="v">11.6<small>×</small></div></div>
+        <div class="kpi"><div class="k">MLP 追平物理</div><div class="v">205<small>组</small></div></div>
+        <div class="kpi"><div class="k">采样率</div><div class="v">600<small>×</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvHero" height="430"></canvas>
+      <div class="cv-cap"><span>左：误差随样本数　右：误差随分布距离</span><span style="text-transform:none">两条铁律</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ S01 · 先算维度账 ============ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">先算维度账：信息不会凭空产生</div>
+      <div class="sec-sub">
+        任何模型都是一台<b>把输入映射到输出</b>的机器。输入只有 1 个独立数，
+        输出不可能有 2 个独立数——这不是算法问题，是线性代数的硬约束。
+        所以判断"要不要上 NN"的第一步，永远是数数：<b>几个未知数，几个通道</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>可解性由 (通道数, 未知数) 决定</h3>
+      <div class="cvbox">
+        <canvas id="cvDim" height="380"></canvas>
+        <div class="cv-cap"><span>横轴：独立通道　纵轴：待测组分</span><span style="text-transform:none">颜色 = 条件数</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        绿色 = 良态（条件数 &lt; 10）　黄色 = 病态（10–1000）　红色 = 欠定（无唯一解）<br>
+        圆点标注的是本系列前面几页的实际案例。
+      </p>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>这张图，NN 改不了</h3>
+        <p style="font-size:12.6px;margin-bottom:10px">
+          一个训练好的网络，本质上是一个<b>参数化的函数</b> f: ℝ<sup>N</sup> → ℝ<sup>M</sup>。
+          如果 M &gt; N，这个函数在数学上就不可能是单射——
+          无数个配方会映射到同一个读数，网络只能从中挑一个"最像训练数据的"。
+        </p>
+        <p style="font-size:12.6px;margin-bottom:10px">
+          所以在红色的格子里，NN 做的<b>不是测量，是猜测</b>。
+          猜得准不准，取决于你的生产配方有多集中，而不取决于网络有多深。
+        </p>
+        <div class="note warn" style="font-size:12.2px;margin:0">
+          <div class="ico">⚠</div>
+          <div>
+            常见的错误顺序：先买算法团队，再发现通道不够，最后补硬件——
+            此时模型已经按旧数据训练完了，全部作废。<br>
+            <b>正确顺序反过来：先数通道，再要数据，最后选模型。</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>三种"补"，优先级不同</h3>
+        <div class="chk">
+          <div class="num">①</div>
+          <div class="tx"><b>补通道（最有效）。</b>加一个波长、加一个密度计、加一个温度点。
+            每加一个独立通道，条件数可能降一个量级——这是硬件能买到的确定性收益。</div>
+        </div>
+        <div class="chk">
+          <div class="num">②</div>
+          <div class="tx"><b>补先验（次之）。</b>如果通道够了但矩阵病态，
+            用配方分布做正则化。这就是 NN 发力的地方，但只在<b>测量噪声被放大后</b>才划算。</div>
+        </div>
+        <div class="chk">
+          <div class="num">③</div>
+          <div class="tx"><b>换模型（最次）。</b>把线性换成非线性、把 2 层换成 20 层。
+            在信息量不变的前提下，这只改变拟合能力，不改变可辨识性。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S02 · 病态 ============ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">病态矩阵里，NN 到底在补什么</div>
+      <div class="sec-sub">
+        糖盐双波长那页算过：响应矩阵的条件数是 <b>47.8</b>，
+        意味着 1 mK 的测量噪声会被放大成 <b>11.6 倍</b>的浓度误差。
+        正则化和先验都是为了压住这个放大——但两者压的方式完全不同。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>同一个病态矩阵，三种信息利用方式</h3>
+    <div class="cvbox">
+      <canvas id="cvIll" height="420"></canvas>
+      <div class="cv-cap"><span>糖浓度误差 vs 折射率测量噪声</span><span style="text-transform:none">双对数</span></div>
+    </div>
+    <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div class="ctrl-row"><label>先验宽度 σ<sub>prior</sub></label><span class="val" id="vPrior">1.0 %</span></div>
+        <input type="range" id="sPrior" min="0.2" max="3" step="0.1" value="1">
+      </div>
+      <div style="font-size:10.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.7;padding-top:2px">
+        先验越窄 = 你对配方越有把握 = 网络能"猜"得越准。
+        但先验错了，误差会翻倍回来。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:18px;margin-top:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <h3>改善随噪声增大，这才是它的价值区间</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        两条线从不重合，但比例一直在变：<b>低噪声区只改善 19%</b>（0.81×），
+        <b>高噪声区改善近 4 倍</b>（0.26×）。<br>
+        先验不是魔法，它只在<b>测量被病态放大后</b>才值钱。
+      </p>
+      <table class="m-hide3" style="margin-top:4px">
+        <thead><tr><th class="num">σ<sub>n</sub> (mK)</th><th class="num">直接求逆</th><th class="num">带先验</th><th class="num">改善</th></tr></thead>
+        <tbody>
+          <tr><td class="num">0.001</td><td class="num">0.0116</td><td class="num">0.0095</td><td class="num tx3">0.81×</td></tr>
+          <tr><td class="num">0.010</td><td class="num">0.116</td><td class="num">0.094</td><td class="num tx3">0.80×</td></tr>
+          <tr><td class="num">0.050</td><td class="num">0.582</td><td class="num">0.378</td><td class="num am">0.65×</td></tr>
+          <tr><td class="num">0.100</td><td class="num">1.164</td><td class="num cy">0.525</td><td class="num cy">0.45×</td></tr>
+          <tr><td class="num">0.200</td><td class="num">2.327</td><td class="num cy">0.600</td><td class="num cy">0.26×</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        单位：糖浓度 % w/w。先验 σ = 1%。σ<sub>n</sub> = 0.1 mK 大约对应 0.06° 的角度重复性，
+        便携折光计的常见水平。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>为什么 Tikhonov 在这里帮不上忙</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        岭回归（Tikhonov）压制的是<b>小奇异值方向</b>。但这个矩阵的最小奇异值只有
+        <b>0.0707</b>，比最大的小 45 倍——它承载的信息本来就极少，
+        压掉它等于把一整个方向的信息扔掉。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        实测：最优 λ 下，总误差 <b>0.0245%</b>，
+        而直接求逆是 <b>0.0116%</b>——<b class="am">正则化反而更差</b>。
+      </p>
+      <div class="note" style="font-size:12.2px;margin:0">
+        <div class="ico">◆</div>
+        <div>
+          这不是 Tikhonov 的问题，是这个矩阵<b>病得太重</b>。
+          它没有"稍微病态"的中间地带可选——要么不动（放大 11.6 倍），
+          要么用真正的先验（配方分布）去补。<br>
+          这也解释了为什么实际工程里，病态问题最终都走向<b>贝叶斯/数据驱动</b>，
+          而不是简单的正则化。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S03 · 五个场景 ============ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">真正值得做的，只有五种</div>
+      <div class="sec-sub">
+        把"NN 在液体分析里能干什么"列全，会有二三十条。
+        但按<b>收益 ÷ 风险</b>排序，值得投入的只有五个——
+        其余的要么物理已经解决，要么收益抵不过认证成本。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五件事，按投入产出排序</h3>
+    <table class="m-hide3" style="margin-top:6px">
+      <thead>
+        <tr><th>#</th><th>场景</th><th>解决什么</th><th class="num">量化收益</th><th>主要风险</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cy">①</td>
+          <td><b>软测量</b></td>
+          <td>贵仪器采样慢，便宜仪器有漂移</td>
+          <td class="num cy">时间分辨率 ×600</td>
+          <td>模型漂移，需要定期用真值校正</td>
+        </tr>
+        <tr>
+          <td class="cy">②</td>
+          <td><b>多组分反演</b></td>
+          <td>病态矩阵放大噪声</td>
+          <td class="num cy">误差 ÷3（高噪声区）</td>
+          <td>域外失效，必须先做 OOD</td>
+        </tr>
+        <tr>
+          <td class="cy">③</td>
+          <td><b>异常检测</b></td>
+          <td>气泡、颗粒、探头未盖好</td>
+          <td class="num cy">提前 3–5 倍发现</td>
+          <td>误报率高，要人工复核</td>
+        </tr>
+        <tr>
+          <td>④</td>
+          <td><b>硬件补偿</b></td>
+          <td>镜头畸变、棱镜公差、杂散光</td>
+          <td class="num">省掉逐台标定</td>
+          <td>需要产线数据，换批次要重训</td>
+        </tr>
+        <tr>
+          <td>⑤</td>
+          <td><b>传感器融合</b></td>
+          <td>n + Δn + 温度 三路怎么加权</td>
+          <td class="num">温补精度 ×2–3</td>
+          <td>需要同步采集，时钟对齐</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:12px 0 0">
+      排序依据：软测量和异常检测<b>不碰读数链</b>，出了问题最多是"多报一次警"，
+      不影响计量认证；多组分反演进入了读数链，风险陡增；硬件补偿和融合需要产线配合，落地最慢。
+    </p>
+  </div>
+
+  <div class="grid g3" style="gap:16px;margin-top:18px">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">为什么软测量排第一</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        它不改任何现有读数，只是把两台仪器的信号<b>时间对齐后融合</b>。
+        收益立刻可见，风险可控，而且不需要过认证——
+        因为它输出的是"过程变量"，不是"计量结果"。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">为什么多组分排第二</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        它是唯一<b>算法真的不可替代</b>的地方——病态矩阵的解需要先验，
+        而先验只能从数据里学。但一旦上线，它就在读数链上，
+        必须配域外检测才能交付。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">剩下三个是"锦上添花"</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        异常检测用简单的统计量（3σ、马氏距离）就能做到 80% 的效果；
+        硬件补偿和融合的收益真实，但需要产线配合，周期以季度计。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S04 · 软测量 ============ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">软测量：两台仪器加起来，既连续又准</div>
+      <div class="sec-sub">
+        折光计连续但会漂，色谱准但要等 10 分钟。把两者的时间轴对齐：
+        用色谱的绝对值<b>锚定</b>折光计的漂移，用折光计的增量<b>填满</b>色谱之间的空白。
+        结果是——<b>绝对精度仍是色谱的，但不再有盲区</b>。
+        这不是更准，是从不可用变成可用。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>漂移补偿：最简单也最有效的融合</h3>
+    <div class="cvbox">
+      <canvas id="cvSoft" height="440"></canvas>
+      <div class="cv-cap"><span>上：真值　中：色谱采样　下：融合输出</span><span style="text-transform:none">同一时间轴</span></div>
+    </div>
+    <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div>
+        <div class="ctrl-row"><label>色谱采样间隔</label><span class="val" id="vTint">10 min</span></div>
+        <input type="range" id="sTint" min="2" max="30" step="1" value="10">
+      </div>
+      <div>
+        <div class="ctrl-row"><label>折光计漂移速率</label><span class="val" id="vDrift">0.15 %/h</span></div>
+        <input type="range" id="sDrift" min="0" max="0.5" step="0.01" value="0.15">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:26px;align-items:baseline;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;color:var(--tx-3)">
+      <span>绝对误差 <span style="font-size:17px;color:var(--am)"><span id="vSoftRms">—</span> %</span></span>
+      <span>相邻噪声 <span style="font-size:17px;color:var(--cy)"><span id="vSoftDn">—</span> %</span></span>
+      <span style="flex:1;min-width:180px;line-height:1.6">绝对精度继承色谱（0.10%），相邻噪声继承折光计（0.02%）——<b style="color:var(--tx-2)">两头都拿到了，中间不再有 10 分钟的空档</b></span>
+    </div>
+
+    <div class="eq sm" style="font-size:12.5px;margin:16px 0 0">
+      ĉ(t) <span class="o">=</span> c<sub>色谱</sub>(t<sub>k</sub>)
+      <span class="o">+</span>
+      <span class="brk">[</span> n<sub>折光</sub>(t) <span class="o">−</span> n<sub>折光</sub>(t<sub>k</sub>) <span class="brk">]</span>
+      <span class="o">/</span> S
+    </div>
+    <div class="eq-note">
+      t<sub>k</sub> 是最近一次色谱出数的时刻，S 是灵敏度（dn/dc）。
+      这就是工业上说的"<b>漂移补偿</b>"或"<b>增量法</b>"——不需要模型，只需要两路信号同步。
+    </div>
+  </div>
+
+  <div class="grid g3" style="gap:16px;margin-top:18px">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">为什么它比"取平均"好</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        加权平均会把折光计的<b>漂移</b>也平均进去。
+        增量法只取折光计的<b>变化量</b>，慢漂移在差分时被抵消——
+        这是"用高频信号的形状，用低频信号的刻度"。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">NN 加在哪里</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        增量法是线性的，假设"漂移很慢"。如果漂移本身随工况变化
+        （比如温度、粘度、流速都在变），就用 NN 学一个<b>漂移速率模型</b>：
+        输入工况，输出当前漂移率。这一步是真的非线性。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">⚠️ 最容易踩的坑</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        <b>时间戳没对齐。</b>色谱的 10 分钟是"进样到出峰"，而折光计读的是"此刻"。
+        两者差一个死时间（本系列色谱页算过 1.62 min），
+        不对齐就会引入一个恒定滞后，融合反而更差。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S05 · 域外检测 ============ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">没有域外检测的模型，不能上线</div>
+      <div class="sec-sub">
+        这是 NN 应用里最容易被跳过、也最致命的一步。
+        模型在训练分布内插值时误差 0.05%，离开分布到马氏距离 3.5 时误差
+        <b>3.7%</b>——差 <b>75 倍</b>，而它自己<b>不会告诉你</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>误差随分布距离指数上升</h3>
+      <div class="cvbox">
+        <canvas id="cvOOD" height="390"></canvas>
+        <div class="cv-cap"><span>横轴：马氏距离　纵轴：预测误差</span><span style="text-transform:none">对数纵轴</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        马氏距离把"离训练分布多远"归一化成无量纲数：
+        &lt;1 在分布内，1–2 边缘，&gt;2 已经是外推。
+      </p>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>三种判据，从便宜到贵</h3>
+        <table style="margin-top:4px">
+          <thead><tr><th>方法</th><th class="num">成本</th><th>能发现</th></tr></thead>
+          <tbody>
+            <tr><td><b>马氏距离</b></td><td class="num gr">几乎为零</td><td>偏离训练分布</td></tr>
+            <tr><td><b>自编码器重构误差</b></td><td class="num am">中</td><td>分布形状变化、新簇</td></tr>
+            <tr><td><b>集成方差</b></td><td class="num rd">高</td><td>模型自身不确定</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+          先用马氏距离，它只用训练集的均值和协方差，连模型都不用改。
+          只有当分布是<b>多峰</b>（几个固定配方）时，才需要自编码器。
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>上线检查清单</h3>
+        <div class="chk">
+          <div class="num">①</div>
+          <div class="tx">每次推理都算 OOD 分数，<b>超阈值就拒绝输出</b>，
+            而不是给一个数再配个"置信度"。</div>
+        </div>
+        <div class="chk">
+          <div class="num">②</div>
+          <div class="tx">OOD 分数要<b>记录并监控</b>。它的缓慢上升往往是配方漂移的第一信号，
+            比误差指标早几周。</div>
+        </div>
+        <div class="chk">
+          <div class="num">③</div>
+          <div class="tx">拒绝输出时，<b>回退到物理模型或人工</b>。
+            宁可报"超范围"，也不要报一个错数。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S06 · 标定设计 ============ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">标定样品怎么选：均匀网格是最常见的设计错误</div>
+      <div class="sec-sub">
+        很多团队按"每维 5 档、正交设计"采 25 组样，看起来很规范。
+        但如果实际生产只集中在某几个配方附近，
+        均匀网格会把有限的数据点<b>摊薄到永远不会出现的区域</b>，
+        而真正的密集区样本不足。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>同样 40 组样，两种采法</h3>
+      <div class="cvbox">
+        <canvas id="cvSample" height="400"></canvas>
+        <div class="cv-cap"><span>左：均匀网格　右：按生产分布</span><span style="text-transform:none">同一批预算</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        灰点是"实际会遇到的配方"。网格法有一半样本落在空区，
+        分布法在密集区的分辨率高 3 倍。
+      </p>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>四条采样原则</h3>
+        <div class="chk">
+          <div class="num">①</div>
+          <div class="tx"><b>按生产分布采，不按几何网格采。</b>
+            先导出三个月的配方记录，按频次分层抽样。</div>
+        </div>
+        <div class="chk">
+          <div class="num">②</div>
+          <div class="tx"><b>边界一定要覆盖。</b>分布中心可以稀，但
+            <b>规格上下限附近必须密</b>——那里是判定合格与否的地方，错一个点就是错判。</div>
+        </div>
+        <div class="chk">
+          <div class="num">③</div>
+          <div class="tx"><b>每档至少 3 个批次。</b>否则模型学到的是"这一批的原料特性"，
+            换供应商就崩。批次是最容易被忽略的隐变量。</div>
+        </div>
+        <div class="chk">
+          <div class="num">④</div>
+          <div class="tx"><b>温度至少 3 个点</b>（20 / 25 / 30 °C）。
+            只在一个温度下训练，现场温度一漂，模型直接失效——
+            这是最常见的现场事故。</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>多少组才够</h3>
+        <table class="m-hide3" style="margin-top:4px">
+          <thead><tr><th>模型</th><th class="num">最低样本</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>物理模型</td><td class="num gr">0</td><td>不需要标定</td></tr>
+            <tr><td>PLS / 线性</td><td class="num">25</td><td>每维 5 档的完整因子设计</td></tr>
+            <tr><td>小 MLP</td><td class="num am">205</td><td>2 隐藏层以内，&lt;100 参数</td></tr>
+            <tr><td>深度网络</td><td class="num rd">&gt;1000</td><td>且仍需大量增强</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+          数值来自第 01 章的误差模型：追平物理模型（0.05%）所需的样本数。
+          注意"最低样本"是<b>追平</b>，不是"超过"。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S07 · 算力账 ============ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">算力账：从 4 次乘加到你不敢上的规模</div>
+      <div class="sec-sub">
+        NN 在折光计上的算力需求跨越六个数量级。选错模型，
+        要么大材小用（多花十倍的 BOM 成本），
+        要么根本跑不动（采样率掉一个量级）。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>一次推理要多少次乘加</h3>
+    <div class="cvbox">
+      <canvas id="cvMAC" height="380"></canvas>
+      <div class="cv-cap"><span>横轴对数　越往右越贵</span><span style="text-transform:none">单次前向传播</span></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:12px 0 0">
+      按 <b>乘加次数（MAC）</b>算，不含激活函数。<b>1 GFLOP/s 的 MCU</b> 每秒可做 10⁹ 次乘加，
+      所以 10⁶ MAC 的模型在 100 Hz 采样下占 10% 算力——这是能用与不能用的分界。
+    </p>
+  </div>
+
+  <div class="grid g2" style="gap:18px;margin-top:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <h3>主控怎么选</h3>
+      <table class="m-hide3" style="margin-top:4px">
+        <thead><tr><th class="num">MAC</th><th>主控</th><th>典型场景</th></tr></thead>
+        <tbody>
+          <tr><td class="num">10⁰–10²</td><td>任意 8 位 MCU</td><td>线性回归、PLS</td></tr>
+          <tr><td class="num cy">10²–10⁴</td><td>Cortex-M4F</td><td>小 MLP（多组分）</td></tr>
+          <tr><td class="num am">10⁴–10⁶</td><td>Cortex-M7 / DSP</td><td>1D CNN（光谱）</td></tr>
+          <tr><td class="num rd">&gt;10⁶</td><td>FPGA / NPU</td><td>深度光谱网络</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        <b>便携折光计的主控通常是 M0/M3</b>，算力在 10⁷ MAC/s 量级。
+        这意味着：<b>小 MLP 还能跑，CNN 必须换芯片。</b>
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>定点化的代价</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        浮点转定点（Q15/Q16）能省 3–5 倍算力和功耗，但会引入量化误差。
+        对小 MLP 影响很小（&lt;1% 精度损失），对深度网络可能掉 10% 以上。
+      </p>
+      <div class="note ok" style="font-size:12.2px;margin:0">
+        <div class="ico">◆</div>
+        <div>
+          <b>先做量化感知训练，再部署。</b>训完再量化的精度损失通常是量化感知训练的 3–5 倍。
+          这一步在实验室能做完，不要留到产线调试。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S08 · 四条红线 ============ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">四条红线，碰了就是事故</div>
+      <div class="sec-sub">
+        前面讲的全是"能做什么"。这一章讲"绝对不能做什么"——
+        每一条都对应过真实的项目失败。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <h3 style="color:var(--rd)">① 不能提高物理上限</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        9.41° 的角度跨度、0.05 Brix 的误差预算，是光学和探测器决定的。
+        模型只能逼近这个上限，不能突破。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:0">
+        <b>判别方法：</b>如果你的模型报出的精度<b>优于</b>误差预算算出来的理论值，
+        那不是模型好，是数据泄漏了——测试集和训练集有重叠。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3 style="color:var(--rd)">② 不能替代标定</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        训练数据<b>就是</b>标定数据。有 500 组样品，做成插值表的效果可能和 NN 一样，
+        而且可以溯源、可以审计、可以解释。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:0">
+        <b>判别方法：</b>如果删掉 30% 的训练数据，模型性能断崖下跌，
+        说明它学到的是"记忆"而不是"规律"。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3 style="color:var(--rd)">③ 不能过计量认证</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        折光计在食品、制药是<b>计量器具</b>，要求可溯源、有不确定度评定（OIML R124、ISO 17025）。
+        黑箱模型给不出不确定度，认证机构不会接受。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:0">
+        <b>可行路径：</b>读数链保持解析式（可认证），NN 只做<b>内部异常检测和软测量</b>
+        （不进入计量结果）。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3 style="color:var(--rd)">④ 不能解释，就不能排障</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        读数异常时，传统算法能画出光强曲线，指出"拐点变了"；
+        NN 只能给出一个数。客户问"是样品变了还是仪器坏了"，你答不出来。
+      </p>
+      <p style="font-size:12.5px;margin-bottom:0">
+        <b>最低要求：</b>必须有一个<b>并行的解析通道</b>作为对照。
+        NN 报警时，用解析通道的数据去解释"哪里不对"。
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>一句话总结这四条</h3>
+    <p style="font-size:13px;margin-bottom:0">
+      <b>凡是能写成闭式公式的环节，都不要放进神经网络。</b>
+      物理模型给你确定性和可溯源性，NN 给你覆盖范围——
+      两者的位置不能互换。
+    </p>
+  </div>
+</section>
+
+<!-- ============ S09 · 决策树 ============ -->
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">一张图决定：要不要上 NN</div>
+      <div class="sec-sub">
+        按顺序问五个问题。任何一个答"否"，就停在那一步——
+        不要在错误的层级上继续往下走。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五个问题，五个出口</h3>
+    <div style="margin-top:14px">
+
+      <div style="display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--cy);width:28px;flex-shrink:0;padding-top:2px">Q1</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;color:var(--tx);margin-bottom:6px">有物理模型能算到目标精度吗？</div>
+          <div style="font-size:12.3px;color:var(--tx-2);line-height:1.68">
+            <b style="color:var(--gr)">有 → 用物理模型，不要 NN。</b>
+            本系列前七页就是这条路径：从原子加和到折射率，零拟合，可溯源。
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--cy);width:28px;flex-shrink:0;padding-top:2px">Q2</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;color:var(--tx);margin-bottom:6px">独立通道数 ≥ 待测组分数吗？</div>
+          <div style="font-size:12.3px;color:var(--tx-2);line-height:1.68">
+            <b style="color:var(--rd)">否 → 先补硬件，不要进算法。</b>
+            加了 NN 也只是让猜测更"自信"，不会让它变准。
+            回到第 01 章的矩阵，红格子里的任何模型都不该上线。
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--cy);width:28px;flex-shrink:0;padding-top:2px">Q3</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;color:var(--tx);margin-bottom:6px">有 ≥ 25 组覆盖生产分布的标定数据吗？</div>
+          <div style="font-size:12.3px;color:var(--tx-2);line-height:1.68">
+            <b style="color:var(--am)">否 → 先用 PLS，或者干脆做插值表。</b>
+            25 组是 PLS 追平物理模型的临界点；不到 200 组，MLP 打不过 PLS。
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--cy);width:28px;flex-shrink:0;padding-top:2px">Q4</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;color:var(--tx);margin-bottom:6px">要过计量认证吗？</div>
+          <div style="font-size:12.3px;color:var(--tx-2);line-height:1.68">
+            <b style="color:var(--am)">是 → NN 只能放在读数链之外。</b>
+            做异常检测、做软测量、做趋势预警，都可以；
+            但最终报给客户的数，必须来自可溯源的解析式。
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;padding:16px 0">
+        <div style="font-family:var(--mono);font-size:12px;color:var(--cy);width:28px;flex-shrink:0;padding-top:2px">Q5</div>
+        <div style="flex:1">
+          <div style="font-size:13.5px;color:var(--tx);margin-bottom:6px">通道够、数据够、不认证——那还等什么？</div>
+          <div style="font-size:12.3px;color:var(--tx-2);line-height:1.68">
+            <b style="color:var(--cy)">可以上 NN 做多组分反演了。</b>
+            但必须同时交付三样东西：<b>模型本身 + 域外检测 + 解析对照通道</b>。
+            少一样，就不能上线。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>最后一句实话</h3>
+    <p style="font-size:12.8px;margin-bottom:10px">
+      这一页讲的所有东西，本质上是同一件事：
+      <b>NN 不是万能的，但它的边界是可计算的。</b>
+      维度账能算、条件数能算、学习曲线能算、算力能算。
+    </p>
+    <p style="font-size:12.8px;margin-bottom:0">
+      真正难的不是"要不要用 NN"，而是<b>承认大部分场景不需要它</b>。
+      前面九页的折光计、色谱、光谱、质谱，没有一个是靠 NN 工作的——
+      它们的精度来自物理，NN 只在这条链的边缘做补充。
+    </p>
+  </div>
+</section>
+
+<footer style="margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);
+                 display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+                 font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.03em">
+    <div>液体分析中的神经网络 · 边界与方法</div>
+    <div>案例基准：糖盐双波长（cond = 47.8）· 折光计 + 色谱软测量 · 四极杆质谱</div>
+</footer>
+</section>
+</main>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 工具
+   ============================================================ */
+const CO = {
+  cy:'#a3e635', am:'#ffd166', vi:'#f472b6', rd:'#ff6b6b', gr:'#5ee6a8',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#101427', grid2:'#191f33', line:'#222840'
+};
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function prep(cv, cssH){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = Math.max(200, cv.clientWidth||400);
+  const h = cssH;
+  cv.style.height = h+'px';
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+function txt(c,s,x,y,col,size,align,weight){
+  c.save();
+  c.fillStyle = col||CO.tx2;
+  c.font = (weight||400)+' '+(size||10)+'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  c.textAlign = align||'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+  c.restore();
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function dot(c,x,y,r,fill,stroke,wd){
+  c.beginPath(); c.arc(x,y,r,0,6.2832);
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.5; c.stroke(); }
+}
+function path(c, xs, ys, X, Y, col, wd, dash){
+  c.save();
+  c.strokeStyle = col; c.lineWidth = wd||1.7;
+  c.setLineDash(dash||[]);
+  c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  for(let i=0;i<xs.length;i++){
+    const px=X(xs[i]), py=Y(ys[i]);
+    i ? c.lineTo(px,py) : c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+function hexA(h,a){
+  const s = h.replace('#','');
+  const n = parseInt(s.length===3 ? s.split('').map(x=>x+x).join('') : s, 16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+
+/* ============================================================
+   1 · 模型：病态矩阵、学习曲线、域外误差
+   ============================================================ */
+
+// 糖盐双波长响应矩阵（mK per 1% w/w）
+const A = [[1.379, 1.772],[1.464, 1.727]];
+const DET = A[0][0]*A[1][1] - A[0][1]*A[1][0];
+const AI = [[A[1][1]/DET, -A[0][1]/DET], [-A[1][0]/DET, A[0][0]/DET]];
+const ATA = [
+  [A[0][0]**2 + A[1][0]**2, A[0][0]*A[0][1] + A[1][0]*A[1][1]],
+  [A[0][0]*A[0][1] + A[1][0]*A[1][1], A[0][1]**2 + A[1][1]**2]
+];
+const C_TRUE = [20, 5];
+const N_TRUE = [
+  A[0][0]*C_TRUE[0] + A[0][1]*C_TRUE[1],
+  A[1][0]*C_TRUE[0] + A[1][1]*C_TRUE[1]
+];
+
+// 直接求逆：σ_c = |A^-1| σ_n
+function sigmaInv(sn){
+  return Math.sqrt(AI[0][0]**2 + AI[0][1]**2) * sn;
+}
+
+// 贝叶斯：后验协方差 = (AtA/σn² + I/σp²)^-1
+function sigmaBayes(sn, sp){
+  const M = [
+    [ATA[0][0]/(sn*sn) + 1/(sp*sp), ATA[0][1]/(sn*sn)],
+    [ATA[0][1]/(sn*sn), ATA[1][1]/(sn*sn) + 1/(sp*sp)]
+  ];
+  const d = M[0][0]*M[1][1] - M[0][1]*M[1][0];
+  return Math.sqrt(M[0][0]/d);   // 逆矩阵 (1,1) 元 = M[0][0]/det
+}
+
+// 学习曲线：误差 vs 标定样本数
+const CURVES = [
+  {n:'物理模型', col:'#5ee6a8', f:()=>0.050, w:2.0},
+  {n:'PLS',      col:'#94a5bb', f:n=>0.10/Math.sqrt(n)+0.030, w:1.6},
+  {n:'小 MLP',   col:'#a3e635', f:n=>0.40/Math.sqrt(n)+0.022, w:2.2},
+  {n:'深网络',   col:'#f472b6', f:n=>1.20/Math.sqrt(n)+0.045, w:1.6}
+];
+
+// 域外误差：0.045 · exp(0.36 d²)
+function errOOD(d){ return 0.045*Math.exp(0.36*d*d); }
+
+/* ============================================================
+   2 · Hero：双面板（学习曲线 + 域外误差）
+   ============================================================ */
+function drawHero(){
+  const cv = $('#cvHero'); if(!cv) return;
+  const {c,w,h} = prep(cv, 430);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const gap = 16;
+  const wl = w*0.50, xR = wl + gap, wr = w - xR;
+
+  /* ---- 左：学习曲线 ---- */
+  {
+    const P = {l:40, r:12, t:34, b:40};
+    const x0=P.l, x1=wl-P.r, y0=P.t, y1=h-P.b;
+
+    const N0=Math.log10(4), N1=Math.log10(2500);
+    const E0=Math.log10(0.015), E1=Math.log10(1.2);
+    const X = n => x0 + (Math.log10(n)-N0)/(N1-N0)*(x1-x0);
+    const Y = e => y1 - (Math.log10(e)-E0)/(E1-E0)*(y1-y0);
+
+    // 网格
+    [5,10,30,100,300,1000].forEach(n=>{
+      c.strokeStyle = CO.grid; c.lineWidth=1;
+      line(c, X(n), y0, X(n), y1);
+      txt(c, String(n), X(n), y1+12, CO.tx3, 7, 'center');
+    });
+    [[0.02,'2%'],[0.05,'5%'],[0.1,'10%'],[0.5,'50%']].forEach(([e,lab])=>{
+      c.strokeStyle = CO.grid; c.lineWidth=1;
+      line(c, x0, Y(e), x1, Y(e));
+      txt(c, lab, x0-5, Y(e), CO.tx3, 7, 'right');
+    });
+
+    // 曲线
+    CURVES.forEach(cv2=>{
+      const xs=[], ys=[];
+      for(let n=5; n<=2000; n*=1.08){ xs.push(n); ys.push(clamp(cv2.f(n), 0.015, 1.2)); }
+      path(c, xs, ys, X, Y, cv2.col, cv2.w);
+    });
+
+    // 图例（带背景，避免与曲线混淆）
+    c.fillStyle = 'rgba(8,11,17,.90)';
+    c.fillRect(x1-78, y0+1, 76, CURVES.length*13+7);
+    c.strokeStyle = 'rgba(148,165,187,.10)'; c.lineWidth=1;
+    c.strokeRect(x1-78, y0+1, 76, CURVES.length*13+7);
+    CURVES.forEach((cv2,i)=>{
+      const ly = y0+9+i*13;
+      c.strokeStyle = cv2.col; c.lineWidth = cv2.w;
+      line(c, x1-70, ly, x1-56, ly);
+      txt(c, cv2.n, x1-52, ly, hexA(cv2.col,.9), 6.8, 'left');
+    });
+
+    // 追平点标注
+    const nx = X(205);
+    c.save(); c.setLineDash([3,3]); c.strokeStyle = hexA(CO.cy,.45); c.lineWidth=1;
+    line(c, nx, y0, nx, y1); c.restore();
+    txt(c, '205 组', nx+4, y1-10, hexA(CO.cy,.85), 7, 'left', 600);
+
+    txt(c, '误差随样本数', x0, y0-16, CO.tx3, 8, 'left');
+    txt(c, 'n 组标定', x1, y1+26, CO.tx3, 7, 'right');
+  }
+
+  /* ---- 右：域外误差 ---- */
+  {
+    const P = {l:38, r:14, t:34, b:40};
+    const x0 = xR+P.l, x1 = w-P.r, y0=P.t, y1=h-P.b;
+
+    const X = d => x0 + d/4*(x1-x0);
+    const E0=Math.log10(0.02), E1=Math.log10(40);
+    const Y = e => y1 - (Math.log10(clamp(e,0.02,20))-E0)/(E1-E0)*(y1-y0);
+
+    // 危险区
+    c.fillStyle = 'rgba(255,107,107,.055)';
+    c.fillRect(X(2), y0, x1-X(2), y1-y0);
+    c.save(); c.setLineDash([4,4]); c.strokeStyle = 'rgba(255,107,107,.32)'; c.lineWidth=1;
+    line(c, X(2), y0, X(2), y1); c.restore();
+    txt(c, '外推区', X(2)+5, y1-12, 'rgba(255,107,107,.7)', 7, 'left', 600);
+
+    // 网格
+    for(let d=0; d<=4; d++){
+      c.strokeStyle = d===2?'transparent':CO.grid; c.lineWidth=1;
+      if(d!==2) line(c, X(d), y0, X(d), y1);
+      txt(c, String(d), X(d), y1+12, CO.tx3, 7, 'center');
+    }
+    [[0.05,'5%'],[0.5,'50%'],[5,'500%']].forEach(([e,lab])=>{
+      c.strokeStyle = CO.grid; c.lineWidth=1;
+      line(c, x0, Y(e), x1, Y(e));
+      txt(c, lab, x0-5, Y(e), CO.tx3, 7, 'right');
+    });
+
+    // 曲线
+    const xs=[], ys=[];
+    for(let d=0; d<=4; d+=0.04){ xs.push(d); ys.push(errOOD(d)); }
+    c.save();
+    c.shadowColor = hexA(CO.vi,.55); c.shadowBlur = 9;
+    path(c, xs, ys, X, Y, CO.vi, 2.3);
+    c.restore();
+
+    // 两个参考点
+    [[0.5,'0.049%'],[3.5,'3.7%']].forEach(([d,lab])=>{
+      const px=X(d), py=Y(errOOD(d));
+      dot(c, px, py, 3.4, CO.vi, '#e9eff8', 1.4);
+      txt(c, lab, px + (d>2?-6:6), py-11, hexA(CO.vi,.95), 7, d>2?'right':'left', 600);
+    });
+
+    txt(c, '误差随分布距离', x0, y0-16, CO.tx3, 8, 'left');
+    txt(c, '马氏距离', x1, y1+26, CO.tx3, 7, 'right');
+  }
+
+  // 分隔
+  c.strokeStyle = 'rgba(148,165,187,.10)'; c.lineWidth=1;
+  line(c, wl+8, 22, wl+8, h-22);
+}
+
+/* ============================================================
+   3 · 维度账：可解性地图
+   ============================================================ */
+const DIM_CASES = [
+  {N:1, M:1, lab:'折光计·纯糖', cond:'良态', col:'#5ee6a8', dx:13, dy:-13, al:'left'},
+  {N:1, M:2, lab:'折光计·糖盐', cond:'欠定', col:'#ff6b6b', dx:13, dy:28, al:'left'},
+  {N:2, M:2, lab:'n+ρ · 7.3', cond:'良态', col:'#5ee6a8', dx:-13, dy:-16, al:'right', ox:-0.20},
+  {N:2, M:2, lab:'双波长 · 47.8', cond:'病态', col:'#ffd166', dx:13, dy:18, al:'left', ox:0.20},
+  {N:3, M:3, lab:'三波长 · 3 组分', cond:'病态', col:'#ffd166', dx:-13, dy:-14, al:'right'},
+  {N:5, M:4, lab:'光谱 · 4 组分', cond:'超定', col:'#5ee6a8', dx:-13, dy:14, al:'right'}
+];
+
+function drawDim(){
+  const cv = $('#cvDim'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, small?330:380);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?38:44, r: small?14:18, t:30, b:38};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+  const NMAX=6.2, MMAX=5.4;
+  const X = n => x0 + (n-0.4)/(NMAX-0.4)*(x1-x0);
+  const Y = m => y1 - (m-0.4)/(MMAX-0.4)*(y1-y0);
+
+  // 区域填充
+  c.save();
+  // 欠定区（M > N）
+  c.beginPath();
+  c.moveTo(X(0.4), Y(MMAX));
+  c.lineTo(X(NMAX), Y(MMAX));
+  c.lineTo(X(NMAX), Y(NMAX));
+  c.lineTo(X(0.4), Y(0.4));
+  c.closePath();
+  c.fillStyle = 'rgba(255,107,107,.05)';
+  c.fill();
+  // 超定区（M < N）
+  c.beginPath();
+  c.moveTo(X(0.4), Y(0.4));
+  c.lineTo(X(NMAX), Y(NMAX));
+  c.lineTo(X(NMAX), Y(0.4));
+  c.closePath();
+  c.fillStyle = 'rgba(94,230,168,.045)';
+  c.fill();
+  c.restore();
+
+  // 对角线
+  c.save();
+  c.setLineDash([5,4]); c.strokeStyle = 'rgba(255,209,102,.45)'; c.lineWidth=1.4;
+  line(c, X(0.4), Y(0.4), X(MMAX), Y(MMAX));
+  c.restore();
+
+  // 网格
+  for(let n=1;n<=6;n++){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(n), y0, X(n), y1);
+    txt(c, String(n), X(n), y1+12, CO.tx3, 7, 'center');
+  }
+  for(let m=1;m<=5;m++){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, x0, Y(m), x1, Y(m));
+    txt(c, String(m), x0-5, Y(m), CO.tx3, 7, 'right');
+  }
+
+  // 区域标注
+  txt(c, '欠定：无唯一解', X(1.1), Y(4.5), 'rgba(255,107,107,.5)', 7.5, 'left', 600);
+  txt(c, '超定：可最小二乘', X(3.4), Y(1.4), 'rgba(94,230,168,.5)', 7.5, 'left', 600);
+
+  // 案例点
+  DIM_CASES.forEach(d=>{
+    const px = X(d.N + (d.ox||0)), py = Y(d.M);
+    c.save();
+    if(d.cond==='病态'){ c.shadowColor = hexA(d.col,.6); c.shadowBlur = 10; }
+    dot(c, px, py, d.cond==='病态'?5.5:4.5, hexA(d.col,.22), d.col, 1.8);
+    c.restore();
+
+    let tx = px + d.dx, ty = py + d.dy;
+    // 边界保护
+    if(d.al==='left' && tx + d.lab.length*6.4 > x1) { tx = px - 10; d={...d, al:'right'}; }
+    if(d.al==='right' && tx - d.lab.length*6.4 < x0) { tx = px + 10; d={...d, al:'left'}; }
+    txt(c, d.lab, tx, clamp(ty, y0+6, y1-6), hexA(d.col,.9), 7, d.al, 500);
+  });
+
+  // 轴标
+  txt(c, '独立物理通道数 →', x1, y1+26, CO.tx3, 8, 'right');
+  c.save(); c.translate(11, (y0+y1)/2); c.rotate(-Math.PI/2);
+  txt(c, '待测组分数', 0,0, CO.tx3, 8, 'center'); c.restore();
+
+  txt(c, '对角线 = 临界', X(1.55), Y(1.28), 'rgba(255,209,102,.5)', 6.8, 'left');
+}
+
+/* ============================================================
+   4 · 病态：误差 vs 测量噪声
+   ============================================================ */
+let curPrior = 1.0;
+
+function drawIll(){
+  const cv = $('#cvIll'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, 420);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?46:54, r: small?14:20, t:38, b:46};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+
+  // 双对数：σn 5e-4 ~ 0.3 mK ; 误差 5e-3 ~ 6 %
+  const S0=Math.log10(0.005), S1=Math.log10(0.32);
+  const E0=Math.log10(0.02), E1=Math.log10(5);
+  const X = s => x0 + (Math.log10(s)-S0)/(S1-S0)*(x1-x0);
+  const Y = e => y1 - (Math.log10(clamp(e,0.005,6))-E0)/(E1-E0)*(y1-y0);
+
+  // 网格
+  [[0.005,'5 μK'],[0.01,'10 μK'],[0.02,'20 μK'],[0.05,'50 μK'],[0.1,'100 μK'],[0.2,'200 μK']].forEach(([s,lab])=>{
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(s), y0, X(s), y1);
+    txt(c, lab, X(s), y1+12, CO.tx3, 6.8, 'center');
+  });
+  [[0.05,'0.05%'],[0.2,'0.2%'],[1,'1%']].forEach(([e,lab])=>{
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, x0, Y(e), x1, Y(e));
+    txt(c, lab, x0-6, Y(e), CO.tx3, 7, 'right');
+  });
+
+  // 先验水平线
+  c.save();
+  c.setLineDash([5,4]); c.strokeStyle = hexA(CO.vi,.45); c.lineWidth=1.2;
+  line(c, x0, Y(curPrior), x1, Y(curPrior));
+  c.restore();
+  txt(c, '先验 σ = '+curPrior.toFixed(1)+'%', x0+8, Y(curPrior)-10,
+      hexA(CO.vi,.85), 7, 'left', 600);
+
+  // 直接求逆
+  const xs=[], y1s=[], y2s=[];
+  for(let k=0;k<=120;k++){
+    const s = Math.pow(10, S0 + k/120*(S1-S0));
+    xs.push(s); y1s.push(sigmaInv(s)); y2s.push(sigmaBayes(s, curPrior));
+  }
+  path(c, xs, y1s, X, Y, 'rgba(255,107,107,.85)', 2.1);
+  path(c, xs, y2s, X, Y, CO.cy, 2.4);
+
+  // 改善 2× 的临界噪声
+  let mark=null;
+  for(let k=1;k<xs.length;k++){
+    const r1=sigmaBayes(xs[k-1],curPrior)/sigmaInv(xs[k-1]);
+    const r2=sigmaBayes(xs[k],curPrior)/sigmaInv(xs[k]);
+    if(r1>0.5 && r2<=0.5){ mark = {s:xs[k], e:sigmaBayes(xs[k],curPrior)}; break; }
+  }
+  if(mark){
+    const mx=X(mark.s);
+    c.save();
+    c.strokeStyle = 'rgba(255,209,102,.45)'; c.lineWidth=1; c.setLineDash([3,4]);
+    line(c, mx, y0, mx, y1);
+    c.restore();
+    dot(c, mx, Y(mark.e), 4, CO.am, '#e9eff8', 1.5);
+    txt(c, '改善 2× @ '+(mark.s*1000).toFixed(0)+' μK', mx+7, Y(mark.e)+14,
+        hexA(CO.am,.95), 7.2, 'left', 600);
+  }
+
+  // 图例
+  const lg = [
+    {n:'直接求逆（无先验）', col:'rgba(255,107,107,.85)', w:2.1},
+    {n:'带数据先验（NN）', col:CO.cy, w:2.4}
+  ];
+  lg.forEach((it,i)=>{
+    const ly = y0+9+i*14;
+    c.strokeStyle = it.col; c.lineWidth = it.w;
+    line(c, x0+8, ly, x0+24, ly);
+    txt(c, it.n, x0+29, ly, 'rgba(148,165,187,.8)', 7.2, 'left');
+  });
+
+  // 轴标
+  txt(c, '折射率测量噪声 σ_n →', x1, y1+30, CO.tx3, 8, 'right');
+  c.save(); c.translate(13, (y0+y1)/2); c.rotate(-Math.PI/2);
+  txt(c, '糖浓度误差 σ_c', 0,0, CO.tx3, 8, 'center'); c.restore();
+
+  // 注释：放大倍数
+  txt(c, '斜率 = 11.6（病态放大）', x0+34, y0+42, 'rgba(148,165,187,.45)', 7, 'left');
+}
+
+/* ============================================================
+   5 · 软测量：三泳道
+   ============================================================ */
+let softT = 10, softDrift = 0.15;
+
+function softTruth(t){
+  return 20 - 0.018*t + 0.16*Math.sin(t*0.115) + 0.06*Math.sin(t*0.62 + 1.2);
+}
+// 确定性伪随机（保证重绘一致）
+function hashNoise(k, seed){
+  const x = Math.sin(k*12.9898 + seed*78.233)*43758.5453;
+  return (x - Math.floor(x))*2 - 1;
+}
+
+function drawSoft(){
+  const cv = $('#cvSoft'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, 440);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?40:48, r:16, t:22, b:26};
+  const x0=P.l, x1=w-P.r;
+  const TMAX = 120;
+
+  // 三个泳道
+  const laneH = (h - P.t - P.b - 20)/3;
+  const yA0 = P.t, yA1 = yA0+laneH;
+  const yB0 = yA1+10, yB1 = yB0+laneH;
+  const yC0 = yB1+10, yC1 = yC0+laneH;
+
+  const X = t => x0 + t/TMAX*(x1-x0);
+
+  // 数据范围
+  const CLO = 17.2, CHI = 20.6;
+  const Yof = (t0,t1) => v => t1 - (v-CLO)/(CHI-CLO)*(t1-t0);
+
+  const YA = Yof(yA0+8, yA1-6);
+  const YB = Yof(yB0+8, yB1-6);
+  const YC = Yof(yC0+8, yC1-6);
+
+  // 泳道背景
+  [[yA0,yA1],[yB0,yB1],[yC0,yC1]].forEach(([a,b])=>{
+    c.fillStyle = 'rgba(148,165,187,.018)';
+    c.fillRect(x0, a, x1-x0, b-a);
+  });
+
+  // 时间轴
+  for(let t=0;t<120;t+=20){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(t), yA0, X(t), yC1);
+    txt(c, String(t), X(t), yC1+12, CO.tx3, 6.8, 'center');
+  }
+  txt(c, 't (min)', x1, yC1+24, CO.tx3, 7, 'right');
+
+  // 泳道 1：真值
+  {
+    const xs=[], ys=[];
+    for(let t=0;t<=TMAX;t+=0.5){ xs.push(t); ys.push(softTruth(t)); }
+    path(c, xs, ys, X, YA, 'rgba(233,239,248,.85)', 1.8);
+    txt(c, '真值', x0+6, yA0+11, 'rgba(233,239,248,.7)', 7.5, 'left', 600);
+  }
+
+  // 泳道 2：色谱采样
+  {
+    const pts=[];
+    for(let t=0; t<=TMAX; t+=softT){
+      const noise = hashNoise(t+7, 3)*0.173;   // ±1 均匀分布 ×√3 后 σ=0.10
+      pts.push({t, v: softTruth(t)+noise});
+    }
+    // 阶梯连线
+    c.save();
+    c.strokeStyle = 'rgba(244,114,182,.35)'; c.lineWidth=1.2;
+    c.beginPath();
+    pts.forEach((p,i)=> i?c.lineTo(X(p.t), YB(p.v)) : c.moveTo(X(p.t), YB(p.v)));
+    c.stroke(); c.restore();
+
+    pts.forEach(p=>{
+      // 误差棒
+      c.strokeStyle = hexA(CO.vi,.4); c.lineWidth=1;
+      line(c, X(p.t), YB(p.v-0.06), X(p.t), YB(p.v+0.06));
+      c.save();
+      c.shadowColor = hexA(CO.vi,.5); c.shadowBlur = 6;
+      dot(c, X(p.t), YB(p.v), 3.2, CO.vi, '#e9eff8', 1.1);
+      c.restore();
+    });
+    txt(c, '色谱（每 '+softT+' min 一点，σ=0.10%）', x0+6, yB0+11,
+        hexA(CO.vi,.85), 7.5, 'left', 500);
+  }
+
+  // 泳道 3：折光计原始 + 融合
+  {
+    // 折光计：真值 + 漂移 + 噪声
+    const refr = t => softTruth(t) + softDrift*(t/60) + hashNoise(t*3, 9)*0.035;   // σ=0.02
+
+    // 原始折光计（虚线，显示漂移）
+    const xsR=[], ysR=[];
+    for(let t=0;t<=TMAX;t+=1){ xsR.push(t); ysR.push(refr(t)); }
+    path(c, xsR, ysR, X, YC, 'rgba(148,165,187,.30)', 1.2, [3,3]);
+
+    // 融合
+    const xsF=[], ysF=[];
+    let anchorT = 0, anchorC = softTruth(0)+hashNoise(7,3)*0.173, anchorR = refr(0);
+    for(let t=0;t<=TMAX;t+=0.5){
+      while(anchorT + softT <= t){
+        anchorT += softT;
+        anchorC = softTruth(anchorT) + hashNoise(anchorT+7,3)*0.173;
+        anchorR = refr(anchorT);
+      }
+      xsF.push(t);
+      ysF.push(anchorC + (refr(t) - anchorR));
+    }
+    c.save();
+    c.shadowColor = hexA(CO.cy,.5); c.shadowBlur = 8;
+    path(c, xsF, ysF, X, YC, CO.cy, 2.1);
+    c.restore();
+
+    txt(c, '融合输出', x0+6, yC0+11, hexA(CO.cy,.9), 7.5, 'left', 600);
+    txt(c, '虚线 = 折光计原始（可见漂移）', x1-4, yC0+11, 'rgba(148,165,187,.45)', 6.8, 'right');
+  }
+
+  // 泳道标签
+  ['①','②','③'].forEach((s,i)=>{
+    txt(c, s, x0-12, [yA0,yB0,yC0][i]+11, 'rgba(148,165,187,.35)', 8, 'right');
+  });
+}
+
+function updateSoftStats(){
+  // 绝对误差（相对真值）与相邻噪声（一阶差分）
+  const n = 600;
+  let sum=0, sumD=0, prev=null;
+  for(let k=0;k<n;k++){
+    const t = k/n*120;
+    const refr = x => softTruth(x) + softDrift*(x/60);
+    const tk = Math.floor(t/softT)*softT;
+    const anchorC = softTruth(tk) + 0.173*hashNoise(tk+7,3);
+    const fused = anchorC + (refr(t) - refr(tk));
+    const e = fused - softTruth(t);
+    sum += e*e;
+    if(prev!==null){
+      const d = (fused - prev) - (softTruth(t) - softTruth(t-120/n));
+      sumD += d*d;
+    }
+    prev = fused;
+  }
+  const rms = Math.sqrt(sum/n);
+  const dn  = Math.sqrt(sumD/(n-1));
+  const a=$('#vSoftRms'), b=$('#vSoftDn');
+  if(a) a.textContent = rms.toFixed(3);
+  if(b) b.textContent = dn.toFixed(3);
+}
+
+/* ============================================================
+   6 · 域外检测：误差地图
+   ============================================================ */
+function drawOOD(){
+  const cv = $('#cvOOD'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, 390);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?30:36, r: small?10:14, t:26, b:34};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+  const R = 3.4;
+  const X = v => x0 + (v+R)/(2*R)*(x1-x0);
+  const Y = v => y1 - (v+R)/(2*R)*(y1-y0);
+
+  // 误差面
+  const NX = small?46:64, NY = small?34:48;
+  const LMIN=Math.log10(0.045), LMAX=Math.log10(30);
+  for(let i=0;i<NX;i++){
+    for(let j2=0;j2<NY;j2++){
+      const vx = -R + (i+0.5)/NX*2*R;
+      const vy = -R + (j2+0.5)/NY*2*R;
+      const e = errOOD(Math.hypot(vx, vy));
+      const t = clamp((Math.log10(e)-LMIN)/(LMAX-LMIN), 0, 1);
+      // 绿(94,230,168) → 黄(255,209,102) → 红(255,107,107)
+      let rr,gg,bb;
+      if(t < 0.46){
+        const u = t/0.46;
+        rr = 94 + (255-94)*u;
+        gg = 230 + (209-230)*u;
+        bb = 168 + (102-168)*u;
+      } else {
+        const u = (t-0.46)/0.54;
+        rr = 255;
+        gg = 209 + (107-209)*u;
+        bb = 102 + (107-102)*u;
+      }
+      c.fillStyle = 'rgba('+Math.round(rr)+','+Math.round(gg)+','+Math.round(bb)+',0.30)';
+      c.fillRect(x0 + i/NX*(x1-x0), y0 + j2/NY*(y1-y0), (x1-x0)/NX+0.6, (y1-y0)/NY+0.6);
+    }
+  }
+
+  // 等高圈
+  [1,2,3].forEach(d=>{
+    const rad = d/(2*R)*(x1-x0);
+    c.save();
+    c.strokeStyle = d===2 ? 'rgba(233,239,248,.55)' : 'rgba(233,239,248,.20)';
+    c.lineWidth = d===2 ? 1.6 : 1;
+    if(d===3) c.setLineDash([4,4]);
+    c.beginPath(); c.arc(X(0), Y(0), rad, 0, 6.2832); c.stroke();
+    c.restore();
+    txt(c, 'd='+d, X(0)+rad*0.71, Y(0)-rad*0.71, d===2?'rgba(233,239,248,.8)':'rgba(148,165,187,.5)',
+        6.5, 'left', d===2?600:400);
+  });
+
+  // 训练点云
+  const NP = small?110:170;
+  for(let k=0;k<NP;k++){
+    const u1 = hashNoise(k*1.7, 21)*0.5+0.5;
+    const u2 = hashNoise(k*2.3, 37)*0.5+0.5;
+    const r = Math.sqrt(-2*Math.log(clamp(u1,0.001,1)));
+    const th = u2*6.2832;
+    const vx = r*Math.cos(th)*0.78;
+    const vy = r*Math.sin(th)*0.78;
+    if(Math.abs(vx)>R || Math.abs(vy)>R) continue;
+    dot(c, X(vx), Y(vy), 1.4, 'rgba(240,246,255,.55)', null);
+  }
+
+  // 中心
+  c.save();
+  c.shadowColor='rgba(233,239,248,.8)'; c.shadowBlur=8;
+  dot(c, X(0), Y(0), 3.4, '#e9eff8', null);
+  c.restore();
+
+  // 轴刻度
+  [-3,-2,-1,0,1,2,3].forEach(v=>{
+    txt(c, String(v), X(v), y1+11, CO.tx3, 6, 'center');
+    txt(c, String(v), x0-4, Y(v), CO.tx3, 6, 'right');
+  });
+  txt(c, 'n →', x1, y0-11, 'rgba(148,165,187,.55)', 7, 'right');
+  txt(c, 'Δn', x0, y0-11, 'rgba(148,165,187,.55)', 7, 'left');
+
+  // 色标
+  const bx = x1-7, by0 = y1-58, by1 = y1-14;
+  const g = c.createLinearGradient(0,by1,0,by0);
+  g.addColorStop(0,'rgba(94,230,168,.85)');
+  g.addColorStop(0.46,'rgba(255,209,102,.85)');
+  g.addColorStop(1,'rgba(255,107,107,.85)');
+  c.fillStyle=g; c.fillRect(bx, by0, 6, by1-by0);
+  txt(c, '0.05%', bx-4, by1, 'rgba(148,165,187,.7)', 6, 'right');
+  txt(c, '30%', bx-4, by0, 'rgba(148,165,187,.7)', 6, 'right');
+
+  txt(c, '白色点 = 训练样本', x0+2, y0-11, 'rgba(148,165,187,.4)', 7, 'left');
+}
+
+
+/* ============================================================
+   7 · 采样设计：网格 vs 生产分布
+   ============================================================ */
+const CLUSTERS = [
+  {x:20, y:3.0, w:0.40, sx:2.6, sy:0.55},
+  {x:28, y:5.0, w:0.35, sx:2.0, sy:0.45},
+  {x:12, y:2.0, w:0.25, sx:1.8, sy:0.40}
+];
+
+function drawSample(){
+  const cv = $('#cvSample'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, 400);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const gap = small?10:16;
+  const pw = (w - gap - 16)/2;
+  const two = [
+    {x0:8, label:'均匀网格', sub:'8 × 5 = 40'},
+    {x0:8+pw+gap, label:'按生产分布', sub:'40（分层）'}
+  ];
+
+  two.forEach((p, idx)=>{
+    const x0=p.x0, x1=x0+pw;
+    const y0=44, y1=h-34;
+
+    const X = v => x0 + v/40*(x1-x0);
+    const Y = v => y1 - v/8*(y1-y0);
+
+    // 背景：生产分布的密度云
+    for(let k=0;k<260;k++){
+      const u = hashNoise(k*1.3, idx*13+5)*0.5+0.5;
+      let acc=0, cl=CLUSTERS[0];
+      for(const cc of CLUSTERS){ acc+=cc.w; if(u<=acc){ cl=cc; break; } }
+      const gx = cl.x + hashNoise(k*3.1, 11)*cl.sx*1.5;
+      const gy = cl.y + hashNoise(k*4.7, 17)*cl.sy*1.5;
+      if(gx<0||gx>40||gy<0||gy>8) continue;
+      dot(c, X(gx), Y(gy), 1.1, 'rgba(148,165,187,.20)', null);
+    }
+
+    // 采样点
+    const pts = [];
+    if(idx===0){
+      for(let i=0;i<8;i++) for(let j=0;j<5;j++){
+        pts.push({x: 2.5 + i*5, y: 0.8 + j*1.6});
+      }
+    } else {
+      CLUSTERS.forEach((cl,ci)=>{
+        const n = Math.round(cl.w*40);
+        for(let k=0;k<n;k++){
+          // Box-Muller，用确定性噪声
+          const u1 = clamp(hashNoise(k*2.9+ci*7, 41)*0.5+0.5, 0.02, 0.98);
+          const u2 = hashNoise(k*3.7+ci*11, 53)*0.5+0.5;
+          const g1 = Math.sqrt(-2*Math.log(u1))*Math.cos(u2*6.2832);
+          const g2 = Math.sqrt(-2*Math.log(u1))*Math.sin(u2*6.2832);
+          pts.push({
+            x: clamp(cl.x + g1*cl.sx*0.55, 0.5, 39.5),
+            y: clamp(cl.y + g2*cl.sy*0.60, 0.3, 7.7)
+          });
+        }
+      });
+    }
+
+    pts.forEach(p=>{
+      c.save();
+      c.shadowColor = hexA(CO.cy,.4); c.shadowBlur = 4;
+      dot(c, X(p.x), Y(p.y), 2.0, hexA(CO.cy,.8), null);
+      c.restore();
+    });
+
+    // 边框
+    c.strokeStyle='rgba(148,165,187,.14)'; c.lineWidth=1;
+    c.strokeRect(x0, y0, x1-x0, y1-y0);
+
+    // 标题
+    txt(c, p.label, x0, 22, idx===1?hexA(CO.cy,.95):'rgba(148,165,187,.7)', 8.5, 'left', 600);
+    txt(c, p.sub, x0, 34, 'rgba(148,165,187,.45)', 7, 'left');
+
+    // 轴标（只左边标一次）
+    if(idx===0){
+      [0,2,4,6,8].forEach(v=>txt(c, String(v), x0-4, Y(v), CO.tx3, 6.2, 'right'));
+      c.save(); c.translate(x0-24, (y0+y1)/2); c.rotate(-Math.PI/2);
+      txt(c, '盐 %', 0,0, CO.tx3, 7, 'center'); c.restore();
+    }
+    [0,10,20,30,40].forEach(v=>{
+      if(v===0||v===40||v===20) txt(c, String(v), X(v), y1+11, CO.tx3, 6.2, 'center');
+    });
+  });
+
+  txt(c, '糖 % →', w-10, h-10, CO.tx3, 7, 'right');
+  txt(c, '灰点 = 实际会遇到的配方', 8, h-10, 'rgba(148,165,187,.45)', 7, 'left');
+}
+
+/* ============================================================
+   8 · 算力：MAC 条形
+   ============================================================ */
+const MACS = [
+  {n:'线性回归 · 2 组分', v:4,        col:'#5ee6a8'},
+  {n:'小 MLP · 4-16-2',   v:96,       col:CO.cy},
+  {n:'中 MLP · 8-64-64-4',v:4864,     col:CO.cy},
+  {n:'1D CNN · 256×16',   v:348160,   col:CO.am},
+  {n:'光谱 CNN · 512×32', v:2867200,  col:CO.vi}
+];
+
+function drawMAC(){
+  const cv = $('#cvMAC'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, 380);
+  c.fillStyle = '#080b11'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?96:132, r: small?54:74, t:24, b:38};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+
+  const L0=0, L1=7;   // log10 MAC 0~7
+  const X = v => x0 + (Math.log10(Math.max(v,1))-L0)/(L1-L0)*(x1-x0);
+
+  // 网格
+  for(let e=0;e<=7;e++){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(Math.pow(10,e)), y0, X(Math.pow(10,e)), y1);
+    txt(c, e===0?'1':'10'+['','','²','³','⁴','⁵','⁶','⁷'][e], X(Math.pow(10,e)), y1+12,
+        CO.tx3, 6.5, 'center');
+  }
+
+  const rowH = (y1-y0)/MACS.length;
+
+  MACS.forEach((m,i)=>{
+    const cy = y0 + rowH*(i+0.5);
+    const bx1 = X(m.v);
+
+    // 条
+    const g = c.createLinearGradient(x0,0,bx1,0);
+    g.addColorStop(0, hexA(m.col,.14));
+    g.addColorStop(1, hexA(m.col,.62));
+    c.fillStyle = g;
+    c.fillRect(x0, cy-rowH*0.26, bx1-x0, rowH*0.52);
+
+    // 端点
+    dot(c, bx1, cy, 2.8, m.col, null);
+
+    // 名称
+    txt(c, m.n, x0-8, cy, hexA(m.col,.88), small?6.8:7.4, 'right', 500);
+
+    // 数值
+    txt(c, m.v>=1000 ? (m.v/1000).toFixed(0)+'k' : String(m.v),
+        bx1+7, cy, hexA(m.col,.95), small?6.6:7.2, 'left', 600);
+  });
+
+  // 分界线：100 Hz 采样下 MCU 的可用算力（10⁷ MAC/s ÷ 100）= 10⁵
+  const lim = X(1e5);
+  c.save();
+  c.setLineDash([4,4]); c.strokeStyle = 'rgba(255,107,107,.45)'; c.lineWidth=1.2;
+  line(c, lim, y0, lim, y1);
+  c.restore();
+  txt(c, '100 Hz 下的上限', lim-4, y0+8, 'rgba(255,107,107,.75)', 6.5, 'right');
+
+  txt(c, '单次推理乘加次数（对数）', x1, y1+28, CO.tx3, 7, 'right');
+}
+
+/* ============================================================
+   9 · 交互与启动
+   ============================================================ */
+let heroT = 0, rafId = 0;
+const inView = {hero:true};
+
+function drawHeroPulse(){
+  // 轻微呼吸：让 Hero 有生气，但只在可见时
+  drawHero();
+  if(inView.hero){
+    const cv = $('#cvHero');
+    if(cv){
+      const w = cv.clientWidth;
+      const phase = (Math.sin(heroT*1.6)+1)/2;
+      // 覆盖一个小光点（简单实现，不重绘整图）
+      // 实际修改：在 drawHero 里用 heroT 控制透明度
+    }
+  }
+}
+
+function tick(){
+  const cv = $('#cvHero');
+  if(cv && inView.hero){ heroT += 0.016; drawHero(); }
+  rafId = requestAnimationFrame(tick);
+}
+
+function initProgress(){
+  const bar = $('#pbar'); if(!bar) return;
+  const upd = ()=>{
+    const st = window.scrollY || 0;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = clamp(st/Math.max(max,1)*100, 0, 100)+'%';
+  };
+  window.addEventListener('scroll', upd, {passive:true});
+  upd();
+}
+
+function initNav(){
+  const links = $$('#nav a');
+  if(!links.length) return;
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec')).filter(Boolean);
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting) return;
+      const id = e.target.id.replace('sec','');
+      links.forEach(a=>a.classList.toggle('on', a.getAttribute('href')==='#'+id));
+    });
+  }, {rootMargin:'-15% 0px -70% 0px'});
+  secs.forEach(s=>io.observe(s));
+  if(secs[0]) links[0].classList.add('on');
+}
+
+function boot(){
+  drawHero();
+  drawDim();
+  drawIll();
+  drawSoft();
+  updateSoftStats();
+  drawOOD();
+  drawSample();
+  drawMAC();
+
+  // Hero 可见性
+  const hcv = $('#cvHero');
+  if(hcv){
+    const io = new IntersectionObserver(es=>{
+      es.forEach(e=>{ inView.hero = e.isIntersecting; });
+    }, {threshold:0.05});
+    io.observe(hcv);
+  }
+
+  // 先验滑块
+  const sp = $('#sPrior');
+  if(sp) sp.addEventListener('input', ()=>{
+    curPrior = +sp.value;
+    const v = $('#vPrior'); if(v) v.textContent = curPrior.toFixed(1)+' %';
+    drawIll();
+  });
+
+  // 软测量滑块
+  const st = $('#sTint');
+  if(st) st.addEventListener('input', ()=>{
+    softT = +st.value;
+    const v = $('#vTint'); if(v) v.textContent = softT+' min';
+    drawSoft(); updateSoftStats();
+  });
+  const sd = $('#sDrift');
+  if(sd) sd.addEventListener('input', ()=>{
+    softDrift = +sd.value;
+    const v = $('#vDrift'); if(v) v.textContent = softDrift.toFixed(2)+' %/h';
+    drawSoft(); updateSoftStats();
+  });
+
+  initProgress();
+  initNav();
+
+  // 动画（省电：reduced motion 时不动）
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce) tick();
+
+  let rz = 0;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(rz);
+    rz = setTimeout(()=>{
+      drawHero(); drawDim(); drawIll(); drawSoft();
+      drawOOD(); drawSample(); drawMAC();
+    }, 160);
+  });
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ cancelAnimationFrame(rafId); }
+    else { cancelAnimationFrame(rafId); tick(); }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>
