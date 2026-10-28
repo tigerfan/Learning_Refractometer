@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIR 与拉曼 · 同一根化学键的两种问法</title>
+<meta name="description" content="近红外吸收与拉曼散射的原理、仪器设计与应用选择：从分子振动到能级图，从倍频归属到散射截面，讲清两者的互补性。">
+<style>
+
+
+
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#06070e;
+  --bg-2:#0a0b14;
+  --surface:#0a0f1a;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#ff9a4d;
+  --cy-soft:rgba(255,154,77,.14);
+  --cy-line:rgba(255,154,77,.35);
+  --am:#ffb84d;
+  --am-soft:rgba(255,184,77,.13);
+  --vi:#4dd0e1;
+  --vi-soft:rgba(77,208,225,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(255,154,77,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(77,208,225,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,184,77,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,154,77,.28),rgba(77,208,225,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#b0f2fa 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(255,154,77,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,184,77,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(255,154,77,.12);color:var(--cy);border:1px solid rgba(255,154,77,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,184,77,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(77,208,225,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,184,77,.05);border:1px solid rgba(255,184,77,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(255,154,77,.045);border-color:rgba(255,154,77,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(255,154,77,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(255,154,77,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#b0f2fa}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(255,154,77,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+
+/* ===== RGB 三色光专用 ===== */
+:root{
+  --cR:#ff5f6d;
+  --cG:#3ddc84;
+  --cB:#5b9dff;
+  --cRd:rgba(255,95,109,.55);
+  --cGd:rgba(61,220,132,.55);
+  --cBd:rgba(91,157,255,.55);
+}
+.spectrum-bar{
+  height:3px;width:100%;border-radius:2px;margin:0 0 18px;
+  background:linear-gradient(90deg,#5b9dff 0%,#3ddc84 50%,#ff5f6d 100%);
+  opacity:.85;
+}
+.rgb-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rgb-cell{background:var(--bg-2);padding:14px 14px 12px}
+.rgb-cell .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.rgb-cell .lab i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rgb-cell .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1}
+.rgb-cell .s{font-size:10px;color:var(--tx-3);font-family:var(--mono);margin-top:6px}
+.bigN.tri{display:flex;align-items:baseline;gap:2px;font-size:34px}
+.bigN.tri em{font-style:normal;font-size:19px;opacity:.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line2);background:var(--bg-3);color:var(--tx-2)}
+.chip i{width:6px;height:6px;border-radius:50%}
+.lam{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wl-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:6px;letter-spacing:.02em}
+
+
+
+/* ===== 光路页专用 ===== */
+:root{ --cRd:rgba(255,107,107,.5); }
+.opt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.opt-cell{background:var(--bg-2);padding:13px 13px 11px}
+.opt-cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);margin-bottom:6px}
+.opt-cell .v{font-family:var(--mono);font-size:19px;font-weight:500;line-height:1}
+.opt-cell .v small{font-size:11px;opacity:.5;margin-left:2px}
+.opt-cell .s{font-size:9.5px;color:var(--tx-3);font-family:var(--mono);margin-top:5px}
+.chk{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:none}
+.chk .num{font-family:var(--mono);font-size:10px;color:var(--am);width:20px;flex-shrink:0;padding-top:2px}
+.chk .tx{font-size:12.3px;line-height:1.65;color:var(--tx-2)}
+.chk .tx b{color:var(--tx)}
+
+
+
+/* ===== 色谱页专用 ===== */
+.flow-wrap{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+.flow-wrap svg{min-width:700px;display:block}
+.flow-hint{display:none;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:8px;text-align:center;letter-spacing:.06em}
+@media(max-width:640px){
+  .flow-hint{display:block}
+  .m-hide3 th:nth-child(3),.m-hide3 td:nth-child(3){display:none}
+  .m-hide3 td:first-child{white-space:nowrap}
+}
+
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 分子在振动</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 两种问法</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 选择定则</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · NIR 的倍频</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 拉曼的困境</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 两张脸</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 两条光路</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 探头与穿透</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 选哪个</span></a>
+</nav>
+
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>振动光谱 · 近红外与拉曼</div>
+      <h1>同一根化学键，<br><em>两种问法</em></h1>
+      <p class="hero-lead">
+        NIR 问的是：<b>它吸走了哪些光</b>——分子把特定能量的光子吃掉，跳到更高的振动能级。<br>
+        拉曼问的是：<b>它把光弹开时，偷走了多少能量</b>——光子撞上去又飞走，频率变了一点点。<br>
+        同一个振动，两条路都能看见，但<b>强弱规律正好相反</b>。
+      </p>
+
+      <div class="chain">
+        <span>光</span><i>→</i>
+        <span class="hi">分子振动</span><i>→</i>
+        <span>吸收 / 散射</span><i>→</i>
+        <span>谱图</span><i>→</i>
+        <span class="hi">成分</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">拉曼截面</div><div class="v">10⁻³⁰<small>cm²</small></div></div>
+        <div class="kpi"><div class="k">比红外弱</div><div class="v">10<small>个数量级</small></div></div>
+        <div class="kpi"><div class="k">水的 NIR 峰</div><div class="v">4<small>个</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvHero" height="440"></canvas>
+      <div class="cv-cap"><span>同一根键：吸收谱宽而糊，拉曼谱窄而锐</span><span style="text-transform:none">示意图</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">分子一直在抖，只是幅度很小</div>
+      <div class="sec-sub">
+        化学键不是一根硬棍子，更像一根弹簧：两个原子在平衡位置附近来回振。
+        弹簧越硬、原子越轻，振得越快。这个频率是分子的身份证——
+        <b>每种键都有自己的固有频率</b>，与外界光无关。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvBond" height="360"></canvas>
+      <div class="cv-cap"><span>弹簧-小球模型 · 频率由 k 和 μ 决定</span><span style="text-transform:none">振幅已夸张</span></div>
+    </div>
+
+    <div class="card">
+      <h3>一个公式，决定所有峰的横坐标</h3>
+      <div class="eq">
+        ν <span class="o">=</span>
+        <span class="frac"><span>1</span><span>2π</span></span>
+        <span class="o">·</span>
+        <span style="font-size:15px">√</span><span class="brk">(</span>
+        <span class="frac"><span>k</span><span>μ</span></span>
+        <span class="brk">)</span>
+      </div>
+      <div class="eq-note">
+        k 是键的力常数（越硬越大），μ 是约化质量（越轻越小）。
+        两者一起决定频率——所以 <b>O–H 振得比 C–C 快得多</b>。
+      </div>
+
+      <table class="m-hide3" style="margin-top:18px">
+        <thead><tr><th>化学键</th><th class="num">波数 cm⁻¹</th><th class="num">波长</th><th>红外 / 拉曼</th></tr></thead>
+        <tbody>
+          <tr><td>O–H 伸缩</td><td class="num">3600</td><td class="num">2.78 μm</td><td>强 / 弱</td></tr>
+          <tr><td>C–H 伸缩</td><td class="num">2900</td><td class="num">3.45 μm</td><td>中 / <b>强</b></td></tr>
+          <tr><td>C=O 伸缩</td><td class="num">1700</td><td class="num">5.88 μm</td><td><b>极强</b> / 弱</td></tr>
+          <tr><td>C=C 伸缩</td><td class="num">1650</td><td class="num">6.06 μm</td><td>弱 / <b>极强</b></td></tr>
+          <tr><td>C–C 骨架</td><td class="num">1000</td><td class="num">10.0 μm</td><td>弱 / <b>强</b></td></tr>
+        </tbody>
+      </table>
+
+      <div class="note" style="margin-top:16px;font-size:12px;margin-bottom:0">
+        <div class="ico">◆</div>
+        <div>
+          注意最后一列：<b>红外强的，拉曼往往弱</b>。这不是巧合，
+          而是两种技术探测的是不同的物理量。第 03 章解释原因。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">同一个振动，两种问法</div>
+      <div class="sec-sub">
+        分子吸收一个光子，是从 v=0 跳到 v=1；拉曼散射是光子撞上去又飞走，
+        中途"留下"或"带走"一份振动能量。前者靠<b>共振吸收</b>，
+        后者靠<b>非弹性碰撞</b>——这就是两者在灵敏度上差十个数量级的根源。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:22px 18px">
+    <div class="flow-wrap"><svg viewBox="0 0 1000 330" style="width:100%;height:auto;display:block" role="img" aria-label="红外吸收与拉曼散射的能级图对比">
+      <title>红外吸收与拉曼散射的能级图</title>
+      <desc>左：红外吸收，光子能量等于振动能量，被分子吸收后跃迁到 v=1。中：拉曼 Stokes 散射，光子到虚能级后回落，出射光子能量减少。右：拉曼反 Stokes 散射，从 v=1 出发，出射光子能量增加。</desc>
+
+      <g fill="none" stroke-width="2">
+        <line x1="66" y1="286" x2="266" y2="286" stroke="#e9eff8"/>
+        <line x1="66" y1="180" x2="266" y2="180" stroke="#e9eff8"/>
+        <line x1="389" y1="286" x2="589" y2="286" stroke="#e9eff8"/>
+        <line x1="389" y1="180" x2="589" y2="180" stroke="#e9eff8"/>
+        <line x1="712" y1="286" x2="912" y2="286" stroke="#e9eff8"/>
+        <line x1="712" y1="180" x2="912" y2="180" stroke="#e9eff8"/>
+      </g>
+
+      <rect x="26" y="38" width="313" height="292" rx="8" fill="rgba(255,154,77,.045)" stroke="rgba(255,154,77,.22)" stroke-width="1"/>
+      <text x="42" y="60" fill="#ff9a4d" font-size="11" font-family="ui-monospace,monospace" letter-spacing=".08em">① 红外吸收</text>
+
+      <path d="M140 286 L140 188" stroke="#ff9a4d" stroke-width="2.2" marker-end="url(#arN)"/>
+      <text x="150" y="240" fill="#ff9a4d" font-size="10.5" font-family="ui-monospace,monospace">hν</text>
+      <text x="150" y="254" fill="rgba(255,154,77,.6)" font-size="8" font-family="ui-monospace,monospace">正好等于 ΔE</text>
+
+      <text x="274" y="184" fill="rgba(233,239,248,.6)" font-size="9" font-family="ui-monospace,monospace">v = 1</text>
+      <text x="274" y="290" fill="rgba(148,165,187,.55)" font-size="9" font-family="ui-monospace,monospace">v = 0</text>
+      <text x="42" y="316" fill="rgba(148,165,187,.45)" font-size="8.5" font-family="ui-monospace,monospace">对不上就完全不吸收</text>
+
+      <rect x="349" y="38" width="313" height="292" rx="8" fill="rgba(77,208,225,.04)" stroke="rgba(77,208,225,.22)" stroke-width="1"/>
+      <text x="365" y="60" fill="#4dd0e1" font-size="11" font-family="ui-monospace,monospace" letter-spacing=".08em">② 拉曼 Stokes</text>
+
+      <line x1="389" y1="80" x2="589" y2="80" stroke="rgba(77,208,225,.45)" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="589" y="72" text-anchor="end" fill="rgba(77,208,225,.6)" font-size="8.5" font-family="ui-monospace,monospace">虚能级</text>
+
+      <path d="M463 286 L463 88" stroke="#4dd0e1" stroke-width="2" marker-end="url(#arR)"/>
+      <text x="471" y="196" fill="#4dd0e1" font-size="10.5" font-family="ui-monospace,monospace">hν₀</text>
+
+      <path d="M463 88 L543 174" stroke="#4dd0e1" stroke-width="2" marker-end="url(#arR)"/>
+      <text x="548" y="124" fill="rgba(233,239,248,.9)" font-size="10" font-family="ui-monospace,monospace">h(ν₀−Δν)</text>
+
+      <text x="597" y="184" fill="rgba(233,239,248,.6)" font-size="9" font-family="ui-monospace,monospace">v = 1</text>
+      <text x="597" y="290" fill="rgba(148,165,187,.55)" font-size="9" font-family="ui-monospace,monospace">v = 0</text>
+      <text x="365" y="316" fill="rgba(148,165,187,.45)" font-size="8.5" font-family="ui-monospace,monospace">光子少一份能量，分子升到 v=1</text>
+
+      <rect x="672" y="38" width="313" height="292" rx="8" fill="rgba(77,208,225,.03)" stroke="rgba(77,208,225,.16)" stroke-width="1"/>
+      <text x="688" y="60" fill="rgba(77,208,225,.85)" font-size="11" font-family="ui-monospace,monospace" letter-spacing=".08em">③ 反 Stokes</text>
+
+      <line x1="712" y1="80" x2="912" y2="80" stroke="rgba(77,208,225,.35)" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <text x="912" y="72" text-anchor="end" fill="rgba(77,208,225,.5)" font-size="8.5" font-family="ui-monospace,monospace">虚能级</text>
+
+      <path d="M786 180 L786 88" stroke="rgba(77,208,225,.85)" stroke-width="2" marker-end="url(#arR)"/>
+      <text x="794" y="136" fill="rgba(77,208,225,.85)" font-size="10.5" font-family="ui-monospace,monospace">hν₀</text>
+
+      <path d="M786 88 L866 282" stroke="rgba(77,208,225,.85)" stroke-width="2" marker-end="url(#arR)"/>
+      <text x="800" y="252" fill="rgba(233,239,248,.85)" font-size="10" font-family="ui-monospace,monospace">h(ν₀+Δν)</text>
+
+      <text x="920" y="184" fill="rgba(233,239,248,.6)" font-size="9" font-family="ui-monospace,monospace">v = 1</text>
+      <text x="920" y="290" fill="rgba(148,165,187,.55)" font-size="9" font-family="ui-monospace,monospace">v = 0</text>
+      <text x="688" y="316" fill="rgba(148,165,187,.4)" font-size="8.5" font-family="ui-monospace,monospace">起点是 v=1，强度低得多</text>
+
+      <defs>
+        <marker id="arN" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">
+          <path d="M0,0 L6,3.2 L0,6.4 z" fill="#ff9a4d"/>
+        </marker>
+        <marker id="arR" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">
+          <path d="M0,0 L6,3.2 L0,6.4 z" fill="#4dd0e1"/>
+        </marker>
+      </defs>
+    </svg></div>
+    <div class="flow-hint">← 左右滑动查看完整图 →</div>
+    <div class="cv-cap" style="margin-top:10px"><span>三种过程 · 能量走向</span><span style="text-transform:none">能级间距已按非谐性递减</span></div>
+  </div>
+
+  <div class="grid g3" style="gap:14px;margin-top:16px">
+    <div class="cell" style="padding:15px 16px;border:1px solid var(--line);border-radius:9px;background:var(--bg-2)">
+      <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3)">红外 / NIR 吸收</div>
+      <div style="font-size:12.3px;line-height:1.65;color:var(--tx-2);margin-top:7px">
+        入射光子的能量必须<b>正好等于</b>振动能级差。这要求很高，所以吸收是个"全或无"的过程。
+        跃迁到真实能级，概率大、信号强。
+      </div>
+    </div>
+    <div class="cell" style="padding:15px 16px;border:1px solid var(--line);border-radius:9px;background:var(--bg-2)">
+      <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3)">拉曼散射</div>
+      <div style="font-size:12.3px;line-height:1.65;color:var(--tx-2);margin-top:7px">
+        光子被"弹开"，中途借出一份振动能量。中间态是<b>虚能级</b>，不需要能量匹配，
+        所以任何波长都能激发——但概率极低。
+      </div>
+    </div>
+    <div class="cell" style="padding:15px 16px;border:1px solid var(--line);border-radius:9px;background:var(--bg-2)">
+      <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3)">关键差别</div>
+      <div style="font-size:12.3px;line-height:1.65;color:var(--tx-2);margin-top:7px">
+        NIR 看的是<b>能量账</b>（对不上一律不收），
+        拉曼看的是<b>能量差</b>（多少都能弹，只是变了一点点）。
+        后者带来"位移与激发波长无关"这个好用性质。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">为什么有些振动，一种技术完全看不见</div>
+      <div class="sec-sub">
+        红外要的是<b>偶极矩变化</b>：分子振动时电荷分布不对称地晃，才能和电磁波耦合。
+        拉曼要的是<b>极化率变化</b>：电子云被拉得变形程度在振动中改变。
+        这两个条件几乎互斥——所以红外强的，拉曼往往弱。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvCO2" height="330"></canvas>
+        <div class="cv-cap"><span>CO₂ 的三个振动模式 · 互补性的教科书例子</span><span style="text-transform:none">动画示意</span></div>
+      </div>
+      <div class="note" style="margin-top:14px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          对称伸缩时，两个 C=O 键同时伸长、同时缩短，电荷中心<b>始终在碳上</b>——
+          偶极矩一直是零，红外完全看不到。但电子云的总形变在变，拉曼信号很强。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>两个判据，几乎互斥</h3>
+      <div class="eq">
+        IR 活性 <span class="o">:</span>
+        <span class="frac"><span>∂μ</span><span>∂Q</span></span>
+        <span class="o">≠</span> 0
+      </div>
+      <div class="eq-note">偶极矩 μ 对振动坐标 Q 的导数不为零。</div>
+
+      <div class="eq" style="margin-top:16px">
+        拉曼活性 <span class="o">:</span>
+        <span class="frac"><span>∂α</span><span>∂Q</span></span>
+        <span class="o">≠</span> 0
+      </div>
+      <div class="eq-note">极化率 α（电子云可变形程度）的导数不为零。</div>
+
+      <table style="margin-top:20px">
+        <thead><tr><th>分子 / 基团</th><th class="num">IR</th><th class="num">Raman</th><th>原因</th></tr></thead>
+        <tbody>
+          <tr><td>CO₂ 对称伸缩</td><td class="num" style="color:var(--tx-3)">无</td><td class="num" style="color:var(--vi)">强</td><td>对称，μ 不变</td></tr>
+          <tr><td>CO₂ 反对称伸缩</td><td class="num" style="color:var(--cy)">强</td><td class="num" style="color:var(--tx-3)">无</td><td>μ 变，α 不变</td></tr>
+          <tr><td>O–H 伸缩</td><td class="num" style="color:var(--cy)">强</td><td class="num" style="color:var(--tx-3)">弱</td><td>强极性键</td></tr>
+          <tr><td>C=O 伸缩</td><td class="num" style="color:var(--cy)">极强</td><td class="num" style="color:var(--tx-3)">弱</td><td>强极性键</td></tr>
+          <tr><td>C=C 伸缩</td><td class="num" style="color:var(--tx-3)">弱</td><td class="num" style="color:var(--vi)">极强</td><td>对称，α 变化大</td></tr>
+          <tr><td>C–C 骨架</td><td class="num" style="color:var(--tx-3)">弱</td><td class="num" style="color:var(--vi)">强</td><td>非极性，α 变化大</td></tr>
+          <tr><td>水 H–O–H 弯曲</td><td class="num" style="color:var(--cy)">强</td><td class="num" style="color:var(--tx-3)">弱</td><td>极性分子</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn" style="margin-top:16px;font-size:11.8px">
+        <div class="ico">⚠</div>
+        <div>
+          "互斥"是<b>粗略规律</b>，只对<b>有对称中心的分子</b>严格成立。
+          大多数实际分子两者都有信号，只是强弱差得多。别把它当铁律用。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">NIR 看到的，是振动的第 2 次、第 3 次谐波</div>
+      <div class="sec-sub">
+        基频吸收在中红外（3–10 μm）。NIR 之所以在 0.8–2.5 μm，是因为它看的是
+        <b>倍频与合频</b>——分子一次性跳两级、三级，或者伸缩和弯曲同时激发。
+        这些跃迁概率低得多，所以 NIR 的吸收比中红外弱 10–100 倍，但可以因此用很长的光程。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvWater" height="380"></canvas>
+        <div class="cv-cap"><span>水的 NIR 谱 · 四个峰全部来自 O–H</span><span style="text-transform:none">虚线为弱峰 ×30 放大</span></div>
+      </div>
+      <div class="note" style="margin-top:14px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          注意 <b>1940 nm 比 970 nm 强 260 倍</b>。这就是为什么测水必须用短光程，
+          而测干物质可以用几毫米穿透——<b>同一个技术，光程差一百倍</b>。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>四个峰，四次"算得出来"</h3>
+      <p style="font-size:12.5px;margin-bottom:14px">
+        取 O–H 伸缩 ν<sub>OH</sub> = 3400 cm⁻¹、弯曲 δ<sub>OH</sub> = 1640 cm⁻¹，
+        直接相加就能预测 NIR 峰位置：
+      </p>
+
+      <table class="m-hide3">
+        <thead><tr><th>λ 实测</th><th class="num">波数</th><th>归属</th><th class="num">预测</th></tr></thead>
+        <tbody>
+          <tr><td>970 nm</td><td class="num">10309</td><td>3ν<sub>OH</sub>（二级倍频）</td><td class="num">10200</td></tr>
+          <tr><td>1190 nm</td><td class="num">8403</td><td>2ν<sub>OH</sub> + δ<sub>OH</sub></td><td class="num">8440</td></tr>
+          <tr><td>1450 nm</td><td class="num">6897</td><td>2ν<sub>OH</sub>（一级倍频）</td><td class="num">6800</td></tr>
+          <tr><td>1940 nm</td><td class="num">5155</td><td>ν<sub>OH</sub> + δ<sub>OH</sub></td><td class="num">5040</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:10.5px;color:var(--tx-3);font-family:var(--mono);margin:10px 0 0;line-height:1.7">
+        四个预测与实测偏差 0.4–2.3%。剩下的差来自非谐性（键不是理想弹簧）。
+      </p>
+
+      <div class="eq" style="margin-top:20px">
+        ν<sub>n</sub> <span class="o">=</span> n<span class="o">·</span>ω<sub>e</sub>
+        <span class="o">−</span> n(n+1)<span class="o">·</span>ω<sub>e</sub>x<sub>e</sub>
+      </div>
+      <div class="eq-note">
+        Morse 振子：振动能级越高，间距越小。取 ω<sub>e</sub>=3800、ω<sub>e</sub>x<sub>e</sub>=90，
+        n=3 算得 <b>969 nm</b>——实测 970 nm。
+      </div>
+
+      <div class="note ok" style="margin-top:16px;font-size:12px">
+        <div class="ico">✓</div>
+        <div>
+          倍频的代价是<b>谱带重叠</b>：三个不同的 O–H 环境（自由水、单氢键、双氢键）
+          在同一区域出峰，叠成一个大包。所以 NIR 定量<b>必须靠化学计量学</b>，
+          不能像拉曼那样直接读峰高。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">10⁻³⁰ 是个什么概念</div>
+      <div class="sec-sub">
+        拉曼散射截面比红外吸收小 <b>10 个数量级</b>，比荧光小 <b>14 个数量级</b>。
+        换句话说：大约每 <b>一千万个光子</b>打到样品上，只有一个发生拉曼散射。
+        整台仪器的设计，本质上都在跟这个数字较劲。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvSigma" height="320"></canvas>
+        <div class="cv-cap"><span>三种光-物质作用的截面 · 对数刻度</span><span style="text-transform:none">cm² / 分子</span></div>
+      </div>
+      <div class="note warn" style="margin-top:14px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          最要命的是<b>荧光</b>：它比拉曼强 14 个数量级，而且很多样品（生物组织、
+          塑料添加剂、天然产物）自带荧光。样品稍微有点荧光，拉曼峰就被<b>完全淹没</b>。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>三场"军备竞赛"</h3>
+      <div class="chk">
+        <div class="num">01</div>
+        <div class="tx"><b>提高激光功率</b>：能提高信号，但会把样品烧掉。
+          生物样品通常限在 <b>10–100 mW</b>，再高就损伤。</div>
+      </div>
+      <div class="chk">
+        <div class="num">02</div>
+        <div class="tx"><b>加长积分时间</b>：信号 ∝ t，噪声 ∝ √t，
+          所以信噪比只 ∝ √t。<b>时间翻四倍，信噪比只翻一倍</b>。</div>
+      </div>
+      <div class="chk">
+        <div class="num">03</div>
+        <div class="tx"><b>换激光波长</b>：这是最有效的一招。
+          785 nm 灵敏度好但有荧光；1064 nm 荧光低但信号弱 4–5 倍（∝ν⁴）。</div>
+      </div>
+
+      <h3 style="margin-top:20px;font-size:13px">激光波长的三段选择</h3>
+      <table>
+        <thead><tr><th class="num">λ</th><th>优势</th><th>劣势</th></tr></thead>
+        <tbody>
+          <tr><td class="num">532 nm</td><td>信号最强（ν⁴）</td><td>荧光极强，只适合无机/碳材料</td></tr>
+          <tr><td class="num">785 nm</td><td><b>通用首选</b>，灵敏度与荧光平衡</td><td>深色样品仍可能烧焦</td></tr>
+          <tr><td class="num">1064 nm</td><td>荧光最低，适合生物/深色样品</td><td>信号弱 4–5 倍，需 InGaAs 探测器</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note" style="margin-top:16px;font-size:12px;margin-bottom:0">
+        <div class="ico">◆</div>
+        <div>
+          还有一条捷径：<b>SERS</b>（表面增强拉曼）。把分子吸附到金银纳米结构上，
+          靠局域等离激元把信号放大 <b>10⁶–10¹⁴ 倍</b>，能到单分子水平。
+          代价是要做基底、重复性差。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">同一样品，两张完全不同的脸</div>
+      <div class="sec-sub">
+        乙醇在拉曼里是<b>一排尖峰</b>，在 NIR 里是<b>几个大鼓包</b>。
+        这不是仪器好坏，是物理决定的：倍频跃迁本身就有很宽的非均匀展宽，
+        而拉曼的振动线宽只有几 cm⁻¹。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvCompare" height="420"></canvas>
+      <div class="cv-cap"><span>乙醇 · 拉曼（上）与 NIR（下）</span><span style="text-transform:none">纵轴各自归一化</span></div>
+    </div>
+
+    <div class="card">
+      <h3>谱带宽度决定了一切</h3>
+      <table>
+        <thead><tr><th></th><th class="num">拉曼</th><th class="num">NIR</th></tr></thead>
+        <tbody>
+          <tr><td>单峰宽度</td><td class="num">2–10 cm⁻¹</td><td class="num">50–200 cm⁻¹</td></tr>
+          <tr><td>峰数（乙醇）</td><td class="num">7 个</td><td class="num">3–4 个包</td></tr>
+          <tr><td>能否直接读峰</td><td class="num" style="color:var(--vi)">能</td><td class="num" style="color:var(--cy)">不能</td></tr>
+          <tr><td>定量方法</td><td class="num">峰高 / 内标</td><td class="num">PLS / 多变量</td></tr>
+          <tr><td>定性能力</td><td class="num" style="color:var(--vi)">强</td><td class="num" style="color:var(--cy)">弱</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:20px;font-size:13px">为什么 NIR 的峰那么宽</h3>
+      <p style="font-size:12.5px;line-height:1.75;margin-bottom:12px">
+        三个原因叠加：
+      </p>
+      <div class="chk">
+        <div class="num">①</div>
+        <div class="tx"><b>倍频本身弱而宽</b>：跃迁概率低，寿命短，按不确定原理线宽就大。</div>
+      </div>
+      <div class="chk">
+        <div class="num">②</div>
+        <div class="tx"><b>氢键分布连续</b>：水、醇的 O–H 处在各种氢键强度下，
+          频率连续漂移，叠成一个包。</div>
+      </div>
+      <div class="chk">
+        <div class="num">③</div>
+        <div class="tx"><b>倍频之间互相重叠</b>：一级倍频、二级倍频、合频挤在同一区间，
+          根本分不开。</div>
+      </div>
+
+      <div class="note" style="margin-top:16px;font-size:12px;margin-bottom:0">
+        <div class="ico">◆</div>
+        <div>
+          <b>峰宽不是缺点，是信息。</b> 氢键状态、温度、浓度都会让包的位置和形状移动——
+          NIR 的定量能力正是建立在这个"糊"上面，靠多变量模型把重叠的信息解出来。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">两条完全不同的光路</div>
+      <div class="sec-sub">
+        NIR 是<b>吸收法</b>：光源照亮样品，看透射或反射光少了哪些波长。
+        拉曼是<b>散射法</b>：激光打到样品上，在 90° 或背散射方向收集那一点点移了频的光。
+        前者做的是减法，后者做的是"从噪声里捞出信号"。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:20px 18px">
+    <div class="flow-wrap"><svg viewBox="0 0 1000 400" style="width:100%;height:auto;display:block" role="img" aria-label="NIR 与拉曼的光路对比">
+      <title>NIR 与拉曼的光路对比</title>
+      <desc>上：NIR 透射/漫反射光路，卤钨灯经光纤到样品，透射光进入光栅光谱仪，由 InGaAs 阵列探测。下：拉曼光路，激光经二向色镜聚焦到样品，背散射光经同一镜片折向陷波滤光片，去除瑞利线后进入光谱仪和 CCD。</desc>
+
+      <rect x="24" y="26" width="952" height="168" rx="8" fill="rgba(255,154,77,.04)" stroke="rgba(255,154,77,.2)" stroke-width="1"/>
+      <text x="40" y="48" fill="#ff9a4d" font-size="11" font-family="ui-monospace,monospace" letter-spacing=".08em">NIR · 吸收法</text>
+
+      <g stroke="rgba(255,154,77,.55)" stroke-width="1.6" fill="none" marker-end="url(#arO)">
+        <path d="M118 110 H 168"/>
+        <path d="M268 110 H 318"/>
+        <path d="M448 110 H 508"/>
+        <path d="M628 110 H 682"/>
+      </g>
+
+      <rect x="40" y="88" width="78" height="44" rx="5" fill="rgba(255,154,77,.08)" stroke="rgba(255,154,77,.45)" stroke-width="1.1"/>
+      <text x="79" y="106" text-anchor="middle" fill="#e9eff8" font-size="9.5" font-family="ui-monospace,monospace">卤钨灯</text>
+      <text x="79" y="120" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="7.5" font-family="ui-monospace,monospace">360–2500 nm</text>
+
+      <rect x="170" y="96" width="96" height="28" rx="14" fill="rgba(77,208,225,.06)" stroke="rgba(77,208,225,.35)" stroke-width="1"/>
+      <text x="218" y="114" text-anchor="middle" fill="rgba(77,208,225,.9)" font-size="8.5" font-family="ui-monospace,monospace">石英光纤</text>
+
+      <rect x="320" y="82" width="126" height="56" rx="5" fill="rgba(255,154,77,.06)" stroke="rgba(255,154,77,.5)" stroke-width="1.2"/>
+      <text x="383" y="102" text-anchor="middle" fill="#e9eff8" font-size="9.5" font-family="ui-monospace,monospace">样品</text>
+      <text x="383" y="118" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="7.5" font-family="ui-monospace,monospace">透射 / 漫反射</text>
+
+      <rect x="510" y="86" width="116" height="48" rx="5" fill="rgba(148,165,187,.05)" stroke="rgba(148,165,187,.3)" stroke-width="1"/>
+      <text x="568" y="104" text-anchor="middle" fill="#e9eff8" font-size="9.5" font-family="ui-monospace,monospace">光栅</text>
+      <text x="568" y="118" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="7.5" font-family="ui-monospace,monospace">或 FT 干涉仪</text>
+
+      <rect x="684" y="86" width="120" height="48" rx="5" fill="rgba(77,208,225,.06)" stroke="rgba(77,208,225,.4)" stroke-width="1"/>
+      <text x="744" y="104" text-anchor="middle" fill="rgba(77,208,225,.95)" font-size="9.5" font-family="ui-monospace,monospace">InGaAs 阵列</text>
+      <text x="744" y="118" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="7.5" font-family="ui-monospace,monospace">室温工作</text>
+
+      <text x="820" y="112" fill="rgba(148,165,187,.5)" font-size="8" font-family="ui-monospace,monospace">→ 透射率 T(λ)</text>
+
+      <rect x="24" y="212" width="952" height="168" rx="8" fill="rgba(77,208,225,.035)" stroke="rgba(77,208,225,.2)" stroke-width="1"/>
+      <text x="40" y="234" fill="#4dd0e1" font-size="11" font-family="ui-monospace,monospace" letter-spacing=".08em">拉曼 · 散射法</text>
+
+      <g stroke="rgba(77,208,225,.6)" stroke-width="1.6" fill="none" marker-end="url(#arC)">
+        <path d="M112 296 H 168"/>
+        <path d="M262 296 H 330"/>
+        <path d="M420 288 L 490 250 H 586"/>
+        
+        <path d="M700 250 H 760"/>
+      </g>
+
+      <rect x="36" y="274" width="76" height="44" rx="5" fill="rgba(77,208,225,.08)" stroke="rgba(77,208,225,.5)" stroke-width="1.1"/>
+      <text x="74" y="292" text-anchor="middle" fill="#e9eff8" font-size="9.5" font-family="ui-monospace,monospace">激光 785</text>
+      <text x="74" y="306" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="7.5" font-family="ui-monospace,monospace">窄带</text>
+
+      <rect x="170" y="278" width="92" height="34" rx="4" fill="rgba(167,139,250,.07)" stroke="rgba(167,139,250,.42)" stroke-width="1"/>
+      <text x="216" y="298" text-anchor="middle" fill="rgba(167,139,250,.9)" font-size="8.5" font-family="ui-monospace,monospace">二向色镜</text>
+
+      <rect x="332" y="270" width="88" height="52" rx="5" fill="rgba(77,208,225,.07)" stroke="rgba(77,208,225,.52)" stroke-width="1.2"/>
+      <text x="376" y="290" text-anchor="middle" fill="#e9eff8" font-size="9.5" font-family="ui-monospace,monospace">样品</text>
+      <text x="376" y="306" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="7.5" font-family="ui-monospace,monospace">背散射</text>
+
+      <rect x="590" y="234" width="110" height="34" rx="4" fill="rgba(255,107,107,.06)" stroke="rgba(255,107,107,.38)" stroke-width="1"/>
+      <text x="645" y="254" text-anchor="middle" fill="rgba(255,107,107,.9)" font-size="8.5" font-family="ui-monospace,monospace">陷波滤光片</text>
+
+      <rect x="762" y="228" width="104" height="44" rx="5" fill="rgba(148,165,187,.05)" stroke="rgba(148,165,187,.3)" stroke-width="1"/>
+      <text x="814" y="246" text-anchor="middle" fill="#e9eff8" font-size="9.5" font-family="ui-monospace,monospace">光谱仪</text>
+      <text x="814" y="260" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="7.5" font-family="ui-monospace,monospace">+ CCD</text>
+
+      <text x="880" y="254" fill="rgba(148,165,187,.5)" font-size="8" font-family="ui-monospace,monospace">→ I(Δν)</text>
+
+      <text x="645" y="290" text-anchor="middle" fill="rgba(255,107,107,.6)" font-size="7.5" font-family="ui-monospace,monospace">滤掉比拉曼强 10⁶ 倍的瑞利线</text>
+
+      <defs>
+        <marker id="arO" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">
+          <path d="M0,0 L6,3.2 L0,6.4 z" fill="rgba(255,154,77,.7)"/>
+        </marker>
+        <marker id="arC" markerWidth="7" markerHeight="7" refX="5" refY="3.2" orient="auto">
+          <path d="M0,0 L6,3.2 L0,6.4 z" fill="rgba(77,208,225,.75)"/>
+        </marker>
+      </defs>
+    </svg></div>
+    <div class="flow-hint">← 左右滑动查看完整图 →</div>
+    <div class="cv-cap" style="margin-top:10px"><span>NIR 与拉曼的光路对比</span><span style="text-transform:none">拉曼的关键在"滤掉瑞利线"</span></div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px;margin-top:18px">
+    <div class="card">
+      <h3>三条工程上的硬约束</h3>
+      <div class="chk">
+        <div class="num">01</div>
+        <div class="tx"><b>陷波滤光片是拉曼的命门</b>：瑞利散射比拉曼强 10⁶ 倍，
+          滤光片的抑制比要 &gt; 10⁷ 才能看到靠近激光线的低波数峰。</div>
+      </div>
+      <div class="chk">
+        <div class="num">02</div>
+        <div class="tx"><b>激光必须稳</b>：拉曼位移是相对激光算的，
+          激光漂 0.1 nm，谱图整体就漂 1 cm⁻¹。所以要温控 + 波长锁定。</div>
+      </div>
+      <div class="chk">
+        <div class="num">03</div>
+        <div class="tx"><b>NIR 的难题是光源漂移</b>：卤钨灯寿命有限、色温会变。
+          所以每次测样前都要测一次参比（白板），做比值。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>成本与体积</h3>
+      <table>
+        <thead><tr><th></th><th class="num">NIR</th><th class="num">Raman</th></tr></thead>
+        <tbody>
+          <tr><td>光源成本</td><td class="num" style="color:var(--vi)">几十元</td><td class="num">几千–几万</td></tr>
+          <tr><td>探测器</td><td class="num">InGaAs，制冷</td><td class="num">背照式 CCD，深度制冷</td></tr>
+          <tr><td>核心难点</td><td class="num">标定与建模</td><td class="num">滤光片与荧光抑制</td></tr>
+          <tr><td>手持机价格</td><td class="num">3–15 万</td><td class="num">5–30 万</td></tr>
+          <tr><td>耗材</td><td class="num">灯（几千小时）</td><td class="num">激光器（万小时级）</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.2px;margin:14px 0 0;line-height:1.75">
+        NIR 便宜在<b>光源和探测器都成熟</b>；拉曼贵在<b>激光、滤光片、深制冷 CCD</b> 三件套。
+        但要测水溶液或做定性，NIR 再便宜也没用。
+      </p>
+    </div>
+  </div>
+</section>
+
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">探头：一个能穿透包装，一个只能看焦点</div>
+      <div class="sec-sub">
+        NIR 的光子多、穿透深，可以隔着塑料袋、玻璃瓶测，光斑有几厘米。
+        拉曼只能收集焦点上那一小块（几十微米），但正因为这样，它能做<b>微区成像</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>采样方式对照</h3>
+      <table>
+        <thead><tr><th></th><th class="num">NIR</th><th class="num">Raman</th></tr></thead>
+        <tbody>
+          <tr><td>光斑直径</td><td class="num">5–50 mm</td><td class="num">10–100 μm</td></tr>
+          <tr><td>穿透深度</td><td class="num">1–10 mm</td><td class="num">0.1–1 mm</td></tr>
+          <tr><td>透过玻璃/塑料</td><td class="num" style="color:var(--vi)">可以</td><td class="num" style="color:var(--vi)">可以</td></tr>
+          <tr><td>透过水</td><td class="num" style="color:var(--cy)">不行（强吸收）</td><td class="num" style="color:var(--vi)">可以</td></tr>
+          <tr><td>代表性问题</td><td class="num" style="color:var(--vi)">好（面积大）</td><td class="num" style="color:var(--cy)">差（只测一点）</td></tr>
+          <tr><td>微区成像</td><td class="num" style="color:var(--cy)">难</td><td class="num" style="color:var(--vi)">强项</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note warn" style="margin-top:16px;font-size:12px">
+        <div class="ico">⚠</div>
+        <div>
+          拉曼的"只测一点"是硬伤：<b>不均匀样品测三次可能给三个结果</b>。
+          所以药片鉴别要转着测多点，粉体要混匀，固体要扫面。
+          这是拉曼方法开发最容易被忽略的一条。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>四个实际操作细节</h3>
+      <div class="chk">
+        <div class="num">01</div>
+        <div class="tx"><b>NIR 漫反射要压紧</b>：样品松紧度变了，光程就变了，
+          谱图整体平移。粉末测样要固定装样高度和压实度。</div>
+      </div>
+      <div class="chk">
+        <div class="num">02</div>
+        <div class="tx"><b>拉曼的焦点要对准</b>：离焦 0.5 mm，信号掉一半。
+          探头要带距离指示或自动对焦。</div>
+      </div>
+      <div class="chk">
+        <div class="num">03</div>
+        <div class="tx"><b>拉曼会烧样品</b>：深色样品吸光强，几十毫瓦就能烧出黑点。
+          要么降功率，要么让样品移动（旋转/扫描）。</div>
+      </div>
+      <div class="chk">
+        <div class="num">04</div>
+        <div class="tx"><b>NIR 光纤可以几十米</b>，拉曼光纤最好 &lt; 10 m——
+          长光纤会引入二氧化硅自身的拉曼背景。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">怎么选：先看水，再看你要定性还是定量</div>
+      <div class="sec-sub">
+        判断顺序很清楚：<b>样品含水多不多 → 要定性还是定量 → 有没有荧光 → 要不要穿透包装</b>。
+        这四问走完，答案基本就定了。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>四步决策</h3>
+    <div class="grid g4" style="gap:12px;margin-top:6px">
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第一步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--vi)">含水 &gt; 80%？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          是 → <b>拉曼</b>（水是弱散射体）<br>
+          否 → 继续
+        </div>
+      </div>
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第二步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--cy)">要"是什么"还是"多少"？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          定性/鉴别 → <b>拉曼</b><br>
+          定量/成分含量 → <b>NIR</b>
+        </div>
+      </div>
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第三步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--tx)">样品会发荧光吗？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          会 → 1064 nm 激光或干脆选 NIR<br>
+          不会 → 785 nm 拉曼
+        </div>
+      </div>
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第四步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--tx)">要穿过包装吗？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          要 → <b>NIR</b>（光斑大、穿透深）<br>
+          不要 → 两者皆可
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px;margin-top:18px">
+    <div class="card">
+      <h3>六个典型场景</h3>
+      <table>
+        <thead><tr><th>场景</th><th class="num">首选</th><th>理由</th></tr></thead>
+        <tbody>
+          <tr><td>谷物水分 / 蛋白</td><td class="num" style="color:var(--cy)">NIR</td><td>整粒漫反射，几秒出结果</td></tr>
+          <tr><td>药片混合均匀度</td><td class="num" style="color:var(--cy)">NIR</td><td>穿透包衣，非破坏</td></tr>
+          <tr><td>水溶液中有机物</td><td class="num" style="color:var(--vi)">Raman</td><td>水几乎不干扰</td></tr>
+          <tr><td>药物多晶型鉴别</td><td class="num" style="color:var(--vi)">Raman</td><td>窄峰能分开晶型差异</td></tr>
+          <tr><td>安检 / 危险品</td><td class="num" style="color:var(--vi)">Raman</td><td>可隔瓶测，手持</td></tr>
+          <tr><td>聚合物添加剂</td><td class="num">两者互补</td><td>NIR 测总量，Raman 定种类</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>本页模型的数据来源与边界</h3>
+      <div class="chk">
+        <div class="num">01</div>
+        <div class="tx"><b>散射截面</b>：拉曼 10⁻³⁰、红外 10⁻²⁰、荧光 10⁻¹⁶ cm²/分子，
+          取自 TUM 光谱学教材与多篇综述的量级值。这类数字只能当<b>数量级</b>用，
+          具体分子差异可达 3 个量级。</div>
+      </div>
+      <div class="chk">
+        <div class="num">02</div>
+        <div class="tx"><b>水的四个峰</b>：970 / 1190 / 1450 / 1940 nm，
+          归属采用 Luck 的经典指认，被 aquaphotomics 综述沿用。</div>
+      </div>
+      <div class="chk">
+        <div class="num">03</div>
+        <div class="tx"><b>吸收系数比</b>：α(1440)/α(970) &gt; 60，α(1940)/α(970) &gt; 260，
+          来自 SWIR 组织光学综述。是下限值，不是精确值。</div>
+      </div>
+      <div class="chk">
+        <div class="num">04</div>
+        <div class="tx"><b>乙醇谱图</b>为示意，峰位取自常见文献值，
+          相对强度做了归一化处理，不是实测谱。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>一句话总结</h3>
+    <p style="font-size:13px;line-height:1.85;margin:0">
+      <b style="color:var(--cy)">NIR 用"减法"</b>：光子多、穿透深、谱带宽，靠多变量模型从糊成一片的吸收里解出成分，
+      适合在线、快速、定量。<br>
+      <b style="color:var(--vi)">拉曼用"加法"</b>：从一千万个光子中捞出一个移了频的，换来窄峰和指纹识别能力，
+      适合定性、微区、水溶液。
+    </p>
+    <p style="font-size:12.5px;line-height:1.85;margin:12px 0 0;color:var(--tx-2)">
+      两者不是替代关系——<b>它们的强弱规律正好互补</b>。
+      红外看不见的对称键，拉曼一眼就看见；拉曼被荧光淹没时，NIR 反而干净。
+      真正的工程判断，是看你的样品落在哪一边。
+    </p>
+  </div>
+
+  <footer style="margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);
+                 display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+                 font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.03em">
+    <div>振动光谱 · NIR 与拉曼</div>
+    <div>NIR 780–2500 nm · Raman 785 nm 激发 · 位移 200–3500 cm⁻¹</div>
+  </footer>
+</section>
+</main>
+
+<script>
+"use strict";
+(() => {
+
+const CO = {
+  nir:'#ff9a4d', ram:'#4dd0e1', am:'#ffc453', rd:'#ff6b6b', gr:'#5ee6a8', vi:'#a78bfa',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#111527', grid2:'#1a1f33', line:'#222840'
+};
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function prep(cv, cssH){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = Math.max(200, cv.clientWidth||400);
+  const h = cssH;
+  cv.style.height = h+'px';
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+function txt(c,s,x,y,col,size,align,weight){
+  c.save();
+  c.fillStyle = col||CO.tx2;
+  c.font = (weight||400)+' '+(size||10)+'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  c.textAlign = align||'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+  c.restore();
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function dot(c,x,y,r,fill,stroke,wd){
+  c.beginPath(); c.arc(x,y,r,0,6.2832);
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.5; c.stroke(); }
+}
+function hexA(hex,a){
+  const h=hex.replace('#','');
+  const n=parseInt(h.length===3?h.split('').map(x=>x+x).join(''):h,16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+// 弹簧：两点之间画正弦
+function spring(c, x1, y1, x2, y2, turns, amp, col, wd){
+  const n = 80;
+  const dx = x2-x1, dy = y2-y1, L = Math.hypot(dx,dy)||1;
+  const nx = -dy/L, ny = dx/L;
+  c.save();
+  c.strokeStyle = col; c.lineWidth = wd||1.4;
+  c.beginPath();
+  for(let i=0;i<=n;i++){
+    const t=i/n;
+    const px = x1+dx*t + nx*Math.sin(t*Math.PI*2*turns)*amp;
+    const py = y1+dy*t + ny*Math.sin(t*Math.PI*2*turns)*amp;
+    i?c.lineTo(px,py):c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+// 高斯
+const gauss = (x, mu, sig, amp) => (amp||1)*Math.exp(-0.5*((x-mu)/sig)**2);
+
+/* ============================================================
+   数据
+   ============================================================ */
+// 水的 NIR 峰：λ(nm), 相对吸收系数（以 970 为 1）
+const WATER = [
+  {l:970,  a:1,   lab:'3ν(OH)',    w:38},
+  {l:1190, a:2.2, lab:'2ν+δ',      w:42},
+  {l:1450, a:60,  lab:'2ν(OH)',    w:55},
+  {l:1940, a:260, lab:'ν+δ',       w:68}
+];
+// 乙醇拉曼峰：位移 cm⁻¹, 相对强度
+const ET_RA = [
+  {s:883,  a:1.00, lab:'C–C'},
+  {s:1050, a:0.45, lab:'C–O'},
+  {s:1095, a:0.32},
+  {s:1275, a:0.20},
+  {s:1450, a:0.38, lab:'CH₃'},
+  {s:2880, a:0.55},
+  {s:2930, a:0.95, lab:'C–H'},
+  {s:2975, a:0.62}
+];
+// 乙醇 NIR：λ(nm), 相对强度
+const ET_NIR = [
+  {l:1570, a:0.85, lab:'O–H 一级倍频', w:52},
+  {l:2100, a:0.45, lab:'O–H + C–O',    w:70},
+  {l:2270, a:0.62, lab:'C–H 合频',      w:58},
+  {l:2320, a:0.40, w:48}
+];
+
+let animT = 0, animRAF = 0, animOn = false;
+
+/* ============================================================
+   1 · Hero：分子振动 + 两张谱
+   ============================================================ */
+function drawHero(){
+  const cv = $('#cvHero'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?360:440);
+  c.fillStyle='#0a0b14'; c.fillRect(0,0,w,h);
+
+  // ---- 分子 ----
+  const cx = w/2, cy = 54;
+  const amp = 7*Math.sin(animT*3.2);
+  const half = 26 + amp;
+  const rO = small?11:13, rH = small?7:8.5;
+
+  spring(c, cx-half+6, cy, cx+half-6, cy, 5, 5, 'rgba(148,165,187,.45)', 1.2);
+  dot(c, cx-half, cy, rO, 'rgba(255,154,77,.9)', 'rgba(255,154,77,.4)', 1.5);
+  dot(c, cx+half, cy, rH, 'rgba(77,208,225,.9)', 'rgba(77,208,225,.4)', 1.5);
+  txt(c, 'O', cx-half, cy+0.5, 'rgba(10,11,20,.9)', small?7:8, 'center', 600);
+  txt(c, 'H', cx+half, cy+0.5, 'rgba(10,11,20,.9)', small?6.5:7.5, 'center', 600);
+  txt(c, '一根 O–H 键的伸缩', cx, cy-27, 'rgba(148,165,187,.55)', 8.5, 'center');
+
+  // ---- NIR 谱 ----
+  const y1 = small?110:124, hh1 = small?95:110;
+  const gx = small?34:40, gw = w-gx-20;
+  const XN = l => gx + (l-900)/(2500-900)*gw;
+  const Y1 = v => y1+hh1 - v*hh1*0.86;
+
+  txt(c, 'NIR 吸收', gx, y1-11, hexA(CO.nir,.85), 8.5, 'left', 600);
+  txt(c, '宽 · 重叠 · 峰少', gx+gw, y1-11, 'rgba(148,165,187,.45)', 7.5, 'right');
+  line(c, gx, Y1(0), gx+gw, Y1(0));
+
+  // 曲线
+  c.save();
+  c.beginPath(); c.moveTo(XN(900), Y1(0));
+  for(let l=900;l<=2500;l+=4){
+    let v=0;
+    WATER.forEach(p=>{ v += gauss(l, p.l, p.w, p.a/260); });
+    c.lineTo(XN(l), Y1(clamp(v,0,1)));
+  }
+  c.lineTo(XN(2500), Y1(0)); c.closePath();
+  const gN = c.createLinearGradient(0,y1,0,y1+hh1);
+  gN.addColorStop(0, hexA(CO.nir,.30)); gN.addColorStop(1, hexA(CO.nir,.02));
+  c.fillStyle=gN; c.fill();
+  c.restore();
+
+  c.save();
+  c.strokeStyle=CO.nir; c.lineWidth=1.7;
+  c.shadowColor=hexA(CO.nir,.5); c.shadowBlur=7;
+  c.beginPath();
+  for(let l=900;l<=2500;l+=3){
+    let v=0;
+    WATER.forEach(p=>{ v += gauss(l, p.l, p.w, p.a/260); });
+    const py = Y1(clamp(v,0,1));
+    l===900?c.moveTo(XN(l),py):c.lineTo(XN(l),py);
+  }
+  c.stroke(); c.restore();
+
+  // 波长刻度
+  [1000,1500,2000,2500].forEach(l=>{
+    txt(c, String(l), XN(l), y1+hh1+11, CO.tx3, 7, 'center');
+  });
+
+  // ---- Raman 谱 ----
+  const y2 = small?240:272, hh2 = small?100:118;
+  const XR = s => gx + (s-200)/(3500-200)*gw;
+  const Y2 = v => y2+hh2 - v*hh2*0.86;
+
+  txt(c, '拉曼散射', gx, y2-11, hexA(CO.ram,.85), 8.5, 'left', 600);
+  txt(c, '窄 · 分离 · 峰多', gx+gw, y2-11, 'rgba(148,165,187,.45)', 7.5, 'right');
+  line(c, gx, Y2(0), gx+gw, Y2(0));
+
+  c.save();
+  c.beginPath(); c.moveTo(XR(200), Y2(0));
+  for(let s=200;s<=3500;s+=5){
+    let v=0;
+    ET_RA.forEach(p=>{ v += gauss(s, p.s, 12, p.a); });
+    c.lineTo(XR(s), Y2(clamp(v,0,1)));
+  }
+  c.lineTo(XR(3500), Y2(0)); c.closePath();
+  const gR = c.createLinearGradient(0,y2,0,y2+hh2);
+  gR.addColorStop(0, hexA(CO.ram,.26)); gR.addColorStop(1, hexA(CO.ram,.02));
+  c.fillStyle=gR; c.fill();
+  c.restore();
+
+  c.save();
+  c.strokeStyle=CO.ram; c.lineWidth=1.6;
+  c.shadowColor=hexA(CO.ram,.5); c.shadowBlur=7;
+  c.beginPath();
+  for(let s=200;s<=3500;s+=3){
+    let v=0;
+    ET_RA.forEach(p=>{ v += gauss(s, p.s, 12, p.a); });
+    const py = Y2(clamp(v,0,1));
+    s===200?c.moveTo(XR(s),py):c.lineTo(XR(s),py);
+  }
+  c.stroke(); c.restore();
+
+  [500,1500,2500,3500].forEach(s=>{
+    txt(c, String(s), XR(s), y2+hh2+11, CO.tx3, 7, 'center');
+  });
+  txt(c, 'cm⁻¹', gx+gw, y2+hh2+24, CO.tx3, 7, 'right');
+}
+
+/* ============================================================
+   2 · 三根键的振动频率
+   ============================================================ */
+const BONDS = [
+  {lab:'O–H', nu:3600, m:1.0, col:CO.nir},
+  {lab:'C–H', nu:2900, m:0.78, col:CO.am},
+  {lab:'C–C', nu:1000, m:0.35, col:CO.vi}
+];
+
+function drawBond(){
+  const cv = $('#cvBond'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, 360);
+  c.fillStyle='#0a0b14'; c.fillRect(0,0,w,h);
+
+  const n = small?2:3;
+  const colW = (w-40)/3;
+
+  BONDS.slice(0,3).forEach((b,i)=>{
+    const bx = 20 + colW*i + colW/2;
+    const yTop = 66, yWave = 160, waveH = 74;
+
+    // 分子
+    const amp = 6*Math.sin(animT*b.m*3.4 + i);
+    const half = 27 + amp;
+    const r1 = small?9:11, r2 = small?6:7.5;
+
+    spring(c, bx-half+5, yTop, bx+half-5, yTop, 4, 4.5, hexA(b.col,.4), 1.1);
+    dot(c, bx-half, yTop, r1, hexA(b.col,.85), hexA(b.col,.35), 1.3);
+    dot(c, bx+half, yTop, r2, 'rgba(148,165,187,.7)', 'rgba(148,165,187,.3)', 1.2);
+
+    // 波长标注
+    txt(c, b.lab, bx, 26, hexA(b.col,.95), 10.5, 'center', 600);
+    txt(c, b.nu+' cm⁻¹', bx, 42, 'rgba(148,165,187,.7)', 8.5, 'center');
+    txt(c, Math.round(1e7/b.nu)+' nm', bx, 54, 'rgba(148,165,187,.4)', 7.5, 'center');
+
+    // 振动波形（时间轴向右）
+    const XW = t => bx-colW*0.40 + t/1.0*colW*0.80;
+    line(c, bx-colW*0.42, yWave+waveH/2, bx+colW*0.42, yWave+waveH/2);
+
+    c.save();
+    c.strokeStyle = hexA(b.col,.8); c.lineWidth = 1.5;
+    c.beginPath();
+    const cycles = b.nu/1200;   // 相对周期数
+    for(let t=0;t<=1;t+=0.004){
+      const ph = t*Math.PI*2*cycles - animT*b.m*3.4;
+      const px = XW(t), py = yWave+waveH/2 - Math.sin(ph)*waveH*0.40;
+      t===0?c.moveTo(px,py):c.lineTo(px,py);
+    }
+    c.stroke(); c.restore();
+
+    txt(c, 'λ = '+(1e7/b.nu/1000).toFixed(2)+' μm', bx, yWave+waveH+12,
+        'rgba(148,165,187,.42)', 7, 'center');
+  });
+
+  txt(c, '三根键的频率比 3.6 : 2.9 : 1.0 —— O–H 最快，C–C 最慢', w/2, h-14,
+      'rgba(148,165,187,.5)', 8.5, 'center');
+}
+
+/* ============================================================
+   3 · CO2 三个模式
+   ============================================================ */
+const CO2MODES = [
+  {nu:1388, name:'对称伸缩', ir:0,    ram:1.0, ph:1.0},
+  {nu:2349, name:'反对称伸缩', ir:1.0, ram:0,   ph:1.0},
+  {nu:667,  name:'弯曲',     ir:0.9,  ram:0.35, ph:1.3}
+];
+
+function drawCO2(){
+  const cv = $('#cvCO2'); if(!cv) return;
+  const {c,w,h} = prep(cv, 270);
+  c.fillStyle='#0a0b14'; c.fillRect(0,0,w,h);
+
+  const colW = (w-20)/3;
+
+  CO2MODES.forEach((m,i)=>{
+    const cx = 10 + colW*i + colW/2;
+    const cy = 84;
+
+    c.fillStyle = i===0 ? 'rgba(255,154,77,.035)' : 'rgba(77,208,225,.03)';
+    c.fillRect(10+colW*i, 12, colW-8, 206);
+    c.strokeStyle = i===0 ? 'rgba(255,154,77,.15)' : 'rgba(77,208,225,.13)';
+    c.lineWidth = 1;
+    c.strokeRect(10+colW*i, 12, colW-8, 206);
+    const t = animT*m.ph;
+
+    let p1, p2, amp = 0;
+    if(i===0){ // 对称伸缩
+      amp = 16*Math.sin(t*3.6);
+      p1 = [cx-38-amp, cy]; p2 = [cx+38+amp, cy];
+    } else if(i===1){ // 反对称
+      amp = 16*Math.sin(t*3.6);
+      p1 = [cx-38-amp, cy]; p2 = [cx+38-amp, cy];
+    } else { // 弯曲
+      amp = 13*Math.sin(t*3.6);
+      p1 = [cx-38, cy+amp]; p2 = [cx+38, cy+amp];
+    }
+
+    // 键
+    c.save();
+    c.strokeStyle='rgba(148,165,187,.55)'; c.lineWidth=2;
+    if(i===2){
+      line(c, cx-38, cy+amp*0.5, cx, cy);
+      line(c, cx, cy, cx+38, cy+amp*0.5);
+    } else {
+      line(c, p1[0], cy, cx, cy);
+      line(c, cx, cy, p2[0], cy);
+    }
+    c.restore();
+
+    // 原子
+    dot(c, p1[0], p1[1], 11, 'rgba(255,107,107,.85)', 'rgba(255,107,107,.3)', 1.4);
+    dot(c, p2[0], p2[1], 11, 'rgba(255,107,107,.85)', 'rgba(255,107,107,.3)', 1.4);
+    dot(c, cx, cy, 9, 'rgba(148,165,187,.55)', 'rgba(148,165,187,.25)', 1.3);
+    txt(c, 'O', p1[0], p1[1]+0.5, 'rgba(10,11,20,.9)', 7, 'center', 600);
+    txt(c, 'O', p2[0], p2[1]+0.5, 'rgba(10,11,20,.9)', 7, 'center', 600);
+    txt(c, 'C', cx, cy+0.5, 'rgba(10,11,20,.85)', 7, 'center', 600);
+
+    // 标签
+    txt(c, m.name, cx, 26, 'rgba(233,239,248,.85)', 9.5, 'center', 500);
+    txt(c, m.nu+' cm⁻¹', cx, 42, 'rgba(148,165,187,.6)', 8, 'center');
+
+    // 活性条
+    const bx0 = cx-44, bw = 88;
+    const yIR = 148, yRA = 176;
+    txt(c, 'IR', bx0-4, yIR+5, 'rgba(148,165,187,.6)', 8, 'right');
+    txt(c, 'Raman', bx0-4, yRA+5, 'rgba(148,165,187,.6)', 8, 'right');
+
+    c.fillStyle = 'rgba(148,165,187,.08)';
+    c.fillRect(bx0, yIR, bw, 10);
+    c.fillRect(bx0, yRA, bw, 10);
+
+    if(m.ir>0){
+      c.fillStyle = hexA(CO.nir,.75);
+      c.fillRect(bx0, yIR, bw*m.ir, 10);
+    } else {
+      txt(c, '无', bx0+4, yIR+5, 'rgba(148,165,187,.4)', 7, 'left');
+    }
+    if(m.ram>0){
+      c.fillStyle = hexA(CO.ram,.75);
+      c.fillRect(bx0, yRA, bw*Math.min(1,m.ram), 10);
+    } else {
+      txt(c, '无', bx0+4, yRA+5, 'rgba(148,165,187,.4)', 7, 'left');
+    }
+
+    txt(c, i===0?'μ 恒为 0':(i===1?'μ 变化大':'μ 有变化'),
+        cx, 202, 'rgba(148,165,187,.5)', 7.5, 'center');
+  });
+
+  txt(c, '三种模式，活性完全互补', w/2, h-14,
+      'rgba(148,165,187,.5)', 8.5, 'center');
+}
+
+
+/* ============================================================
+   4 · 水的 NIR 谱
+   ============================================================ */
+function drawWater(){
+  const cv = $('#cvWater'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, 380);
+  c.fillStyle='#0a0b14'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?40:46, r:16, t:44, b:52};
+  const X = l => P.l + (l-900)/(2500-900)*(w-P.l-P.r);
+  const Y = v => h-P.b - v*(h-P.t-P.b)*0.92;
+
+  // 网格
+  for(let l=1000;l<=2500;l+=500){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(l), P.t, X(l), h-P.b);
+    txt(c, String(l), X(l), h-P.b+13, CO.tx3, 7.8, 'center');
+  }
+  for(let v=0;v<=1.001;v+=0.25){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+  }
+  line(c, P.l, Y(0), w-P.r, Y(0));
+  txt(c, 'λ (nm)', w-P.r, h-P.b+28, CO.tx3, 8, 'right');
+  txt(c, '相对吸收', P.l, P.t-22, 'rgba(148,165,187,.55)', 8, 'left');
+  txt(c, '归一化到 1940 nm = 1', P.l, P.t-10, 'rgba(148,165,187,.35)', 7.2, 'left');
+
+  // 主曲线
+  c.save();
+  c.beginPath(); c.moveTo(X(900), Y(0));
+  for(let l=900;l<=2500;l+=3){
+    let v=0;
+    WATER.forEach(p=>{ v += gauss(l, p.l, p.w, p.a/260); });
+    c.lineTo(X(l), Y(clamp(v,0,1.02)));
+  }
+  c.lineTo(X(2500), Y(0)); c.closePath();
+  const g = c.createLinearGradient(0,P.t,0,h-P.b);
+  g.addColorStop(0, hexA(CO.nir,.32)); g.addColorStop(1, hexA(CO.nir,.02));
+  c.fillStyle=g; c.fill();
+  c.restore();
+
+  c.save();
+  c.strokeStyle=CO.nir; c.lineWidth=1.9;
+  c.shadowColor=hexA(CO.nir,.55); c.shadowBlur=9;
+  c.beginPath();
+  for(let l=900;l<=2500;l+=2){
+    let v=0;
+    WATER.forEach(p=>{ v += gauss(l, p.l, p.w, p.a/260); });
+    const py = Y(clamp(v,0,1.02));
+    l===900?c.moveTo(X(l),py):c.lineTo(X(l),py);
+  }
+  c.stroke(); c.restore();
+
+  // 弱峰：×30 放大（只画 900–1350）
+  c.save();
+  c.setLineDash([3,3]);
+  c.strokeStyle=hexA(CO.nir,.55); c.lineWidth=1.2;
+  c.beginPath();
+  for(let l=900;l<=1350;l+=2){
+    let v=0;
+    WATER.forEach(p=>{ if(p.l<1400) v += gauss(l, p.l, p.w, p.a/260*30); });
+    const py = Y(clamp(v,0,1.02));
+    l===900?c.moveTo(X(l),py):c.lineTo(X(l),py);
+  }
+  c.stroke(); c.restore();
+  txt(c, '×30', X(1250), Y(0.30), 'rgba(255,154,77,.55)', 7.5, 'left');
+
+  // 峰标注
+  const marks = [
+    {l:970,  v:0.10, s:'970'},
+    {l:1190, v:0.13, s:'1190'},
+    {l:1450, v:0.25, s:'1450'},
+    {l:1940, v:1.00, s:'1940'}
+  ];
+  marks.forEach(m=>{
+    dot(c, X(m.l), Y(m.v), 3.2, CO.nir, '#0a0b14', 1.2);
+    txt(c, m.s, X(m.l), Y(m.v)-12, 'rgba(255,154,77,.95)', 8.5, 'center', 600);
+  });
+
+  // 归属
+  txt(c, '3ν(OH)', X(970), P.t+8, 'rgba(148,165,187,.6)', 7.5, 'center');
+  txt(c, '2ν+δ', X(1190), P.t+8, 'rgba(148,165,187,.6)', 7.5, 'center');
+  txt(c, '2ν(OH)', X(1450), P.t+8, 'rgba(148,165,187,.6)', 7.5, 'center');
+  txt(c, 'ν+δ', X(1940), P.t+8, 'rgba(148,165,187,.6)', 7.5, 'center');
+
+  // 强度比标注
+  c.save();
+  c.strokeStyle='rgba(255,107,107,.5)'; c.lineWidth=1;
+  c.setLineDash([2,3]);
+  line(c, X(1940), Y(1.0), X(1940), Y(0.06));
+  c.restore();
+  txt(c, '比 970 强 260×', X(1940)-6, Y(0.55), 'rgba(255,107,107,.75)', 8, 'right', 500);
+}
+
+/* ============================================================
+   5 · 散射截面对比
+   ============================================================ */
+function drawSigma(){
+  const cv = $('#cvSigma'); if(!cv) return;
+  const {c,w,h} = prep(cv, 320);
+  c.fillStyle='#0a0b14'; c.fillRect(0,0,w,h);
+
+  const D = [
+    {n:'拉曼散射', e:-30, col:CO.ram, note:'10⁻³⁰'},
+    {n:'红外吸收', e:-20, col:CO.nir, note:'10⁻²⁰'},
+    {n:'荧光发射', e:-16, col:CO.rd,  note:'10⁻¹⁶'}
+  ];
+
+  const P = {l:74, r:30, t:44, b:40};
+  const E0 = -31, E1 = -15;      // 左弱右强
+  const X = e => P.l + (e-E0)/(E1-E0)*(w-P.l-P.r);
+  const rowH = (h-P.t-P.b)/D.length;
+
+  for(let e=-30;e<=-16;e+=2){
+    c.strokeStyle=CO.grid; c.lineWidth=1;
+    line(c, X(e), P.t, X(e), h-P.b);
+    txt(c, '1e'+e, X(e), h-P.b+13, CO.tx3, 7.2, 'center');
+  }
+
+  txt(c, '← 弱', P.l+2, P.t-14, 'rgba(148,165,187,.45)', 7.5, 'left');
+  txt(c, '强 →', w-P.r-2, P.t-14, 'rgba(255,107,107,.6)', 7.5, 'right');
+
+  D.forEach((d,i)=>{
+    const y = P.t + i*rowH + rowH/2;
+    const x0 = P.l+1, x1 = X(d.e);
+    const g = c.createLinearGradient(x0,0,x1,0);
+    g.addColorStop(0, hexA(d.col,.12));
+    g.addColorStop(1, hexA(d.col,.62));
+    c.fillStyle = g;
+    c.fillRect(x0, y-rowH*0.26, x1-x0, rowH*0.52);
+    dot(c, x1, y, 3.4, d.col, null);
+    txt(c, d.n, P.l-9, y, 'rgba(233,239,248,.85)', 8.8, 'right', 500);
+    txt(c, d.note, x0+7, y, 'rgba(233,239,248,.9)', 8, 'left', 600);
+  });
+
+  // 量级差标注
+  c.save();
+  c.strokeStyle='rgba(255,107,107,.35)'; c.lineWidth=1; c.setLineDash([3,3]);
+  line(c, X(-30), P.t+rowH*0.5+8, X(-30), h-P.b);
+  c.restore();
+
+  txt(c, '同一分子：拉曼比红外弱 10 个数量级', (P.l+w-P.r)/2, h-P.b+28,
+      'rgba(148,165,187,.5)', 8, 'center');
+}
+
+/* ============================================================
+   6 · 乙醇：拉曼 vs NIR
+   ============================================================ */
+function drawCompare(){
+  const cv = $('#cvCompare'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, 420);
+  c.fillStyle='#0a0b14'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?40:46, r:16};
+  const gw = w-P.l-P.r;
+
+  // ---- 上：拉曼 ----
+  const y1 = 42, hh1 = 140;
+  const XR = s => P.l + (s-200)/(3500-200)*gw;
+  const YR = v => y1+hh1 - v*hh1*0.86;
+
+  txt(c, '拉曼 · 位移 cm⁻¹', P.l, y1-18, hexA(CO.ram,.9), 9, 'left', 600);
+  txt(c, '峰宽 2–10 cm⁻¹', w-P.r, y1-18, 'rgba(148,165,187,.45)', 7.8, 'right');
+  line(c, P.l, YR(0), w-P.r, YR(0));
+
+  c.save();
+  c.beginPath(); c.moveTo(XR(200), YR(0));
+  for(let s=200;s<=3500;s+=4){
+    let v=0;
+    ET_RA.forEach(p=>{ v += gauss(s, p.s, 11, p.a); });
+    c.lineTo(XR(s), YR(clamp(v,0,1.02)));
+  }
+  c.lineTo(XR(3500), YR(0)); c.closePath();
+  const g1 = c.createLinearGradient(0,y1,0,y1+hh1);
+  g1.addColorStop(0, hexA(CO.ram,.30)); g1.addColorStop(1, hexA(CO.ram,.02));
+  c.fillStyle=g1; c.fill();
+  c.restore();
+
+  c.save();
+  c.strokeStyle=CO.ram; c.lineWidth=1.7;
+  c.shadowColor=hexA(CO.ram,.5); c.shadowBlur=8;
+  c.beginPath();
+  for(let s=200;s<=3500;s+=2){
+    let v=0;
+    ET_RA.forEach(p=>{ v += gauss(s, p.s, 11, p.a); });
+    const py=YR(clamp(v,0,1.02));
+    s===200?c.moveTo(XR(s),py):c.lineTo(XR(s),py);
+  }
+  c.stroke(); c.restore();
+
+  // 峰标
+  ET_RA.filter(p=>p.lab).forEach(p=>{
+    txt(c, p.lab, XR(p.s), YR(p.a)-10, 'rgba(77,208,225,.85)', 7.5, 'center');
+  });
+  [500,1500,2500,3500].forEach(s=>{
+    txt(c, String(s), XR(s), y1+hh1+12, CO.tx3, 7, 'center');
+  });
+
+  // ---- 下：NIR ----
+  const y2 = 248, hh2 = 140;
+  const XN = l => P.l + (l-1300)/(2500-1300)*gw;
+  const YN = v => y2+hh2 - v*hh2*0.86;
+
+  txt(c, 'NIR · 波长 nm', P.l, y2-22, hexA(CO.nir,.9), 9, 'left', 600);
+  txt(c, '峰宽 50–200 nm', w-P.r, y2-22, 'rgba(148,165,187,.45)', 7.8, 'right');
+  line(c, P.l, YN(0), w-P.r, YN(0));
+
+  c.save();
+  c.beginPath(); c.moveTo(XN(1300), YN(0));
+  for(let l=1300;l<=2500;l+=3){
+    let v=0;
+    ET_NIR.forEach(p=>{ v += gauss(l, p.l, p.w, p.a); });
+    c.lineTo(XN(l), YN(clamp(v,0,1.02)));
+  }
+  c.lineTo(XN(2500), YN(0)); c.closePath();
+  const g2 = c.createLinearGradient(0,y2,0,y2+hh2);
+  g2.addColorStop(0, hexA(CO.nir,.30)); g2.addColorStop(1, hexA(CO.nir,.02));
+  c.fillStyle=g2; c.fill();
+  c.restore();
+
+  c.save();
+  c.strokeStyle=CO.nir; c.lineWidth=1.7;
+  c.shadowColor=hexA(CO.nir,.5); c.shadowBlur=8;
+  c.beginPath();
+  for(let l=1300;l<=2500;l+=2){
+    let v=0;
+    ET_NIR.forEach(p=>{ v += gauss(l, p.l, p.w, p.a); });
+    const py=YN(clamp(v,0,1.02));
+    l===1300?c.moveTo(XN(l),py):c.lineTo(XN(l),py);
+  }
+  c.stroke(); c.restore();
+
+  ET_NIR.filter(p=>p.lab).forEach(p=>{
+    txt(c, p.lab, XN(p.l), YN(p.a)-10, 'rgba(255,154,77,.8)', 7.5, 'center');
+  });
+  [1500,2000,2500].forEach(l=>{
+    txt(c, String(l), XN(l), y2+hh2+12, CO.tx3, 7, 'center');
+  });
+
+  // 中间对比标注
+  txt(c, '同一瓶乙醇：上面 8 个尖峰，下面 3 个鼓包', w/2, (y1+hh1+y2-24)/2,
+      'rgba(148,165,187,.55)', 8.5, 'center');
+}
+
+/* ============================================================
+   7 · 循环与启动
+   ============================================================ */
+function tickAnim(){
+  animT += 0.016;
+  drawHero();
+  drawBond();
+  drawCO2();
+  animRAF = requestAnimationFrame(tickAnim);
+}
+
+function boot(){
+  drawWater();
+  drawSigma();
+  drawCompare();
+  drawHero();
+  drawBond();
+  drawCO2();
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!reduce){ animOn = true; tickAnim(); } else { animT = 1.2; }
+
+  const bar = $('#pbar');
+  window.addEventListener('scroll', ()=>{
+    const st = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    if(bar) bar.style.width = (total>0 ? st/total*100 : 0)+'%';
+  }, {passive:true});
+
+  const links = $$('#nav a');
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec'));
+  const navIO = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        const i = secs.indexOf(e.target);
+        links.forEach((a,j)=>a.classList.toggle('on', j===i));
+      }
+    });
+  }, {threshold:.15, rootMargin:'-15% 0px -60% 0px'});
+  secs.forEach(s=>{ if(s) navIO.observe(s); });
+
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){ drawWater(); drawCompare(); } });
+  }, {threshold:.05});
+  ['#cvWater','#cvCompare'].forEach(s=>{ const el=$(s); if(el) io.observe(el); });
+
+  let rzT=0;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(rzT);
+    rzT = setTimeout(()=>{
+      drawHero(); drawBond(); drawCO2();
+      drawWater(); drawSigma(); drawCompare();
+    }, 160);
+  });
+
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ cancelAnimationFrame(animRAF); animOn=false; }
+    else if(!reduce){ tickAnim(); }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>

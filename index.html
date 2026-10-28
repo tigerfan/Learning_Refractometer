@@ -289,17 +289,18 @@ footer a:hover{color:var(--cy);border-color:var(--cy)}
 
 <div class="top">
   <div class="wrap">
-    <div class="brand"><span class="dg"></span>REFRACTOMETRY · NOTES</div>
+    <div class="brand"><span class="dg"></span>INSTRUMENTATION · NOTES</div>
     <a class="repo" href="https://github.com/tigerfan/Learning_Refractometer" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
 </div>
 
 <header class="hero">
   <div class="wrap">
-    <div class="eyebrow"><i></i>光学计量 · 系列笔记</div>
+    <div class="eyebrow"><i></i>分析仪器 · 系列笔记</div>
     <h1>一杯液体<br>怎么变成<em>一个读数</em></h1>
     <p class="lead">
-      七篇可视化推导，走通同一条链：<b>分子极化率 → 宏观折射率 → 临界角 → 像素</b>。
+      十篇可视化推导。前七篇走通同一条链：<b>分子极化率 → 宏观折射率 → 临界角 → 像素</b>；
+      后三篇跳出折射率，看<b>分离</b>、<b>振动光谱</b>、<b>质量分析</b>怎么回答同一个问题。
       每一页都可交互，每一页都标注了哪些是实测、哪些是模型算的、哪些是拟合出来的。
     </p>
     <p class="lead">
@@ -308,9 +309,9 @@ footer a:hover{color:var(--cy);border-color:var(--cy)}
     </p>
 
     <div class="stats">
-      <div class="stat"><div class="k">PAGES</div><div class="v">7<small>页</small></div></div>
-      <div class="stat"><div class="k">SECTIONS</div><div class="v">53<small>章</small></div></div>
-      <div class="stat"><div class="k">INTERACTIVE</div><div class="v">44<small>图</small></div></div>
+      <div class="stat"><div class="k">PAGES</div><div class="v">10<small>页</small></div></div>
+      <div class="stat"><div class="k">SECTIONS</div><div class="v">81<small>章</small></div></div>
+      <div class="stat"><div class="k">INTERACTIVE</div><div class="v">67<small>图</small></div></div>
       <div class="stat"><div class="k">DEPENDENCY</div><div class="v">0<small>外部依赖</small></div></div>
     </div>
   </div>
@@ -323,6 +324,7 @@ footer a:hover{color:var(--cy);border-color:var(--cy)}
       <div class="pth"><b>入门</b><span>·</span>01 → 02 → 05</div>
       <div class="pth"><b>物理</b><span>·</span>01 → 02 → 03 → 04 → 05</div>
       <div class="pth"><b>工程</b><span>·</span>02 → 06 → 07</div>
+      <div class="pth"><b>扩展</b><span>·</span>01 → 08 → 09 → 10</div>
     </div>
   </div>
 </div>
@@ -522,6 +524,89 @@ footer a:hover{color:var(--cy);border-color:var(--cy)}
     </div>
   </div>
 
+  <!-- ================= 第三组 ================= -->
+  <div class="grp">
+    <div class="grp-head">
+      <div class="grp-num">PART III</div>
+      <div class="grp-t">另外三条分析路线</div>
+    </div>
+    <div class="grp-d">
+      跳出折射率。同样是"把混合物变成数字"，分离靠时间差、光谱靠能级差、质谱靠质荷比——
+      三种完全不同的物理量，各自的强项和死角都不一样。
+    </div>
+
+    <div class="list">
+
+      <a class="card c8" href="./chromatograph.html">
+        <div class="idx">08</div>
+        <div class="body">
+          <div class="t">色谱仪：混合物进去，成分表出来 <span class="badge">分离科学</span></div>
+          <div class="sub">
+            不靠光谱、不靠质量，只靠一件事：<b>让不同的分子跑得不一样快</b>。
+            van Deemter 三个系数贯通全页，柱压算得 <b>85 bar</b>，对实测 83 bar 差 2.6%；
+            五组分分离度 R = 1.61，梯度洗脱把 27.9 min 压到 6.8 min。
+          </div>
+          <div class="meta"><span>10 章</span><i></i><span>9 图</span><i></i><span>反相 C18</span><i></i><span>106 KB</span></div>
+        </div>
+        <div class="kpi"><div class="v">11.46<small>μm</small></div><div class="l">最优板高 H</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M3 36h42" stroke="#a78bfa" stroke-width="1" opacity=".3"/>
+            <path d="M5 36h5l2.5-15 2.5 15h6l2-9 2 9h5l3-23 3 23h5l2.5-6 1.5 6h3"
+                  stroke="#a78bfa" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+            <circle cx="12.5" cy="21" r="1.7" fill="#ffb84d"/>
+            <circle cx="31.5" cy="13" r="1.7" fill="#ffb84d" opacity=".55"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c9" href="./nir-raman.html">
+        <div class="idx">09</div>
+        <div class="body">
+          <div class="t">NIR 与拉曼：同一根化学键的两种问法 <span class="badge">分子光谱</span></div>
+          <div class="sub">
+            NIR 用<b>减法</b>问它吸走了哪些光，拉曼用<b>加法</b>问它把光弹开时偷走了多少能量。
+            散射截面相差 <span class="am">14 个数量级</span>——整台仪器的设计都在应对这个数字。
+            水的四个倍频峰用 3ν(OH) 直接算得出，Morse 振子给 969 nm，实测 970 nm。
+          </div>
+          <div class="meta"><span>9 章</span><i></i><span>6 图 + 2 光路</span><i></i><span>振动光谱</span><i></i><span>88 KB</span></div>
+        </div>
+        <div class="kpi"><div class="v">10⁻³⁰</div><div class="l">拉曼散射截面</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M3 30q6 0 8.5-6t4.5-6q2 0 3 12t2.5 0q1.5-6 3.5 0t4 0h16"
+                  stroke="#ff9a4d" stroke-width="1.2" fill="none" opacity=".65"/>
+            <path d="M4 35h9l1.5-20 1.5 20h5l1-15 1 15h6l1.5-8 1.5 8h13"
+                  stroke="#e879f9" stroke-width="1.4" fill="none" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </a>
+
+      <a class="card c10" href="./online-ms.html">
+        <div class="idx">10</div>
+        <div class="body">
+          <div class="t">在线质谱：不用等它跑完 <span class="badge">质量分析</span></div>
+          <div class="sub">
+            把分离从<b>时间轴</b>搬到<b>空间轴</b>：色谱要等 780 秒，质谱扫一遍 37.5 毫秒。
+            但仪器快 20000 倍，整机只快 500 倍——瓶颈转移到一米长的取样毛细管上。
+            九个数量级的压差、同量异位素的 R 需求，全部算在页面上。
+          </div>
+          <div class="meta"><span>9 章</span><i></i><span>8 图 + 2 流程</span><i></i><span>四极杆 EI</span><i></i><span>109 KB</span></div>
+        </div>
+        <div class="kpi"><div class="v">37.5<small>ms</small></div><div class="l">全谱扫描</div></div>
+        <div class="ico">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M4 38h40" stroke="#7c8cff" stroke-width="1" opacity=".3"/>
+            <path d="M9 38V33M15 38V20M21 38V27M27 38V10M34 38V24M40 38V16"
+                  stroke="#7c8cff" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M27 6v32" stroke="#ffd166" stroke-width=".9" stroke-dasharray="2 3" opacity=".75"/>
+          </svg>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
   <!-- ================= 说明 ================= -->
   <div class="notes">
     <div class="panel">
@@ -550,7 +635,7 @@ footer a:hover{color:var(--cy);border-color:var(--cy)}
   </div>
 
   <footer>
-    <div>折光计学 · 七页可视化笔记 · 2026</div>
+    <div>折光计学 · 十页可视化笔记 · 2026</div>
     <div><a href="https://github.com/tigerfan/Learning_Refractometer" target="_blank" rel="noopener">github.com/tigerfan/Learning_Refractometer</a></div>
   </footer>
 

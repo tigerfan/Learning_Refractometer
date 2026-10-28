@@ -1,0 +1,2639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线质谱 · 不用等它跑完</title>
+<meta name="description" content="在线四极杆质谱的原理、仪器设计与过程应用：从电子电离到四极杆质量过滤，从九个数量级的真空到毛细管取样瓶颈。">
+<style>
+
+
+
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#05060c;
+  --bg-2:#090b14;
+  --surface:#0a0f1a;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#7c8cff;
+  --cy-soft:rgba(124,140,255,.14);
+  --cy-line:rgba(124,140,255,.35);
+  --am:#ffb84d;
+  --am-soft:rgba(255,184,77,.13);
+  --vi:#e879f9;
+  --vi-soft:rgba(232,121,249,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(124,140,255,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(232,121,249,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,184,77,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(124,140,255,.28),rgba(232,121,249,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#b0f2fa 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(124,140,255,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,184,77,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(124,140,255,.12);color:var(--cy);border:1px solid rgba(124,140,255,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,184,77,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(232,121,249,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,184,77,.05);border:1px solid rgba(255,184,77,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(124,140,255,.045);border-color:rgba(124,140,255,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(124,140,255,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(124,140,255,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#b0f2fa}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(124,140,255,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+
+/* ===== RGB 三色光专用 ===== */
+:root{
+  --cR:#ff5f6d;
+  --cG:#3ddc84;
+  --cB:#5b9dff;
+  --cRd:rgba(255,95,109,.55);
+  --cGd:rgba(61,220,132,.55);
+  --cBd:rgba(91,157,255,.55);
+}
+.spectrum-bar{
+  height:3px;width:100%;border-radius:2px;margin:0 0 18px;
+  background:linear-gradient(90deg,#5b9dff 0%,#3ddc84 50%,#ff5f6d 100%);
+  opacity:.85;
+}
+.rgb-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rgb-cell{background:var(--bg-2);padding:14px 14px 12px}
+.rgb-cell .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.rgb-cell .lab i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rgb-cell .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1}
+.rgb-cell .s{font-size:10px;color:var(--tx-3);font-family:var(--mono);margin-top:6px}
+.bigN.tri{display:flex;align-items:baseline;gap:2px;font-size:34px}
+.bigN.tri em{font-style:normal;font-size:19px;opacity:.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line2);background:var(--bg-3);color:var(--tx-2)}
+.chip i{width:6px;height:6px;border-radius:50%}
+.lam{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wl-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:6px;letter-spacing:.02em}
+
+
+
+/* ===== 光路页专用 ===== */
+:root{ --cRd:rgba(255,107,107,.5); }
+.opt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.opt-cell{background:var(--bg-2);padding:13px 13px 11px}
+.opt-cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);margin-bottom:6px}
+.opt-cell .v{font-family:var(--mono);font-size:19px;font-weight:500;line-height:1}
+.opt-cell .v small{font-size:11px;opacity:.5;margin-left:2px}
+.opt-cell .s{font-size:9.5px;color:var(--tx-3);font-family:var(--mono);margin-top:5px}
+.chk{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:none}
+.chk .num{font-family:var(--mono);font-size:10px;color:var(--am);width:20px;flex-shrink:0;padding-top:2px}
+.chk .tx{font-size:12.3px;line-height:1.65;color:var(--tx-2)}
+.chk .tx b{color:var(--tx)}
+
+
+
+/* ===== 色谱页专用 ===== */
+.flow-wrap{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+.flow-wrap svg{min-width:700px;display:block}
+.flow-hint{display:none;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:8px;text-align:center;letter-spacing:.06em}
+@media(max-width:640px){
+  .flow-hint{display:block}
+  .m-hide3 th:nth-child(3),.m-hide3 td:nth-child(3){display:none}
+  .m-hide3 td:first-child{white-space:nowrap}
+}
+
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 快与准的取舍</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 三步</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 把分子打碎</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 四极杆</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 分离搬了家</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · 九个数量级</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 瓶颈在管子上</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 在线谱图</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 五页合起来</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>过程分析 · 在线四极杆质谱</div>
+      <h1>不用等它跑完，<br><em>因为它不用跑</em></h1>
+      <p class="hero-lead">
+        色谱必须让组分<b>按时间先后</b>流出来，所以要等 13 分钟。
+        质谱把分离从<b>时间轴</b>搬到了<b>空间</b>——不同 m/z 的离子在同一时刻被电场分到不同轨迹上，
+        扫描一遍只要 <b>37 毫秒</b>。<br>
+        代价写在另一头：分子要先变成离子、再飞进 <b>10⁻⁶ mbar</b> 的真空，
+        而你的管道是常压。这一页讲的就是这笔账。
+      </p>
+
+      <div class="chain">
+        <span>取样</span><i>→</i>
+        <span class="hi">电离</span><i>→</i>
+        <span class="hi">质量过滤</span><i>→</i>
+        <span>探测</span><i>→</i>
+        <span class="hi">趋势曲线</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">整机响应</div><div class="v">2<small>s</small></div></div>
+        <div class="kpi"><div class="k">全谱扫描</div><div class="v">37<small>ms</small></div></div>
+        <div class="kpi"><div class="k">检测限</div><div class="v">ppb<small>级</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvHero" height="430"></canvas>
+      <div class="cv-cap"><span>左：实时质谱　右：多组分趋势</span><span style="text-transform:none">同一批数据，两种看法</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ S01 · 快与准的取舍 ============ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">前面四页的仪器，都在同一个取舍上妥协</div>
+      <div class="sec-sub">
+        折光计快，但只给一个数；色谱给全成分，但要等十几分钟；
+        光谱快，但谱带重叠、只能靠建模。
+        <b>快和准，好像只能挑一个。</b>
+        质谱是唯一同时拿到两头的——但它的代价不在时间，在别处。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>把五种仪器摆在同一张图上</h3>
+      <div class="cvbox">
+        <canvas id="cvTrade" height="400"></canvas>
+        <div class="cv-cap"><span>响应时间 × 信息量</span><span style="text-transform:none">横轴对数</span></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        纵轴"信息量"是定性刻度：1 = 一个集总数字，2 = 多条独立通道，3 = 全组分分解，4 = 带结构指纹。<br>
+        越靠左上越好。<b style="color:var(--cy)">质谱是唯一落在右上角的</b>。
+      </p>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>四个维度上的硬对比</h3>
+        <table class="m-hide3" style="margin-top:4px">
+          <thead><tr><th>仪器</th><th class="num">响应时间</th><th>输出</th></tr></thead>
+          <tbody>
+            <tr><td>折光计</td><td class="num">0.1 s</td><td>一个 n<sub>D</sub> 值</td></tr>
+            <tr><td>NIR / 拉曼</td><td class="num">0.1–10 s</td><td>一条光谱曲线</td></tr>
+            <tr><td>在线质谱</td><td class="num cy">0.5–2 s</td><td>全组分 m/z 谱</td></tr>
+            <tr><td>在线色谱</td><td class="num">2–30 min</td><td>全组分分离谱</td></tr>
+            <tr><td>离线送检</td><td class="num rd">数小时–数天</td><td>报告</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+          只有质谱同时满足三个条件：<b style="color:var(--cy)">秒级、多组分、能定性</b>。
+          光谱也快，但它的"定性"要靠建模，不是靠物理量。
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>为什么它能不分离就测</h3>
+        <p style="font-size:12.8px;margin-bottom:10px">
+          色谱靠<b>时间</b>分离：A 先出来、B 后出来，所以必须等 B 走完全程。<br>
+          质谱靠<b>场</b>分离：在任何一个瞬间，电场都已经把 A 离子和 B 离子
+          分到不同的轨迹上，探测器只是"数"谁通过了。
+        </p>
+        <div class="note ok" style="font-size:12.2px;margin:0">
+          <div class="ico">◆</div>
+          <div>
+            所以质谱的时间分辨率由<b>扫描速度</b>决定，而不是由<b>组分保留时间</b>决定。
+            前者是电子学问题（微秒），后者是物理化学问题（分钟）。<b>这就是 4 个数量级的来源。</b>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>但"快"有个前提：它必须先变成离子</h3>
+    <div class="grid g3" style="gap:16px;margin-top:8px">
+      <div style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--tx-3);letter-spacing:.08em">① 中性分子</div>
+        <div style="font-family:var(--mono);font-size:20px;margin:8px 0 6px;color:var(--tx-2)">不带电</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          电场对中性分子没有作用力。没电离，飞不起来，也就无从"过滤"。
+        </div>
+      </div>
+      <div style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--tx-3);letter-spacing:.08em">② 打掉一个电子</div>
+        <div style="font-family:var(--mono);font-size:20px;margin:8px 0 6px;color:var(--cy)">70 eV</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          电子轰击把分子打成碎片离子。碎片模式是分子的"指纹"，这才是定性的依据。
+        </div>
+      </div>
+      <div style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div style="font-family:var(--mono);font-size:9.5px;color:var(--tx-3);letter-spacing:.08em">③ 飞进真空</div>
+        <div style="font-family:var(--mono);font-size:20px;margin:8px 0 6px;color:var(--vi)">10⁻⁶ mbar</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          离子平均自由程必须远大于仪器尺寸，否则一路撞气体分子，轨迹全乱。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S02 · 三步 ============ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">三步：电离、过滤、计数</div>
+      <div class="sec-sub">
+        整台质谱只做三件事，剩下的都是工程。
+        每一步都决定了一类性能——<b>电离方式决定能不能定性</b>，
+        <b>分析器决定分辨率和速度</b>，<b>探测器决定动态范围</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>从常压管道到一张质谱图</h3>
+    <div class="flow-wrap"><svg viewBox="0 0 1000 300" style="width:100%;height:auto;display:block" role="img" aria-label="在线质谱的完整信号路径">
+      <title>在线质谱的完整信号路径</title>
+      <desc>从工艺管道经常压取样、经毛细管与差分抽气进入真空、在离子源被电子轰击电离、由四极杆按 m/z 过滤、最后由探测器计数并输出趋势曲线。</desc>
+
+      <defs>
+        <marker id="msAr" markerWidth="8" markerHeight="8" refX="6" refY="3.4" orient="auto">
+          <path d="M0,0 L7,3.4 L0,6.8 z" fill="rgba(124,140,255,.75)"/>
+        </marker>
+        <marker id="msAr2" markerWidth="8" markerHeight="8" refX="6" refY="3.4" orient="auto">
+          <path d="M0,0 L7,3.4 L0,6.8 z" fill="rgba(232,121,249,.7)"/>
+        </marker>
+        <linearGradient id="msVac" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="rgba(124,140,255,0)"/>
+          <stop offset="1" stop-color="rgba(124,140,255,.10)"/>
+        </linearGradient>
+      </defs>
+
+      <!-- 常压区背景 -->
+      <rect x="14" y="46" width="290" height="196" rx="8" fill="rgba(232,121,249,.035)" stroke="rgba(232,121,249,.14)" stroke-width="1"/>
+      <text x="26" y="64" fill="rgba(232,121,249,.75)" font-size="9" font-family="ui-monospace,monospace" letter-spacing=".08em">常压区 · 1013 mbar</text>
+
+      <!-- 真空区背景 -->
+      <rect x="316" y="46" width="670" height="196" rx="8" fill="url(#msVac)" stroke="rgba(124,140,255,.16)" stroke-width="1"/>
+      <text x="328" y="64" fill="rgba(124,140,255,.7)" font-size="9" font-family="ui-monospace,monospace" letter-spacing=".08em">真空区 · 逐级降压到 10⁻⁶ mbar</text>
+
+      <!-- 管道 -->
+      <rect x="30" y="132" width="96" height="34" rx="4" fill="rgba(40,48,66,.7)" stroke="rgba(148,165,187,.35)" stroke-width="1.2"/>
+      <text x="78" y="153" text-anchor="middle" fill="rgba(233,239,248,.8)" font-size="9.5" font-family="ui-monospace,monospace">工艺管道</text>
+      <text x="78" y="180" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="8" font-family="ui-monospace,monospace">1 atm</text>
+
+      <!-- 毛细管 -->
+      <path d="M126 149 H 196" stroke="rgba(232,121,249,.6)" stroke-width="2" marker-end="url(#msAr2)"/>
+      <text x="161" y="140" text-anchor="middle" fill="rgba(232,121,249,.7)" font-size="8" font-family="ui-monospace,monospace">毛细管</text>
+      <text x="161" y="170" text-anchor="middle" fill="rgba(148,165,187,.45)" font-size="7.5" font-family="ui-monospace,monospace">τ ≈ 0.6 s</text>
+
+      <!-- 离子源 -->
+      <rect x="200" y="106" width="94" height="82" rx="6" fill="rgba(124,140,255,.09)" stroke="rgba(124,140,255,.45)" stroke-width="1.4"/>
+      <text x="247" y="128" text-anchor="middle" fill="rgba(233,239,248,.85)" font-size="9.5" font-family="ui-monospace,monospace">离子源</text>
+      <text x="247" y="146" text-anchor="middle" fill="rgba(124,140,255,.8)" font-size="8" font-family="ui-monospace,monospace">EI 70 eV</text>
+      <text x="247" y="163" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">灯丝 → 电子</text>
+      <text x="247" y="178" text-anchor="middle" fill="rgba(148,165,187,.4)" font-size="7.5" font-family="ui-monospace,monospace">M → M⁺ + 碎片</text>
+
+      <!-- 四极杆 -->
+      <g>
+        <rect x="330" y="104" width="7" height="90" rx="3" fill="rgba(124,140,255,.35)" stroke="rgba(124,140,255,.6)" stroke-width="1"/>
+        <rect x="386" y="104" width="7" height="90" rx="3" fill="rgba(124,140,255,.35)" stroke="rgba(124,140,255,.6)" stroke-width="1"/>
+        <rect x="352" y="118" width="7" height="62" rx="3" fill="rgba(232,121,249,.28)" stroke="rgba(232,121,249,.5)" stroke-width="1"/>
+        <rect x="368" y="118" width="7" height="62" rx="3" fill="rgba(232,121,249,.28)" stroke="rgba(232,121,249,.5)" stroke-width="1"/>
+        <text x="362" y="212" text-anchor="middle" fill="rgba(233,239,248,.8)" font-size="9" font-family="ui-monospace,monospace">四极杆</text>
+        <text x="362" y="226" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">RF + DC 扫描</text>
+        <text x="362" y="92" text-anchor="middle" fill="rgba(124,140,255,.6)" font-size="7.5" font-family="ui-monospace,monospace">125 μs/amu</text>
+      </g>
+
+      <!-- 离子轨迹：进入 -->
+      <path d="M294 149 H 330" stroke="rgba(124,140,255,.5)" stroke-width="1.4" stroke-dasharray="3 3"/>
+
+      <!-- 通过的离子 -->
+      <path d="M340 149 H 384" stroke="rgba(124,140,255,.75)" stroke-width="1.6" marker-end="url(#msAr)"/>
+      <circle cx="350" cy="149" r="2.6" fill="#7c8cff"/>
+      <circle cx="366" cy="149" r="2.6" fill="#7c8cff"/>
+      <!-- 撞棒的离子 -->
+      <path d="M340 133 Q 352 133 358 128" stroke="rgba(255,107,107,.45)" stroke-width="1.2" fill="none"/>
+      <path d="M340 165 Q 352 165 358 170" stroke="rgba(255,107,107,.45)" stroke-width="1.2" fill="none"/>
+      <text x="402" y="128" fill="rgba(255,107,107,.55)" font-size="7.5" font-family="ui-monospace,monospace">撞棒 → 滤除</text>
+
+      <!-- 探测器 -->
+      <rect x="452" y="120" width="72" height="58" rx="5" fill="rgba(255,209,102,.09)" stroke="rgba(255,209,102,.42)" stroke-width="1.3"/>
+      <text x="488" y="142" text-anchor="middle" fill="rgba(233,239,248,.85)" font-size="9" font-family="ui-monospace,monospace">探测器</text>
+      <text x="488" y="157" text-anchor="middle" fill="rgba(255,209,102,.75)" font-size="7.5" font-family="ui-monospace,monospace">电子倍增器</text>
+      <text x="488" y="170" text-anchor="middle" fill="rgba(148,165,187,.45)" font-size="7" font-family="ui-monospace,monospace">10⁶ 增益</text>
+      <path d="M392 149 H 452" stroke="rgba(124,140,255,.7)" stroke-width="1.6" marker-end="url(#msAr)"/>
+
+      <!-- 信号链 -->
+      <path d="M524 149 H 578" stroke="rgba(255,209,102,.55)" stroke-width="1.4" marker-end="url(#msAr)"/>
+
+      <!-- 谱图 -->
+      <g>
+        <rect x="584" y="100" width="150" height="96" rx="5" fill="rgba(10,12,22,.85)" stroke="rgba(148,165,187,.2)" stroke-width="1"/>
+        <line x1="594" y1="184" x2="724" y2="184" stroke="rgba(148,165,187,.3)" stroke-width="1"/>
+        <g stroke="#7c8cff" stroke-width="2.4" stroke-linecap="round">
+          <line x1="602" y1="184" x2="602" y2="164"/>
+          <line x1="618" y1="184" x2="618" y2="146"/>
+          <line x1="634" y1="184" x2="634" y2="172"/>
+          <line x1="652" y1="184" x2="652" y2="118"/>
+          <line x1="670" y1="184" x2="670" y2="156"/>
+          <line x1="688" y1="184" x2="688" y2="174"/>
+          <line x1="706" y1="184" x2="706" y2="166"/>
+        </g>
+        <text x="659" y="114" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">m/z</text>
+        <text x="659" y="208" text-anchor="middle" fill="rgba(233,239,248,.7)" font-size="8.5" font-family="ui-monospace,monospace">质谱图</text>
+      </g>
+
+      <!-- 趋势 -->
+      <path d="M734 149 H 776" stroke="rgba(255,209,102,.5)" stroke-width="1.4" marker-end="url(#msAr)"/>
+
+      <g>
+        <rect x="782" y="100" width="190" height="96" rx="5" fill="rgba(10,12,22,.85)" stroke="rgba(148,165,187,.2)" stroke-width="1"/>
+        <path d="M792 176 L810 170 L828 158 L846 150 L864 156 L882 146 L900 140 L918 148 L936 144 L954 138"
+              stroke="#7c8cff" stroke-width="1.6" fill="none"/>
+        <path d="M792 180 L810 176 L828 172 L846 164 L864 160 L882 166 L900 158 L918 154 L936 160 L954 152"
+              stroke="#e879f9" stroke-width="1.6" fill="none"/>
+        <path d="M792 182 L810 181 L828 179 L846 177 L864 180 L882 176 L900 178 L918 175 L936 177 L954 174"
+              stroke="rgba(255,209,102,.8)" stroke-width="1.5" fill="none"/>
+        <text x="877" y="208" text-anchor="middle" fill="rgba(233,239,248,.7)" font-size="8.5" font-family="ui-monospace,monospace">组分趋势</text>
+      </g>
+
+      <!-- 底部说明 -->
+      <line x1="30" y1="262" x2="972" y2="262" stroke="rgba(148,165,187,.16)" stroke-width="1"/>
+      <text x="78" y="280" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">取样</text>
+      <text x="247" y="280" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">电离</text>
+      <text x="362" y="280" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">质量过滤</text>
+      <text x="488" y="280" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">计数</text>
+      <text x="659" y="280" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">一张谱</text>
+      <text x="877" y="280" text-anchor="middle" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">一条线</text>
+    </svg></div>
+    <div class="flow-hint">← 左右滑动查看完整路径 →</div>
+  </div>
+
+  <div class="grid g3" style="gap:16px;margin-top:18px">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">电离方式，决定定性能力</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        硬电离（EI 70 eV）把分子打碎，碎片模式唯一，可以查库；
+        软电离（CI、ESI）保留分子离子峰，适合测分子量。
+        <b>要"认人"用硬的，要"称重"用软的。</b>
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">分析器，决定速度和分辨率</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        四极杆便宜、快、耐脏，但只有单位分辨；
+        TOF 高分辨，能分开 N₂ 和 CO；离子阱能做多级。
+        <b>过程分析九成用四极杆</b>，因为工况比分辨率重要。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">探测器，决定动态范围</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        法拉第杯测高浓度（%），电子倍增器测痕量（ppb）。
+        两者自动切换，量程跨越 <b>10⁶–10⁹</b>。
+        这让同一台仪器既看主组分也看杂质。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S03 · 把分子打碎 ============ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">70 电子伏特：把分子打成一地碎片，反而是好事</div>
+      <div class="sec-sub">
+        直觉上"打碎"是破坏信息。但碎片模式是<b>高度可重复</b>的——
+        同一分子在 70 eV 下永远给出同一组碎片，比例也固定。
+        这比"分子离子峰"更有辨识力，因为它是多维的。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>乙醇的 EI 谱：基峰不是分子离子</h3>
+      <div class="cvbox">
+        <canvas id="cvFrag" height="360"></canvas>
+        <div class="cv-cap"><span>乙醇 C₂H₅OH · EI 70 eV</span><span style="text-transform:none">拖动看软电离</span></div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="ctrl-row"><label>电子能量</label><span class="val" id="vEv">70 eV</span></div>
+        <input type="range" id="sEv" min="12" max="70" step="1" value="70">
+        <div style="font-size:10.5px;color:var(--tx-3);font-family:var(--mono);margin-top:6px;line-height:1.7">
+          降到 15–20 eV 附近，碎片消失、分子离子峰保留——
+          这就是<b>软电离</b>的原理，代价是灵敏度下降一个量级。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>m/z 31 为什么是基峰</h3>
+        <table style="margin-top:4px">
+          <thead><tr><th>m/z</th><th>碎片</th><th class="num">相对强度</th></tr></thead>
+          <tbody id="tbFrag"></tbody>
+        </table>
+        <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+          C–C 键比 C–O 键弱，先断；断在 α 位得到 CH₂OH⁺（31），
+          这个离子还能脱水形成 CHO⁺（29）。分子离子 46 只剩 16%。
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>碎片为什么能"查库"</h3>
+        <p style="font-size:12.5px;margin-bottom:10px">
+          一个分子给出 10–30 个峰的<b>完整比例向量</b>。
+          两个不同分子恰好给出同一组比例的概率极低。
+          这就是 NIST 库能收录<b>三十多万张</b>标准谱、并且能自动匹配的原因。
+        </p>
+        <div class="note warn" style="font-size:12.2px;margin:0">
+          <div class="ico">⚠</div>
+          <div>
+            但库匹配有个死穴：<b>同分异构体</b>。乙醇和二甲醚都是 C₂H₆O、分子量都是 46，
+            碎片也高度相似。质谱分不出"结构"，只能分"质量"——
+            这一点和色谱、和拉曼正好互补，也正好是它们的强项。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S04 · 四极杆 ============ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">四根金属棒，用电场筛质量</div>
+      <div class="sec-sub">
+        四根平行金属棒，两对加直流、两对加射频。给定一组电压，
+        只有<b>一个特定 m/z</b> 的离子能保持稳定轨迹飞出去，
+        其余全部撞在棒上被中和。扫描电压，就得到整张谱。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>只有一种离子能穿过</h3>
+      <div class="cvbox">
+        <canvas id="cvQuad" height="400"></canvas>
+        <div class="cv-cap"><span>四极杆内的离子轨迹</span><span style="text-transform:none">当前通过 m/z</span></div>
+      </div>
+      <div style="margin-top:14px">
+        <div class="ctrl-row"><label>扫描电压（对应 m/z）</label><span class="val" id="vQmz">31</span></div>
+        <input type="range" id="sQmz" min="2" max="60" step="1" value="31">
+        <div style="font-size:10.5px;color:var(--tx-3);font-family:var(--mono);margin-top:6px;line-height:1.7">
+          电压升高，通带向高质量移动。三条轨迹分别代表 m/z 18（水）、31（乙醇碎片）、44（CO₂）。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>为什么是"稳定区"</h3>
+        <p style="font-size:12.6px;margin-bottom:12px">
+          离子在射频场里的运动由 Mathieu 方程描述。
+          把六个参数压缩成两个无量纲量 a 和 q，就能画出一张普适的稳定图——
+          所有四极杆、所有质量数，共用同一张图。
+        </p>
+        <div class="eq sm" style="font-size:12.5px;margin-bottom:5px">
+          a <span class="o">=</span> 8eU / (m r₀² ω²)
+        </div>
+        <div class="eq sm" style="font-size:12.5px;margin-bottom:6px">
+          q <span class="o">=</span> 4eV / (m r₀² ω²)
+        </div>
+        <div class="eq-note" style="margin-bottom:12px">
+          两者都含 1/m —— 所以 a/q = 2U/V 与质量无关，是一条从原点射出的直线。
+          扫描时保持 U/V 不变，只是把这条线整体"推远"。
+        </div>
+        <div class="grid g2" style="gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden">
+          <div style="background:var(--bg-2);padding:12px 13px">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--tx-3);letter-spacing:.08em">稳定区顶点</div>
+            <div style="font-family:var(--mono);font-size:17px;color:var(--cy);margin-top:6px">a=0.237</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--tx-3);margin-top:2px">q=0.706</div>
+          </div>
+          <div style="background:var(--bg-2);padding:12px 13px">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--tx-3);letter-spacing:.08em">典型分辨率</div>
+            <div style="font-family:var(--mono);font-size:17px;color:var(--am);margin-top:6px">0.7 Da</div>
+            <div style="font-family:var(--mono);font-size:11px;color:var(--tx-3);margin-top:2px">单位分辨</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>单位分辨的代价：N₂ 和 CO 分不开</h3>
+        <p style="font-size:12.5px;margin-bottom:8px">
+          N₂ 的精确质量是 <b>28.00615</b>，CO 是 <b>27.99491</b>。
+          差 <b>0.01124 Da</b>。
+        </p>
+        <div class="eq sm" style="font-size:12.5px;margin-bottom:8px">
+          R <span class="o">=</span> m / Δm <span class="o">=</span> 28 / 0.011
+          <span class="o">≈</span><span class="hl2">2491</span>
+        </div>
+        <p style="font-size:12.5px;margin-bottom:0">
+          四极杆的 R 只有 <b>1000 左右</b>，两个峰完全重叠成一根 m/z=28 的棒。
+          要么换高分辨 TOF（R &gt; 5000），要么退一步——看碎片：
+          CO 有 m/z=12 的 C⁺，N₂ 没有。<b>用碎片绕过质量重叠，是过程质谱的常用手法。</b>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S05 · 分离搬了家 ============ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">同样五个组分：一个要等 780 秒，一个只要 37 毫秒</div>
+      <div class="sec-sub">
+        这一章是整页的核心。同一个样品、同样五个组分，
+        色谱让它们<b>先后</b>到达，质谱让它们<b>同时</b>出现。
+        时间差 4.3 个数量级，来源只有一个：分离发生在哪根轴上。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>两条时间轴</h3>
+    <div class="cvbox">
+      <canvas id="cvAxis" height="430"></canvas>
+      <div class="cv-cap"><span>上：色谱的时间分离　下：质谱的质量分离</span><span style="text-transform:none">同一组样品</span></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+      横轴都取对数，否则 780 s 和 0.0375 s 画不进同一张图。
+      注意下图的"同时"是<b>一个扫描周期内</b>——37.5 ms 里从 m/z 2 扫到 300，逐个瞬间通过，
+      不是真的并行。TOF 才是真并行（不同 m/z 飞行时间不同，一次全打到探测器）。
+    </p>
+  </div>
+
+  <div class="grid g3" style="gap:16px;margin-top:18px">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">色谱：分离靠时间</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        组分必须<b>走完全程</b>才能被看到。
+        最后那个峰的保留时间，就是你最少要等的时间。
+        想快只能缩柱子，但 R ∝ √N，分离度会掉。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">质谱：分离靠场</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        电场在<b>空间上</b>把不同 m/z 分开，
+        扫描速度由电子学决定（125 μs/amu），
+        与分子跑多快完全无关。<b>想快就提扫描频率。</b>
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">代价：分不开同质量</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        色谱按"跑得多快"分，能分开同分异构体；
+        质谱按"有多重"分，<b>质量相同就重叠</b>。
+        所以 GC-MS 常常还是要色谱柱——不是为了灵敏度，是为了异构体。
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>扫描一遍到底多久</h3>
+    <table class="m-hide3" style="margin-top:4px">
+      <thead><tr><th>扫描速度</th><th class="num">全谱（300 amu）</th><th class="num">每秒全谱数</th><th>典型机型</th></tr></thead>
+      <tbody>
+        <tr><td>1800 μs/amu</td><td class="num">540 ms</td><td class="num">1.9</td><td>通用过程质谱</td></tr>
+        <tr><td>1000 μs/amu</td><td class="num">300 ms</td><td class="num">3.3</td><td>常规四极杆</td></tr>
+        <tr><td class="cy">125 μs/amu</td><td class="num cy">37.5 ms</td><td class="num cy">27</td><td>高速 RGA / 过程质谱</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+      即使用最慢的 1800 μs/amu，540 ms 也远快于任何色谱。
+      所以<b>质谱的时间分辨率从来不是瓶颈</b>——这句话在第 07 章会变得刺眼。
+    </p>
+  </div>
+</section>
+
+<!-- ============ S06 · 九个数量级 ============ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">九个数量级：从 1013 mbar 到 10⁻⁶ mbar</div>
+      <div class="sec-sub">
+        离子平均自由程要远大于仪器尺寸，否则一路撞气体分子，轨迹全乱。
+        但工艺管道是常压。这中间要降<b>九个数量级</b>——
+        靠一台泵做不到，必须分级，每一级只负责一段。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>三级差分抽气</h3>
+    <div class="flow-wrap"><svg viewBox="0 0 1000 330" style="width:100%;height:auto;display:block" role="img" aria-label="在线质谱的三级差分抽气">
+      <title>三级差分抽气</title>
+      <desc>从常压 1013 mbar 经毛细管与隔膜泵降到 1 mbar，再经漏孔与分子泵降到 10⁻³ mbar，最后经涡轮分子泵到 10⁻⁶ mbar。每级压力降三个数量级。</desc>
+
+      <defs>
+        <marker id="vacAr" markerWidth="8" markerHeight="8" refX="6" refY="3.4" orient="auto">
+          <path d="M0,0 L7,3.4 L0,6.8 z" fill="rgba(232,121,249,.7)"/>
+        </marker>
+      </defs>
+
+      <!-- 压力阶梯 -->
+      <g font-family="ui-monospace,monospace">
+        <rect x="20" y="50" width="200" height="72" rx="6" fill="rgba(232,121,249,.055)" stroke="rgba(232,121,249,.28)" stroke-width="1.2"/>
+        <text x="120" y="72" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="8.5">① 常压进样</text>
+        <text x="120" y="94" text-anchor="middle" fill="rgba(233,239,248,.9)" font-size="15">1013 mbar</text>
+        <text x="120" y="112" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="8">工艺管道</text>
+
+        <rect x="268" y="50" width="200" height="72" rx="6" fill="rgba(232,121,249,.045)" stroke="rgba(232,121,249,.24)" stroke-width="1.2"/>
+        <text x="368" y="72" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="8.5">② 毛细管后</text>
+        <text x="368" y="94" text-anchor="middle" fill="rgba(233,239,248,.9)" font-size="15">1 mbar</text>
+        <text x="368" y="112" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="8">隔膜泵抽走 99.9%</text>
+
+        <rect x="516" y="50" width="200" height="72" rx="6" fill="rgba(124,140,255,.06)" stroke="rgba(124,140,255,.28)" stroke-width="1.2"/>
+        <text x="616" y="72" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="8.5">③ 漏孔后</text>
+        <text x="616" y="94" text-anchor="middle" fill="rgba(233,239,248,.9)" font-size="15">10⁻³ mbar</text>
+        <text x="616" y="112" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="8">分子泵</text>
+
+        <rect x="764" y="50" width="216" height="72" rx="6" fill="rgba(124,140,255,.09)" stroke="rgba(124,140,255,.42)" stroke-width="1.4"/>
+        <text x="872" y="72" text-anchor="middle" fill="rgba(148,165,187,.65)" font-size="8.5">④ 分析器</text>
+        <text x="872" y="94" text-anchor="middle" fill="#7c8cff" font-size="15">10⁻⁶ mbar</text>
+        <text x="872" y="112" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="8">涡轮分子泵 300 L/s</text>
+
+        <!-- 箭头 -->
+        <line x1="222" y1="86" x2="264" y2="86" stroke="rgba(232,121,249,.55)" stroke-width="1.4" marker-end="url(#vacAr)"/>
+        <line x1="470" y1="86" x2="512" y2="86" stroke="rgba(232,121,249,.55)" stroke-width="1.4" marker-end="url(#vacAr)"/>
+        <line x1="718" y1="86" x2="760" y2="86" stroke="rgba(124,140,255,.6)" stroke-width="1.4" marker-end="url(#vacAr)"/>
+      </g>
+
+      <!-- 压力曲线 -->
+      <g>
+        <path d="M30 250 Q 200 250 268 236 T 516 210 T 764 180 T 972 152"
+              stroke="rgba(124,140,255,.55)" stroke-width="1.8" fill="none"/>
+        <circle cx="120" cy="250" r="3" fill="#e879f9"/>
+        <circle cx="368" cy="236" r="3" fill="#e879f9"/>
+        <circle cx="616" cy="210" r="3" fill="#7c8cff"/>
+        <circle cx="872" cy="152" r="3" fill="#7c8cff"/>
+
+        <text x="120" y="268" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">1013</text>
+        <text x="368" y="254" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">1</text>
+        <text x="616" y="228" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">1e-3</text>
+        <text x="872" y="170" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="7.5" font-family="ui-monospace,monospace">1e-6</text>
+
+        <text x="30" y="296" fill="rgba(148,165,187,.55)" font-size="8.5" font-family="ui-monospace,monospace">压力沿路径的衰减（示意）</text>
+        <text x="972" y="296" text-anchor="end" fill="rgba(148,165,187,.4)" font-size="8" font-family="ui-monospace,monospace">每级约三个数量级</text>
+      </g>
+
+      <!-- 右轴 -->
+      <line x1="20" y1="312" x2="980" y2="312" stroke="rgba(148,165,187,.16)" stroke-width="1"/>
+    </svg></div>
+    <div class="flow-hint">← 左右滑动查看完整流程 →</div>
+  </div>
+
+  <div class="grid g2" style="gap:18px;margin-top:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <h3>抽速的账：为什么必须分级</h3>
+      <table class="m-hide3" style="margin-top:4px">
+        <thead><tr><th>级</th><th class="num">压力</th><th class="num">所需抽速</th></tr></thead>
+        <tbody>
+          <tr><td>毛细管后</td><td class="num">1 mbar</td><td class="num">1 L/s</td></tr>
+          <tr><td>漏孔后</td><td class="num">10⁻³ mbar</td><td class="num">1 L/s</td></tr>
+          <tr><td>分析器</td><td class="num">10⁻⁶ mbar</td><td class="num am">1000 L/s</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        按 S = Q/P 估算（Q = 1 mbar·L/s）。若想一步从常压抽到 10⁻⁶，
+        需要 10⁹ L/s 的泵——相当于每秒抽走一个标准游泳池。
+        <b>分级的意义是把大流量在高压力下先抽掉。</b>
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>这一级决定了三件事</h3>
+      <div class="chk">
+        <div class="num">①</div>
+        <div class="tx"><b>响应速度。</b>腔体体积越大、抽速越小，换气越慢。
+          质谱自身的 37 ms 之后，还要等腔体把旧气体置换掉。</div>
+      </div>
+      <div class="chk">
+        <div class="num">②</div>
+        <div class="tx"><b>记忆效应。</b>极性分子（水、醇、酸）会吸附在腔壁上，
+          上一批样品的残留会污染下一批。所以腔体要加热到 <b>150–200 °C</b>。</div>
+      </div>
+      <div class="chk">
+        <div class="num">③</div>
+        <div class="tx"><b>维护周期。</b>分子泵是消耗件，轴承寿命通常
+          <b>2–4 万小时</b>。连续运行的工厂，两年半就要换一台。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S07 · 瓶颈在管子上 ============ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">仪器快了 20000 倍，瓶颈却跑到一米长的管子上</div>
+      <div class="sec-sub">
+        质谱扫一遍 37.5 ms，但整机响应时间是 <b>1–2 秒</b>。
+        中间差的那 30 倍，全部花在一根内径 50 μm 的毛细管里——
+        气体要从常压一路挤进真空，这一段没有捷径。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <h3>传输时间随内径的变化</h3>
+      <div class="cvbox">
+        <canvas id="cvCap" height="400"></canvas>
+        <div class="cv-cap"><span>τ = V / Q　纵轴对数</span><span style="text-transform:none">双对数</span></div>
+      </div>
+      <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="ctrl-row"><label>内径 d</label><span class="val" id="vCd">100 μm</span></div>
+          <input type="range" id="sCd" min="20" max="200" step="5" value="100">
+        </div>
+        <div>
+          <div class="ctrl-row"><label>长度 L</label><span class="val" id="vCl">1.0 m</span></div>
+          <input type="range" id="sCl" min="0.2" max="3" step="0.1" value="1">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>当前设计</h3>
+        <div class="readout" style="grid-template-columns:1fr 1fr">
+          <div class="ro"><div class="k">传输时间 τ</div><div class="v" id="oTau">568<span class="u">ms</span></div></div>
+          <div class="ro"><div class="k">体积流量 Q</div><div class="v" id="oQ">0.83<span class="u">mL/min</span></div></div>
+          <div class="ro"><div class="k">管内容积</div><div class="v" id="oV">7.9<span class="u">μL</span></div></div>
+          <div class="ro"><div class="k">整机响应</div><div class="v" id="oResp">1.4<span class="u">s</span></div></div>
+        </div>
+        <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:12px 0 0">
+          整机响应 ≈ 1.5 × τ + 0.3 s（腔体置换与电子学）。系数取经验值。
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>为什么不能靠"缩细"来提速</h3>
+        <p style="font-size:12.4px;margin-bottom:10px">
+          层流下体积流量 <b>Q ∝ r⁴ / L</b>，而管内容积 <b>V ∝ r²L</b>。
+          两者相除：
+        </p>
+        <div class="eq sm" style="font-size:12.5px;margin-bottom:10px">
+          τ <span class="o">=</span> V / Q
+          <span class="o">∝</span> (r²L) / (r⁴/L)
+          <span class="o">∝</span> <span class="hl2">L² / r²</span>
+        </div>
+        <p style="font-size:12.4px;margin-bottom:0">
+          <b>内径减半，传输时间涨 4 倍；长度减半，只降 4 倍但要付出 2 倍的泵流量。</b>
+          所以"要快"只有一个方向：<b>粗而短</b>——
+          但粗管的流量是四次方增长的，泵立刻跟不上。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>换个接口，能绕开这条管子吗</h3>
+    <table class="m-hide3" style="margin-top:4px">
+      <thead><tr><th>接口</th><th class="num">响应</th><th>原理</th><th>代价</th></tr></thead>
+      <tbody>
+        <tr><td>加热毛细管</td><td class="num">0.5–2 s</td><td>直接取样，靠压差驱动</td><td>易堵、易冷凝</td></tr>
+        <tr><td>膜进样 MIMS</td><td class="num">1–10 s</td><td>疏水膜只让挥发性有机物透过</td><td>慢，但抗污染极强</td></tr>
+        <tr><td>喷射 / 超声进样</td><td class="num am">20–100 ms</td><td>超声射流，分子束直接进入</td><td>真空负载大，泵成本高</td></tr>
+        <tr><td>大气压电离 API</td><td class="num">1–5 s</td><td>常压下先电离，再进真空</td><td>只适合液体/极性物</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+      想进 100 ms 以内，只有喷射进样——用大泵换速度。
+      <b>这才是"快速在线质谱"真正的成本所在，而不是质谱本身。</b>
+    </p>
+  </div>
+</section>
+
+<!-- ============ S08 · 在线谱图 ============ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">在线质谱的日常：一张谱，几条线</div>
+      <div class="sec-sub">
+        实验室看谱，工业看趋势。同一台仪器，把选定 m/z 的强度
+        按秒记录下来，就变成一张过程曲线——
+        <b>操作工看的不是图，是"有没有跑偏"。</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>选一个场景</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 16px">
+      <button class="sw on" data-sc="0">发酵尾气</button>
+      <button class="sw" data-sc="1">半导体刻蚀</button>
+      <button class="sw" data-sc="2">燃烧烟气</button>
+    </div>
+    <div class="cvbox">
+      <canvas id="cvOnline" height="440"></canvas>
+      <div class="cv-cap"><span>左：当前谱　右：各组分趋势</span><span style="text-transform:none" id="scName">发酵尾气</span></div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="gap:18px;margin-top:18px;align-items:start">
+    <div class="card" style="margin:0">
+      <h3>为什么发酵是质谱的主场</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        发酵尾气里的 O₂、CO₂、N₂、Ar 全是小分子，质谱一次全测，
+        而且能算出一个色谱算不出来的量——<b>呼吸商 RQ</b>。
+      </p>
+      <table style="margin-top:4px">
+        <thead><tr><th>量</th><th class="num">数值</th></tr></thead>
+        <tbody>
+          <tr><td>进气 O₂</td><td class="num">20.95 %</td></tr>
+          <tr><td>出气 O₂</td><td class="num">15.20 %</td></tr>
+          <tr><td>出气 CO₂</td><td class="num">5.60 %</td></tr>
+          <tr><td>OUR（耗氧速率）</td><td class="num">5.94 %</td></tr>
+          <tr><td>CER（产碳速率）</td><td class="num">5.49 %</td></tr>
+          <tr><td><b>RQ = CER / OUR</b></td><td class="num cy"><b>0.92</b></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--tx-3);font-family:var(--mono);line-height:1.75;margin:10px 0 0">
+        已按惰性气体守恒做收缩修正（k = 0.9876）。
+        RQ &gt; 1.05 说明在厌氧发酵/产乙醇，&lt; 0.85 说明碳源不足。
+      </p>
+    </div>
+
+    <div class="card" style="margin:0">
+      <h3>RQ 为什么必须是实时值</h3>
+      <p style="font-size:12.5px;margin-bottom:10px">
+        菌体代谢的时间常数是<b>分钟级</b>：溶氧掉下去，几秒钟内菌就开始走厌氧路径。
+        如果每 30 分钟取样送检一次，你看到的是<b>事故之后的报告</b>，不是过程本身。
+      </p>
+      <div class="note ok" style="font-size:12.2px;margin:0 0 12px">
+        <div class="ico">◆</div>
+        <div>
+          这就是"在线"的全部意义：<b>不是为了更准，是为了赶上过程的时间常数。</b>
+          一个 2 分钟周期的仪器测 10 秒的扰动，测到的永远是平均值。
+        </div>
+      </div>
+      <p style="font-size:12.5px;margin-bottom:0">
+        顺带一句：这和色谱的位置正好错开。色谱 2–30 分钟，够看<b>批次级</b>的趋势；
+        质谱 1–2 秒，够看<b>扰动级</b>的瞬变。两者不是替代关系。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S09 · 五页合起来 ============ -->
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">五页摆在一起：每一页补的是不同的短板</div>
+      <div class="sec-sub">
+        折光计补"快"，色谱补"分得开"，光谱补"看得见官能团"，
+        质谱补"又快又分得开"。没有一个能通吃，因为它们各自受制于不同的物理量。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>五种仪器的五项能力</h3>
+    <div class="cvbox">
+      <canvas id="cvMap" height="420"></canvas>
+      <div class="cv-cap"><span>0–5 分 · 深浅表示强弱</span><span style="text-transform:none">本系列五页</span></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>选型矩阵</h3>
+    <table class="m-hide3" style="margin-top:4px">
+      <thead><tr><th>你要什么</th><th>首选</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td>只要浓度，工况稳定</td><td>折光计</td><td>最便宜、无耗材、免维护</td></tr>
+        <tr><td>多组分、能接受分钟级</td><td>在线色谱</td><td>分离度最好，异构体也能分</td></tr>
+        <tr><td>多组分、要秒级</td><td class="cy">在线质谱</td><td>唯一同时满足速度和组分分解</td></tr>
+        <tr><td>要看官能团、判断"是什么类"</td><td>NIR / 拉曼</td><td>振动指纹，非破坏</td></tr>
+        <tr><td>痕量杂质（ppb 级）</td><td class="cy">在线质谱</td><td>动态范围 10⁶–10⁹</td></tr>
+        <tr><td>同分异构体</td><td>色谱 / 拉曼</td><td>质谱按质量分，分不开同质量</td></tr>
+        <tr><td>不取样、直接插管道</td><td>折光计 / 光谱探头</td><td>质谱必须取样进真空</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid g3" style="gap:16px;margin-top:18px">
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">⚠️ 边界一：只能测气体</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        标准配置测气体和挥发性组分。液体要经过稀释、脱气、膜进样或 API 电离，
+        每一步都会引入延迟和误差。<b>"在线测液体"是另一个工程问题。</b>
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">⚠️ 边界二：谱图会重叠</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        复杂基质里，几十个碎片峰互相叠加，定量要靠<b>矩阵解卷积</b>——
+        本质上是一个病态方程组，和三元体系那页是同一类问题。
+      </p>
+    </div>
+    <div class="card" style="margin:0">
+      <h3 style="font-size:13.5px">⚠️ 边界三：贵且难养</h3>
+      <p style="font-size:12.3px;margin-bottom:0">
+        分子泵、灯丝、探测器都是消耗件；标定要标准气体；
+        真空系统怕脏、怕水、怕颗粒。<b>它的总拥有成本比折光计高两个数量级。</b>
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>最后一句实话</h3>
+    <p style="font-size:12.8px;margin-bottom:10px">
+      在线质谱的性能上限，几乎从来不在质谱本身。
+      扫描速度已经过剩（37 ms 对 2 s 的需求），分辨率够用（除非要分 N₂/CO），
+      灵敏度也够（ppb 级远低于工艺关注点）。
+    </p>
+    <p style="font-size:12.8px;margin-bottom:0">
+      <b>真正决定它好不好用的，是取样系统、是腔体的抗污染设计、是标定策略、是维护周期。</b>
+      这一页花了两章讲真空和毛细管，原因就在这里——
+      买质谱买的是分析器，用好质谱靠的是接口。
+    </p>
+  </div>
+</section>
+
+<footer style="margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);
+                 display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+                 font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.03em">
+    <div>在线质谱 · 原理 · 设计 · 应用</div>
+    <div>参考构型：四极杆 EI · 1–300 amu · 125 μs/amu · 10⁻⁶ mbar · 加热毛细管进样</div>
+  </footer>
+</section>
+</main>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 工具
+   ============================================================ */
+const CO = {
+  cy:'#7c8cff', am:'#ffd166', vi:'#e879f9', rd:'#ff6b6b', gr:'#5ee6a8',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#101427', grid2:'#191f33', line:'#222840'
+};
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function prep(cv, cssH){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = Math.max(200, cv.clientWidth||400);
+  const h = cssH;
+  cv.style.height = h+'px';
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+function txt(c,s,x,y,col,size,align,weight){
+  c.save();
+  c.fillStyle = col||CO.tx2;
+  c.font = (weight||400)+' '+(size||10)+'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  c.textAlign = align||'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+  c.restore();
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function dot(c,x,y,r,fill,stroke,wd){
+  c.beginPath(); c.arc(x,y,r,0,6.2832);
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.5; c.stroke(); }
+}
+function path(c, xs, ys, X, Y, col, wd, dash){
+  c.save();
+  c.strokeStyle = col; c.lineWidth = wd||1.7;
+  c.setLineDash(dash||[]);
+  c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  for(let i=0;i<xs.length;i++){
+    const px=X(xs[i]), py=Y(ys[i]);
+    i ? c.lineTo(px,py) : c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+function hexA(h,a){
+  const s = h.replace('#','');
+  const n = parseInt(s.length===3 ? s.split('').map(x=>x+x).join('') : s, 16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+
+/* ============================================================
+   1 · 数据模型
+   ============================================================ */
+
+// 乙醇 EI 碎片：70 eV 相对强度（NIST 标准谱，基峰 CH2OH+ = 31）
+// th = 出现阈值（eV），用于模拟"降低电子能量 → 碎片减少、分子离子上升"
+const ETH = [
+  {m:15, i:3,   th:28, f:'CH₃⁺'},
+  {m:27, i:8,   th:23, f:'C₂H₃⁺'},
+  {m:28, i:6,   th:19, f:'C₂H₄⁺'},
+  {m:29, i:9,   th:20, f:'CHO⁺'},
+  {m:31, i:100, th:22, f:'CH₂OH⁺'},
+  {m:42, i:3,   th:22, f:'C₂H₂O⁺'},
+  {m:43, i:6,   th:21, f:'C₂H₃O⁺'},
+  {m:45, i:24,  th:12, f:'C₂H₅O⁺'},
+  {m:46, i:16,  th:9,  f:'M⁺'}
+];
+
+function fragI(f, E){
+  if(E < f.th) return 0;
+  const s = 1/(1+Math.exp(-(E-f.th)/2.5));
+  return f.i * s;
+}
+
+// 五种仪器的取舍坐标
+const TRADE = [
+  {n:'折光计',   t:0.1,   info:1.05, r:6.5,  col:'#4dd0e1', pos:'l'},
+  {n:'NIR',      t:0.3,   info:2.15, r:6.5,  col:'#ff9a4d', pos:'l'},
+  {n:'拉曼',     t:3,     info:2.45, r:6.5,  col:'#e879f9', pos:'r'},
+  {n:'在线质谱', t:1.2,   info:3.55, r:8.0,  col:'#7c8cff', pos:'l'},
+  {n:'在线色谱', t:780,   info:3.30, r:7.0,  col:'#a78bfa', pos:'r'},
+  {n:'离线送检', t:86400, info:3.85, r:5.5,  col:'#5d6f87', pos:'l'}
+];
+
+// 三个在线场景
+const SCENES = [
+  {
+    n:'发酵尾气',
+    spec:[
+      {m:2,  i:2,  l:'H₂'},
+      {m:18, i:16, l:'H₂O'},
+      {m:28, i:88, l:'N₂'},
+      {m:32, i:20, l:'O₂'},
+      {m:40, i:4,  l:'Ar'},
+      {m:44, i:34, l:'CO₂'},
+      {m:46, i:5,  l:'乙醇'}
+    ],
+    trend:[
+      {n:'O₂',  col:'#5ee6a8', v:15.2, amp:0.9,  ph:0.0,  unit:'%'},
+      {n:'CO₂', col:'#7c8cff', v:5.6,  amp:0.55, ph:1.7,  unit:'%'},
+      {n:'乙醇', col:'#ffd166', v:0.42, amp:0.16, ph:3.1, unit:'%'}
+    ],
+    note:'RQ = 0.92 · 有氧代谢为主'
+  },
+  {
+    n:'半导体刻蚀',
+    spec:[
+      {m:2,  i:6,  l:'H₂'},
+      {m:18, i:9,  l:'H₂O'},
+      {m:28, i:24, l:'N₂'},
+      {m:40, i:1,  l:'Ar'},
+      {m:44, i:11, l:'CO₂'},
+      {m:69, i:52, l:'CF₃'},
+      {m:85, i:72, l:'CF₃O'}
+    ],
+    trend:[
+      {n:'CF₃O', col:'#e879f9', v:2.8,  amp:1.5, ph:0.4, unit:'%'},
+      {n:'CF₃',  col:'#7c8cff', v:1.4,  amp:0.8, ph:2.2, unit:'%'},
+      {n:'H₂O',  col:'#ffd166', v:0.09, amp:0.06, ph:4.0, unit:'%'}
+    ],
+    note:'腔体泄漏检出限 1×10⁻⁵ mbar·L/s'
+  },
+  {
+    n:'燃烧烟气',
+    spec:[
+      {m:2,  i:3,  l:'H₂'},
+      {m:18, i:7,  l:'H₂O'},
+      {m:28, i:41, l:'N₂/CO'},
+      {m:32, i:9,  l:'O₂'},
+      {m:44, i:76, l:'CO₂'},
+      {m:64, i:22, l:'SO₂'}
+    ],
+    trend:[
+      {n:'CO₂', col:'#7c8cff', v:13.4, amp:1.6, ph:0.2, unit:'%'},
+      {n:'O₂',  col:'#5ee6a8', v:3.2,  amp:0.5, ph:1.1, unit:'%'},
+      {n:'SO₂', col:'#e879f9', v:0.06, amp:0.03, ph:2.9, unit:'%'}
+    ],
+    note:'过量空气系数 λ ≈ 1.18'
+  }
+];
+
+/* ============================================================
+   2 · Hero：左谱图 + 右趋势
+   ============================================================ */
+let heroT = 0, heroRAF = 0, heroOn = false;
+
+function drawHero(){
+  const cv = $('#cvHero'); if(!cv) return;
+  const {c,w,h} = prep(cv, 430);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const gap = 14;
+  const wl = w*0.44, wr = w - wl - gap;
+  const xR = wl + gap;
+
+  /* ---- 左：实时谱 ---- */
+  {
+    const P = {l:26, r:10, t:30, b:34};
+    const x0 = P.l, x1 = wl-P.r;
+    const y0 = P.t, y1 = h-P.b;
+    const X = m => x0 + (m-1)/48*(x1-x0);
+    const Y = i => y1 - 12 - i/100*(y1-y0-22);
+
+    // 网格
+    for(let m=0;m<=48;m+=10){
+      c.strokeStyle = CO.grid; c.lineWidth=1;
+      line(c, X(m), y0, X(m), y1);
+      if(m>=8) txt(c, String(m||''), X(m), y1+11, CO.tx3, 7.5, 'center');
+    }
+    c.strokeStyle = CO.grid2; c.lineWidth=1;
+    line(c, x0, y1, x1, y1);
+
+    txt(c, '相对强度', x0, y0-13, CO.tx3, 7.5, 'left');
+    txt(c, '实时全谱', x1, y0-13, 'rgba(148,165,187,.32)', 7.5, 'right');
+
+    // 峰
+    const pk = [
+      {m:2,  i:4,  l:'H₂'},
+      {m:18, i:14, l:'H₂O'},
+      {m:28, i:86, l:'N₂'},
+      {m:32, i:19, l:'O₂'},
+      {m:40, i:4,  l:'Ar'},
+      {m:44, i:31, l:'CO₂'}
+    ];
+    pk.forEach((p,k)=>{
+      const jit = 1 + Math.sin(heroT*1.7 + k*1.3)*0.035;
+      const ii = clamp(p.i*jit, 0, 100);
+      const bx = X(p.m);
+
+      c.save();
+      c.shadowColor = hexA(CO.cy,.45); c.shadowBlur = 5;
+      c.strokeStyle = CO.cy; c.lineWidth = 2.6; c.lineCap='round';
+      line(c, bx, Y(0), bx, Y(ii));
+      c.restore();
+
+      // 同位素/小峰群
+      if(p.m===28 || p.m===44){
+        c.strokeStyle = hexA(CO.cy,.34); c.lineWidth = 1.6;
+        line(c, bx+5, Y(0), bx+5, Y(ii*0.055));
+      }
+
+      if(ii > 10){
+        txt(c, p.l, bx, Y(ii)-7, hexA(CO.cy,.75), 7, 'center');
+      }
+    });
+
+    txt(c, 'm/z', x1, y1+22, CO.tx3, 8.5, 'right');
+    txt(c, '实时全谱', x0, y0-13, 'rgba(148,165,187,.35)', 8, 'right');
+  }
+
+  /* ---- 右：趋势 ---- */
+  {
+    const P = {l:34, r:10, t:30, b:34};
+    const x0 = xR+P.l, x1 = w-P.r;
+    const y0 = P.t, y1 = h-P.b;
+    const NP = 120;
+
+    // 网格（各自归一化，不标绝对值）
+    for(let k=0;k<=4;k++){
+      const yy = y0 + k/4*(y1-y0);
+      c.strokeStyle = k===4?CO.grid2:CO.grid; c.lineWidth=1;
+      line(c, x0, yy, x1, yy);
+    }
+
+    txt(c, '趋势（近 2 分钟）', x0, y0-13, CO.tx3, 7.5, 'left');
+    txt(c, '各自归一化', x1, y0-13, 'rgba(148,165,187,.32)', 7.5, 'right');
+
+    const series = [
+      {n:'O₂',  v:'15%',   col:'#5ee6a8', ph:0.2, a:0.30},
+      {n:'CO₂', v:'5.6%',  col:'#7c8cff', ph:1.9, a:0.34},
+      {n:'N₂',  v:'78%',   col:'#94a5bb', ph:3.4, a:0.22},
+      {n:'乙醇', v:'0.4%',  col:'#ffd166', ph:0.9, a:0.38}
+    ];
+
+    series.forEach((s,si)=>{
+      const base = 0.86 - si*0.235;      // 分层基线，四条互不交叉
+      const xs=[], ys=[];
+      for(let k=0;k<=NP;k++){
+        const t = k/NP;
+        const wob = Math.sin((t*6.5 + heroT*0.55 + s.ph))*0.66
+                  + Math.sin((t*16 + heroT*0.85 + s.ph*2))*0.32;
+        const rel = clamp(base + wob*s.a*0.22, 0.05, 0.95);
+        xs.push(x0 + t*(x1-x0));
+        ys.push(y1 - rel*(y1-y0));
+      }
+      c.save();
+      c.globalAlpha = 0.94;
+      path(c, xs, ys, v=>v, v=>v, s.col, 1.5);
+      c.restore();
+
+      // 末端亮点
+      dot(c, xs[NP], ys[NP], 2.6, s.col, null);
+
+      // 图例（名字 + 实际值）
+      const ly = y0 + 7 + si*14;
+      c.strokeStyle = s.col; c.lineWidth = 2;
+      line(c, x1-64, ly, x1-52, ly);
+      txt(c, s.n, x1-48, ly, hexA(s.col,.85), 6.8, 'left');
+      txt(c, s.v, x1-2, ly, 'rgba(148,165,187,.5)', 6.4, 'right');
+    });
+  }
+
+  // 分隔
+  c.strokeStyle = 'rgba(148,165,187,.10)'; c.lineWidth=1;
+  line(c, wl+6, 20, wl+6, h-20);
+}
+
+function loopHero(){
+  heroT += 0.02;
+  drawHero();
+  heroRAF = requestAnimationFrame(loopHero);
+}
+
+/* ============================================================
+   3 · 取舍图：响应时间 × 信息量
+   ============================================================ */
+function drawTrade(){
+  const cv = $('#cvTrade'); if(!cv) return;
+  const small = window.innerWidth < 700;
+  const {c,w,h} = prep(cv, small?330:400);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?40:48, r: small?18:26, t:34, b:46};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+
+  // 横轴：log10(秒) 从 -1.5 到 5.5
+  const L0=-1.5, L1=5.5;
+  const X = t => x0 + (Math.log10(t)-L0)/(L1-L0)*(x1-x0);
+  const Y = v => y1 - (v-0.6)/(4.0-0.6)*(y1-y0);
+
+  // 网格
+  const XTICK = [
+    [0.1,  '0.1 s'],
+    [1,    '1 s'],
+    [10,   '10 s'],
+    [60,   '1 min'],
+    [600,  '10 min'],
+    [3600, '1 h'],
+    [86400,'1 天']
+  ];
+  XTICK.forEach(([tv,lab])=>{
+    if(tv < Math.pow(10,L0) || tv > Math.pow(10,L1)) return;
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(tv), y0, X(tv), y1);
+    txt(c, lab, X(tv), y1+13, CO.tx3, 7, 'center');
+  });
+
+  for(let v=1;v<=4;v++){
+    c.strokeStyle = v===1?CO.grid2:CO.grid; c.lineWidth=1;
+    line(c, x0, Y(v), x1, Y(v));
+    txt(c, String(v), x0-7, Y(v), CO.tx3, 7.5, 'right');
+  }
+
+  // 轴标
+  txt(c, '响应时间 →', x1, y1+30, CO.tx3, 8.5, 'right');
+  c.save(); c.translate(12, (y0+y1)/2); c.rotate(-Math.PI/2);
+  txt(c, '信息量', 0,0, CO.tx3, 8.5, 'center'); c.restore();
+
+  // 理想区（框住在线质谱）
+  const ix0 = X(0.25), ix1 = X(6), iy0 = Y(3.95);
+  c.save();
+  c.fillStyle = 'rgba(124,140,255,.05)';
+  c.fillRect(ix0, iy0, ix1-ix0, Y(3.0)-iy0);
+  c.strokeStyle = 'rgba(124,140,255,.22)'; c.lineWidth=1; c.setLineDash([4,4]);
+  c.strokeRect(ix0, iy0, ix1-ix0, Y(3.0)-iy0);
+  c.restore();
+  txt(c, '又快又能定性', ix0+7, iy0+11, 'rgba(124,140,255,.6)', 7.5, 'left', 600);
+
+  // 点
+  TRADE.forEach(d=>{
+    const px = X(d.t), py = Y(d.info);
+    const isMS = d.n==='在线质谱';
+
+    if(isMS){
+      c.save();
+      c.shadowColor = hexA(d.col,.7); c.shadowBlur = 16;
+      dot(c, px, py, d.r, hexA(d.col,.9), '#e9eff8', 1.8);
+      c.restore();
+      // 脉冲环
+      const ph = (performance.now()/1600)%1;
+      c.save();
+      c.strokeStyle = hexA(d.col, .5*(1-ph)); c.lineWidth=1.4;
+      c.beginPath(); c.arc(px,py, d.r+ph*16, 0, 6.2832); c.stroke();
+      c.restore();
+    } else {
+      dot(c, px, py, d.r, hexA(d.col,.20), d.col, 1.6);
+    }
+
+    // 靠右边界时强制标签向左，避免出界
+    let right = d.pos==='r';
+    const tw = d.n.length*7.5;
+    if(!right && px + d.r + 7 + tw > x1) right = true;
+    if(right && px - d.r - 7 - tw < x0) right = false;
+
+    txt(c, d.n, px + (right?-d.r-7:d.r+7), py, hexA(d.col,.92), isMS?9.5:8.5,
+        right?'right':'left', isMS?600:400);
+  });
+
+  // 说明
+  txt(c, '右下 = 等得久、信息还少', x1-4, y1-8, 'rgba(255,107,107,.45)', 7.5, 'right');
+}
+
+/* ============================================================
+   4 · 乙醇 EI 碎片谱
+   ============================================================ */
+let curEv = 70;
+
+function drawFrag(){
+  const cv = $('#cvFrag'); if(!cv) return;
+  const {c,w,h} = prep(cv, 360);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const P = {l:38, r:14, t:34, b:42};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+  const X = m => x0 + (m-8)/(50-8)*(x1-x0);
+
+  // 当前强度
+  const vals = ETH.map(f => ({...f, v: fragI(f, curEv)}));
+  const vmax = Math.max(...vals.map(v=>v.v), 1);
+  const Y = i => y1 - (i/vmax)*100/105*(y1-y0);
+
+  // 网格（不标 m/z 刻度，每个峰自带编号）
+  for(let m=10;m<=50;m+=5){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(m), y0, X(m), y1);
+  }
+  for(let k=0;k<=4;k++){
+    const yy = y0 + k/4*(y1-y0);
+    c.strokeStyle = k===4?CO.grid2:CO.grid; c.lineWidth=1;
+    line(c, x0, yy, x1, yy);
+    if(k<4) txt(c, String(100-k*25), x0-6, yy, CO.tx3, 7, 'right');
+  }
+
+  // 棒
+  vals.forEach(f=>{
+    if(f.v < 0.4) return;
+    const bx = X(f.m);
+    const isM = f.m===46;
+    const isBase = f.v > vmax*0.92;
+
+    c.save();
+    if(isM){
+      c.shadowColor = hexA(CO.vi,.6); c.shadowBlur = 10;
+      c.strokeStyle = CO.vi;
+    } else if(isBase){
+      c.shadowColor = hexA(CO.cy,.5); c.shadowBlur = 8;
+      c.strokeStyle = CO.cy;
+    } else {
+      c.strokeStyle = hexA(CO.cy,.62);
+    }
+    c.lineWidth = isM||isBase ? 4 : 3.1;
+    c.lineCap = 'round';
+    line(c, bx, y1, bx, Y(f.v));
+    c.restore();
+
+    if(f.v > vmax*0.13){
+      // 分子离子标签放峰右侧，避开 45 峰上方
+      if(isM){
+        txt(c, f.f, bx+7, Y(f.v)+2, hexA(CO.vi,.95), 7, 'left', 600);
+      } else {
+        txt(c, f.f, bx, Y(f.v)-9, 'rgba(148,165,187,.7)', 7, 'center');
+      }
+    }
+  });
+
+  // m/z 标签（相邻太近时交替换行）
+  let lastBx = -999, row = 0;
+  vals.slice().sort((a,b)=>a.m-b.m).forEach(f=>{
+    if(f.v < 0.4) return;
+    const bx = X(f.m);
+    row = (bx - lastBx < 13) ? 1-row : 0;
+    lastBx = bx;
+    const isM = f.m===46;
+    txt(c, String(f.m), bx, y1+12+row*10, isM?hexA(CO.vi,.9):CO.tx3, 7, 'center', isM?600:400);
+  });
+
+  // 基峰标注
+  const base = vals.reduce((a,b)=>a.v>b.v?a:b);
+  txt(c, '基峰', X(base.m)+6, Y(base.v), hexA(CO.cy,.7), 7.5, 'left');
+
+  // 顶部读数
+  const m46 = vals.find(v=>v.m===46);
+  const sum = vals.reduce((s,v)=>s+v.v, 0) || 1;
+  const ratio = m46 ? m46.v/sum*100 : 0;
+  txt(c, 'E = '+curEv+' eV', x0, y0-14, curEv>=60?hexA(CO.cy,.9):hexA(CO.am,.9), 9, 'left', 600);
+  txt(c, 'M⁺ 占比 '+ratio.toFixed(1)+'%', x1, y0-14,
+      ratio>20?hexA(CO.gr,.9):'rgba(148,165,187,.6)', 8.5, 'right');
+}
+
+function fillFragTable(){
+  const tb = $('#tbFrag'); if(!tb) return;
+  const vals = ETH.map(f => ({...f, v: fragI(f, curEv)}));
+  const vmax = Math.max(...vals.map(v=>v.v), 1);
+  tb.innerHTML = vals.slice().sort((a,b)=>b.m-a.m).map(f=>{
+    const rel = f.v/vmax*100;
+    const isM = f.m===46;
+    return '<tr>'
+      + '<td'+(isM?' style="color:var(--vi)"':'')+'>'+f.m+'</td>'
+      + '<td style="font-size:11px">'+f.f+'</td>'
+      + '<td class="num'+(isM?'" style="color:var(--vi)':'')+'">'+rel.toFixed(0)+'%</td>'
+      + '</tr>';
+  }).join('');
+}
+
+/* ============================================================
+   5 · 四极杆：只有一种离子能穿过
+   ============================================================ */
+let curQmz = 31, qT = 0;
+
+function drawQuad(){
+  const cv = $('#cvQuad'); if(!cv) return;
+  const {c,w,h} = prep(cv, 340);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const cy = h*0.48;
+  const R = Math.min(h*0.30, 88);        // 棒中心距轴
+  const x0 = 96, x1 = w-30;
+
+  // 棒（上下）
+  const rodH = 13;
+  c.save();
+  const gTop = c.createLinearGradient(0, cy-R-rodH, 0, cy-R+rodH);
+  gTop.addColorStop(0,'rgba(124,140,255,.30)');
+  gTop.addColorStop(.5,'rgba(124,140,255,.16)');
+  gTop.addColorStop(1,'rgba(124,140,255,.05)');
+  c.fillStyle = gTop;
+  c.fillRect(x0, cy-R-rodH, x1-x0, rodH*2);
+  c.fillStyle = 'rgba(124,140,255,.10)';
+  c.fillRect(x0, cy+R-rodH, x1-x0, rodH*2);
+  c.strokeStyle = 'rgba(124,140,255,.5)'; c.lineWidth = 1.3;
+  c.strokeRect(x0, cy-R-rodH, x1-x0, rodH*2);
+  c.strokeRect(x0, cy+R-rodH, x1-x0, rodH*2);
+  c.restore();
+
+  txt(c, '+ RF/DC', x1-4, cy-R-rodH-9, hexA(CO.cy,.55), 7.5, 'right');
+  txt(c, '− RF/DC', x1-4, cy+R+rodH+9, 'rgba(232,121,249,.55)', 7.5, 'right');
+
+  // 左右两根棒（用虚线示意在后方）
+  c.save();
+  c.setLineDash([5,5]);
+  c.strokeStyle = 'rgba(124,140,255,.18)'; c.lineWidth = 1;
+  line(c, x0+10, cy-R+8, x0+10, cy+R-8);
+  line(c, x1-10, cy-R+8, x1-10, cy+R-8);
+  c.restore();
+
+  // 轴线
+  c.save();
+  c.setLineDash([2,5]); c.strokeStyle = 'rgba(148,165,187,.16)'; c.lineWidth = 1;
+  line(c, x0, cy, x1, cy);
+  c.restore();
+
+  // 三条离子轨迹
+  const ions = [
+    {mz:18, col:'#5ee6a8', lab:'H₂O⁺ 18'},
+    {mz:31, col:'#7c8cff', lab:'CH₂OH⁺ 31'},
+    {mz:44, col:'#e879f9', lab:'CO₂⁺ 44'}
+  ];
+
+  ions.forEach((io, idx)=>{
+    const dm = Math.abs(io.mz - curQmz);
+    const instab = clamp((dm - 0.9)/7, 0, 1);
+    const pass = instab < 0.05;
+
+    // 包络增长系数
+    const grow = 0.6 + instab*2.4;
+
+    const xs = [], ys = [];
+    const NP = 180;
+    let hitX = null;
+
+    for(let k=0;k<=NP;k++){
+      const u = k/NP;
+      const px = x0 + u*(x1-x0);
+      // 振荡 + 指数增长包络
+      const dir = idx===0 ? 1 : (idx===2 ? -1 : 0);
+      const env = 1.6*Math.exp(grow*u*2.1);
+      const osc = Math.sin(u*Math.PI*2*7 + qT*1.6);
+      const py = cy + dir*env*Math.abs(osc);
+
+      // 撞棒判定
+      if(Math.abs(py-cy) > R-rodH && hitX===null){
+        hitX = px;
+      }
+      xs.push(px); ys.push(clamp(py, cy-R+rodH, cy+R-rodH));
+      if(hitX!==null) break;
+    }
+
+    c.save();
+    c.strokeStyle = hexA(io.col, pass?0.92:0.42);
+    c.lineWidth = pass?2.1:1.5;
+    if(!pass) c.setLineDash([3,2]);
+    c.lineJoin='round';
+    c.beginPath();
+    for(let k=0;k<xs.length;k++){
+      k?c.lineTo(xs[k],ys[k]):c.moveTo(xs[k],ys[k]);
+    }
+    c.stroke();
+    c.restore();
+
+    // 撞点
+    if(hitX!==null){
+      const hy = ys[ys.length-1];
+      c.save();
+      c.shadowColor = hexA(CO.rd,.8); c.shadowBlur = 10;
+      dot(c, hitX, hy, 3.4, CO.rd, null);
+      c.restore();
+      txt(c, '×', hitX+7, hy-6, 'rgba(255,107,107,.7)', 9, 'left', 600);
+    }
+
+    // 出口标记
+    if(pass){
+      c.save();
+      c.shadowColor = hexA(io.col,.6); c.shadowBlur = 10;
+      dot(c, x1, cy, 3.6, io.col, null);
+      c.restore();
+    }
+
+    // 标签（右对齐到棒左侧，留出空间）
+    const ly = idx===0 ? cy+R*0.70 : (idx===1 ? cy-R-32 : cy-R*0.52);
+    txt(c, io.lab, x0-9, ly, hexA(io.col, pass?0.95:0.45), 7.5, 'right', pass?600:400);
+    if(pass){
+      dot(c, x0-5, ly, 2.2, io.col, null);
+    }
+  });
+
+  // 出射
+  txt(c, '→ 探测器', x1-2, cy-R-rodH-9, 'rgba(148,165,187,.45)', 7, 'right');
+
+  // 顶部状态
+  const d31 = Math.abs(31-curQmz);
+  const passing = 31;
+  txt(c, '通带中心 m/z = '+curQmz, x0, 20, hexA(CO.cy,.95), 9.5, 'left', 600);
+  txt(c, '通带宽度 ±0.7', x1, 20, 'rgba(148,165,187,.5)', 8, 'right');
+
+  // 底部说明
+  const near = ions.reduce((a,b)=>Math.abs(b.mz-curQmz)<Math.abs(a.mz-curQmz)?b:a);
+  const ok = Math.abs(near.mz-curQmz) < 0.9;
+  txt(c, ok ? ('m/z '+near.mz+' 通过') : '当前无离子通过（落在通带之间）',
+      w/2, h-14, ok?hexA(CO.gr,.85):'rgba(148,165,187,.5)', 8.5, 'center', 500);
+}
+
+/* ============================================================
+   6 · 核心对比图：两条时间轴
+   ============================================================ */
+let axisT = 0;
+
+const CHROM_PEAKS = [
+  {t:6.48, w:0.244, l:'苯'},
+  {t:6.89, w:0.259, l:'甲苯'},
+  {t:7.86, w:0.296, l:'乙苯'},
+  {t:10.05, w:0.378, l:'丙苯'},
+  {t:12.96, w:0.488, l:'丁苯'}
+];
+const MS_PEAKS = [
+  {m:18, i:0.16, l:'H₂O'},
+  {m:28, i:1.00, l:'N₂'},
+  {m:32, i:0.22, l:'O₂'},
+  {m:44, i:0.36, l:'CO₂'},
+  {m:58, i:0.09, l:'丙酮'}
+];
+
+function drawAxis(){
+  const cv = $('#cvAxis'); if(!cv) return;
+  const small = window.innerWidth < 760;
+  const {c,w,h} = prep(cv, small?400:450);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?38:48, r:16, t:26, b:26};
+  const x0=P.l, x1=w-P.r;
+
+  const barH = small?64:54;
+  const laneH = (h - P.t - P.b - barH)/2;
+  const yA0 = P.t, yA1 = yA0 + laneH;
+  const yB0 = yA1 + barH, yB1 = yB0 + laneH;
+
+  /* ---------- 上：色谱 ---------- */
+  {
+    c.fillStyle = 'rgba(167,139,250,.025)';
+    c.fillRect(x0, yA0, x1-x0, laneH);
+
+    const TMAX = 14;
+    const X = t => x0 + t/TMAX*(x1-x0);
+    const Y = v => yA1 - 10 - v*(laneH-32);
+
+    for(let t=0;t<=14;t+=2){
+      c.strokeStyle = CO.grid; c.lineWidth=1;
+      line(c, X(t), yA0, X(t), yA1);
+      txt(c, String(t), X(t), yA1+10, CO.tx3, 7, 'center');
+    }
+    c.strokeStyle = 'rgba(148,165,187,.18)'; c.lineWidth=1;
+    line(c, x0, Y(0), x1, Y(0));
+
+    // 峰形
+    const xs=[], ys=[];
+    for(let t=0;t<=TMAX;t+=0.01){
+      let v=0;
+      CHROM_PEAKS.forEach(p=>{
+        const z = (t-p.t)/(p.w/4 * 1.28);   // σ 适度放大，避免峰过尖看不清
+        v += Math.exp(-z*z*0.5)*(0.244/p.w);
+      });
+      xs.push(t); ys.push(v);
+    }
+    const vmax = Math.max(...ys, 1);
+    const ysN = ys.map(v=>v/vmax);
+
+    const prog = clamp(axisT,0,1)*TMAX;
+
+    // 暗层：完整曲线（始终可见）
+    c.save();
+    c.globalAlpha = 0.26;
+    path(c, xs, ysN, X, Y, '#a78bfa', 1.3);
+    c.restore();
+
+    // 亮层：游标左侧
+    c.save();
+    c.beginPath(); c.rect(x0, yA0, Math.max(0, X(prog)-x0), laneH); c.clip();
+    c.beginPath();
+    c.moveTo(X(0), Y(0));
+    for(let k=0;k<xs.length;k++) c.lineTo(X(xs[k]), Y(ysN[k]));
+    c.lineTo(X(TMAX), Y(0)); c.closePath();
+    const g = c.createLinearGradient(0,yA0,0,yA1);
+    g.addColorStop(0,'rgba(167,139,250,.36)');
+    g.addColorStop(1,'rgba(167,139,250,.02)');
+    c.fillStyle = g; c.fill();
+    path(c, xs, ysN, X, Y, '#c4b5fd', 1.9);
+    c.restore();
+
+    // 游标
+    const cx = X(clamp(prog,0,TMAX));
+    c.save();
+    c.strokeStyle = hexA(CO.am,.8); c.lineWidth = 1.4;
+    c.shadowColor = hexA(CO.am,.7); c.shadowBlur = 9;
+    line(c, cx, yA0, cx, yA1);
+    c.restore();
+    // 游标顶部时间
+    txt(c, prog.toFixed(1)+' min', cx + (cx>x1-60?-6:6), yA0+11,
+        hexA(CO.am,.9), 7.5, cx>x1-60?'right':'left', 600);
+
+    // 峰名（游标经过后点亮；相邻太近时换行）
+    let lastPX = -999, prow = 0;
+    CHROM_PEAKS.forEach(p=>{
+      const done = p.t <= prog;
+      const px = X(p.t);
+      prow = (px - lastPX < 22) ? 1-prow : 0;
+      lastPX = px;
+      txt(c, p.l, px, yA0+11+prow*11,
+          done?'rgba(196,181,253,.92)':'rgba(148,165,187,.6)',
+          7, 'center', done?600:400);
+    });
+
+    txt(c, '色谱：按时间分离', x0+6, yA0-14, 'rgba(167,139,250,.95)', 8.5, 'left', 600);
+    txt(c, '14 min 内等所有峰流出', x1-2, yA0-14, 'rgba(148,165,187,.5)', 7.5, 'right');
+    txt(c, 't (min)', x1, yA1+22, CO.tx3, 7, 'right');
+  }
+
+  /* ---------- 中：对比条 ---------- */
+  {
+    const my = yA1 + barH/2;
+
+    txt(c, '780 s', x0, my, 'rgba(167,139,250,.95)', 9, 'left', 600);
+
+    const bx0 = x0 + 44, bw = (x1-x0)*(small?0.46:0.56);
+
+    // 长条（780 s）
+    const g1 = c.createLinearGradient(bx0,0,bx0+bw,0);
+    g1.addColorStop(0,'rgba(167,139,250,.55)');
+    g1.addColorStop(1,'rgba(167,139,250,.15)');
+    c.fillStyle = g1;
+    c.fillRect(bx0, my-4, bw, 8);
+
+    // 刻度
+    c.strokeStyle = 'rgba(167,139,250,.25)'; c.lineWidth=1;
+    line(c, bx0+bw, my-7, bx0+bw, my+7);
+
+    // 短条（37.5 ms）
+    const sx = bx0 + bw + (small?24:74);
+    c.save();
+    c.fillStyle = hexA(CO.cy, .95);
+    c.shadowColor = hexA(CO.cy,.8); c.shadowBlur = 10;
+    c.fillRect(sx, my-4, 4, 8);
+    c.restore();
+
+    txt(c, '37.5 ms', sx + 10, my, hexA(CO.cy,.95), 9, 'left', 600);
+    txt(c, '快 20800 倍', x1-4, small?my+16:my, hexA(CO.am,.9), 8.5, 'right', 600);
+
+  }
+
+  /* ---------- 下：质谱 ---------- */
+  {
+    c.fillStyle = 'rgba(124,140,255,.03)';
+    c.fillRect(x0, yB0, x1-x0, laneH);
+
+    const MMAX = 70;
+    const X = m => x0 + m/MMAX*(x1-x0);
+    const Y = v => yB1 - 10 - v*(laneH-32);
+
+    for(let m=0;m<=70;m+=10){
+      c.strokeStyle = CO.grid; c.lineWidth=1;
+      line(c, X(m), yB0, X(m), yB1);
+      if(m>0) txt(c, String(m), X(m), yB1+10, CO.tx3, 7, 'center');
+    }
+    c.strokeStyle = 'rgba(148,165,187,.18)'; c.lineWidth=1;
+    line(c, x0, Y(0), x1, Y(0));
+
+    // 扫描游标（每 0.5 s 一遍，比色谱快得多）
+    const sweep = (axisT*14) % 1;
+    const curM = sweep*MMAX;
+
+    MS_PEAKS.forEach(p=>{
+      const bx = X(p.m);
+      const lit = Math.abs(p.m - curM) < 5;
+      c.save();
+      if(lit){
+        c.shadowColor = hexA(CO.cy,.75); c.shadowBlur = 13;
+        c.strokeStyle = CO.cy;
+      } else {
+        c.strokeStyle = hexA(CO.cy,.40);
+      }
+      c.lineWidth = lit?3.2:2.2; c.lineCap='round';
+      line(c, bx, Y(0), bx, Y(p.i));
+      c.restore();
+
+      txt(c, p.l, bx, Y(p.i)-9, lit?hexA(CO.cy,.95):'rgba(148,165,187,.5)', 7, 'center', lit?600:400);
+      if(!small) txt(c, String(p.m), bx, yB1+10, lit?hexA(CO.cy,.9):CO.tx3, 7, 'center');
+    });
+
+    // 扫描线
+    const sx = X(curM);
+    c.save();
+    c.strokeStyle = hexA(CO.am,.5); c.lineWidth=1.2;
+    c.setLineDash([3,4]);
+    line(c, sx, yB0, sx, yB1);
+    c.restore();
+
+    txt(c, '质谱：按 m/z 分离', x0+6, yB0-14, hexA(CO.cy,.95), 8.5, 'left', 600);
+    txt(c, '37.5 ms 扫完全部', x1-2, yB0-14, 'rgba(148,165,187,.5)', 7.5, 'right');
+    txt(c, 'm/z', x1, yB1+22, CO.tx3, 7, 'right');
+  }
+
+  // 左侧泳道标签
+  c.save();
+  c.translate(13, (yA0+yA1)/2); c.rotate(-Math.PI/2);
+  txt(c, '信号', 0,0, 'rgba(167,139,250,.45)', 7, 'center'); c.restore();
+  c.save();
+  c.translate(13, (yB0+yB1)/2); c.rotate(-Math.PI/2);
+  txt(c, '强度', 0,0, hexA(CO.cy,.45), 7, 'center'); c.restore();
+}
+
+/* ============================================================
+   7 · 毛细管：τ ∝ L² / d²
+   ============================================================ */
+let curD = 100, curL = 1.0;
+
+const TAU_K = 5.685e-9;   // τ = K · L² / d²  (SI)
+
+function tauOf(d_um, L){
+  const d = d_um*1e-6;
+  return TAU_K * L*L / (d*d);
+}
+function qOf(d_um, L){
+  // Q = π d⁴ ΔP / (128 η L)  → mL/min
+  const d = d_um*1e-6;
+  const Q = Math.PI*Math.pow(d,4)*101325/(128*1.8e-5*L);  // m³/s
+  return Q*1e6*60;
+}
+function volOf(d_um, L){
+  const d = d_um*1e-6;
+  return Math.PI*(d/2)*(d/2)*L*1e9;   // μL
+}
+
+function drawCap(){
+  const cv = $('#cvCap'); if(!cv) return;
+  const {c,w,h} = prep(cv, 400);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const P = {l:46, r:16, t:38, b:44};
+  const x0=P.l, x1=w-P.r, y0=P.t, y1=h-P.b;
+
+  // 双对数：d 15–250 μm, τ 0.005–30 s
+  const D0=Math.log10(15), D1=Math.log10(250);
+  const T0=Math.log10(0.005), T1=Math.log10(30);
+  const X = d => x0 + (Math.log10(d)-D0)/(D1-D0)*(x1-x0);
+  const Y = t => y1 - (Math.log10(t)-T0)/(T1-T0)*(y1-y0);
+
+  // 网格
+  [20,30,50,70,100,150,200].forEach(d=>{
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(d), y0, X(d), y1);
+    txt(c, String(d), X(d), y1+13, CO.tx3, 7.5, 'center');
+  });
+  [[0.01,'10 ms'],[0.1,'100 ms'],[1,'1 s'],[10,'10 s']].forEach(([t,lab])=>{
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, x0, Y(t), x1, Y(t));
+    txt(c, lab, x0-6, Y(t), CO.tx3, 7.5, 'right');
+  });
+
+  // 目标区间（先画，压在曲线下）
+  c.save();
+  c.fillStyle = 'rgba(94,230,168,.05)';
+  c.fillRect(x0, Y(0.6), x1-x0, Y(0.15)-Y(0.6));
+  c.strokeStyle = 'rgba(94,230,168,.18)'; c.lineWidth=1; c.setLineDash([4,4]);
+  c.strokeRect(x0, Y(0.6), x1-x0, Y(0.15)-Y(0.6));
+  c.restore();
+  txt(c, '常用工作区 0.15–0.6 s', x0+7, Y(0.6)+10, 'rgba(94,230,168,.55)', 7, 'left');
+
+  // 三条曲线（不同长度）
+  const lens = [
+    {L:0.5, col:'rgba(94,230,168,.62)', lab:'L = 0.5 m'},
+    {L:1.0, col:'rgba(124,140,255,.9)', lab:'L = 1.0 m'},
+    {L:2.0, col:'rgba(232,121,249,.68)', lab:'L = 2.0 m'}
+  ];
+  lens.forEach(Ls=>{
+    const xs=[], ys=[];
+    for(let d=15; d<=250; d+=1.5){
+      xs.push(d); ys.push(tauOf(d, Ls.L));
+    }
+    path(c, xs, ys, X, Y, Ls.col, Ls.L===1?2.2:1.6, Ls.L===1?null:[4,3]);
+  });
+
+  // 图例（画布顶部横排，避开曲线）
+  lens.forEach((Ls,i)=>{
+    const lx = x0 + i*104, ly = y0-17;
+    c.strokeStyle = Ls.col; c.lineWidth = Ls.L===1?2.2:1.6;
+    if(Ls.L!==1) c.setLineDash([4,3]);
+    line(c, lx, ly, lx+15, ly);
+    c.setLineDash([]);
+    txt(c, Ls.lab, lx+20, ly, Ls.col, 7.5, 'left');
+  });
+
+  // 当前工作点
+  const cn = tauOf(curD, curL);
+  const px = X(curD), py = Y(clamp(cn, 0.005, 30));
+  c.save();
+  c.shadowColor = hexA(CO.am,.7); c.shadowBlur = 14;
+  dot(c, px, py, 5.5, CO.am, '#e9eff8', 1.8);
+  c.restore();
+
+  // 十字参考线
+  c.save(); c.setLineDash([3,4]); c.strokeStyle = 'rgba(255,209,102,.35)'; c.lineWidth=1;
+  line(c, px, py, px, y1);
+  line(c, x0, py, px, py);
+  c.restore();
+
+  c.fillStyle = 'rgba(8,10,19,.82)';
+  c.fillRect(px+6, py-17, 72, 13);
+  txt(c, '当前 '+ (cn*1000).toFixed(0)+' ms', px+9, py-11, hexA(CO.am,.95), 8, 'left', 600);
+
+  // 轴标
+  txt(c, '内径 d (μm) →', x1, y1+30, CO.tx3, 8.5, 'right');
+  c.save(); c.translate(12, (y0+y1)/2); c.rotate(-Math.PI/2);
+  txt(c, '传输时间 τ', 0,0, CO.tx3, 8.5, 'center'); c.restore();
+
+}
+
+function updateCapReadout(){
+  const t = tauOf(curD, curL);
+  const q = qOf(curD, curL);
+  const v = volOf(curD, curL);
+  const resp = 1.5*t + 0.3;
+
+  const fmtT = t < 1 ? (t*1000).toFixed(0) : t.toFixed(2);
+  const unitT = t < 1 ? 'ms' : 's';
+
+  if($('#oTau')) $('#oTau').innerHTML = fmtT+'<span class="u">'+unitT+'</span>';
+  if($('#oQ'))   $('#oQ').innerHTML = (q<10?q.toFixed(2):q.toFixed(1))+'<span class="u">mL/min</span>';
+  if($('#oV'))   $('#oV').innerHTML = v.toFixed(1)+'<span class="u">μL</span>';
+  if($('#oResp')) $('#oResp').innerHTML = resp.toFixed(2)+'<span class="u">s</span>';
+  if($('#vCd'))  $('#vCd').textContent = curD+' μm';
+  if($('#vCl'))  $('#vCl').textContent = curL.toFixed(1)+' m';
+}
+
+/* ============================================================
+   8 · 在线谱图 + 趋势
+   ============================================================ */
+let curScene = 0;
+
+function drawOnline(){
+  const cv = $('#cvOnline'); if(!cv) return;
+  const small = window.innerWidth < 760;
+  const {c,w,h} = prep(cv, small?400:440);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const S = SCENES[curScene];
+  const gap = 14;
+  const wl = small ? w : w*0.46;
+  const xR = wl + gap;
+  const wr = w - xR;
+
+  /* ---- 左：谱 ---- */
+  {
+    const P = {l: small?40:34, r:12, t:34, b:40};
+    const x0=P.l, x1=wl-P.r, y0=P.t, y1=h-P.b;
+    const mmax = Math.max(...S.spec.map(s=>s.m)) + 8;
+    const X = m => x0 + m/mmax*(x1-x0);
+    const Y = i => y1 - i/100*(y1-y0);
+
+    for(let k=0;k<=4;k++){
+      const yy = y0 + k/4*(y1-y0);
+      c.strokeStyle = k===4?CO.grid2:CO.grid; c.lineWidth=1;
+      line(c, x0, yy, x1, yy);
+    }
+
+    S.spec.forEach(p=>{
+      const bx = X(p.m);
+      const isBig = p.i > 40;
+      c.save();
+      if(isBig){ c.shadowColor = hexA(CO.cy,.5); c.shadowBlur = 9; }
+      c.strokeStyle = isBig?CO.cy:hexA(CO.cy,.66);
+      c.lineWidth = isBig?3:2.2; c.lineCap='round';
+      line(c, bx, Y(0), bx, Y(p.i));
+      c.restore();
+
+      if(p.i > 8) txt(c, p.l, bx, Y(p.i)-8, isBig?hexA(CO.cy,.9):'rgba(148,165,187,.62)', 6.8, 'center');
+      txt(c, String(p.m), bx, y1+12, CO.tx3, 7, 'center');
+    });
+
+    txt(c, '相对强度', x0, y0-14, CO.tx3, 7.5, 'left');
+    txt(c, 'm/z', x1, y1+26, CO.tx3, 7.5, 'right');
+    txt(c, S.n+' · 质谱', x1, y0-14, 'rgba(148,165,187,.35)', 7.5, 'right');
+  }
+
+  /* ---- 右：趋势 ---- */
+  {
+    const P = {l: small?34:42, r:14, t:34, b:40};
+    const x0 = xR+P.l, x1 = w-P.r, y0=P.t, y1=h-P.b;
+    const NP = 110;
+
+    // 网格（分层基线，不标绝对值）
+    for(let k=0;k<=4;k++){
+      const yy = y0 + k/4*(y1-y0);
+      c.strokeStyle = k===4?CO.grid2:CO.grid; c.lineWidth=1;
+      line(c, x0, yy, x1, yy);
+    }
+
+    txt(c, '近 2 分钟', x0, y0-14, CO.tx3, 7.5, 'left');
+    txt(c, '每条线独立基线', x1, y0-14, 'rgba(148,165,187,.32)', 7.5, 'right');
+
+    S.trend.forEach((s,si)=>{
+      const base = 0.82 - si*0.29;        // 三条线的基准高度
+      const by = y1 - base*(y1-y0);
+
+      // 基线（虚线）
+      c.save();
+      c.setLineDash([2,5]); c.strokeStyle = hexA(s.col,.12); c.lineWidth=1;
+      line(c, x0, by, x1, by);
+      c.restore();
+
+      const xs=[], ys=[];
+      for(let k=0;k<=NP;k++){
+        const t = k/NP;
+        const wob = Math.sin(t*6.2 + si*2.1)*0.62 + Math.sin(t*14 + si*3.3)*0.30;
+        const rel = base + wob*0.055;
+        xs.push(x0 + t*(x1-x0));
+        ys.push(y1 - rel*(y1-y0));
+      }
+      path(c, xs, ys, v=>v, v=>v, s.col, 1.7);
+      dot(c, xs[NP], ys[NP], 2.8, s.col, null);
+
+      // 标签在左上方
+      txt(c, s.n, x0+2, by-12, hexA(s.col,.9), 7.2, 'left', 500);
+      txt(c, s.v.toFixed(2)+s.unit, x0+92, by-12, 'rgba(148,165,187,.55)', 6.8, 'right');
+    });
+
+    txt(c, '时间 →', x1, y1+26, CO.tx3, 7, 'right');
+  }
+
+  // 底部注
+  txt(c, S.note, w/2, h-12, 'rgba(148,165,187,.55)', 8, 'center');
+}
+
+/* ============================================================
+   9 · 能力热图
+   ============================================================ */
+function drawMap(){
+  const cv = $('#cvMap'); if(!cv) return;
+  const small = window.innerWidth < 760;
+  const {c,w,h} = prep(cv, small?360:420);
+  c.fillStyle = '#080a13'; c.fillRect(0,0,w,h);
+
+  const rows = [
+    {n:'折光计',   s:[5,1,1,2,5], col:'#4dd0e1'},
+    {n:'NIR',      s:[4,2,3,2,4], col:'#ff9a4d'},
+    {n:'拉曼',     s:[3,2,4,3,3], col:'#e879f9'},
+    {n:'在线质谱', s:[4,4,5,5,2], col:'#7c8cff'},
+    {n:'在线色谱', s:[1,5,4,4,2], col:'#a78bfa'}
+  ];
+  const cols = ['速度','组分分解','定性','灵敏度','免维护'];
+
+  const P = {l: small?64:88, r: small?14:20, t: small?44:52, b: small?26:30};
+  const x0=P.l, y0=P.t, x1=w-P.r, y1=h-P.b;
+
+  const cw = (x1-x0)/cols.length;
+  const rh = (y1-y0)/rows.length;
+
+  // 列标题
+  cols.forEach((cn,j)=>{
+    const cx = x0 + cw*(j+0.5);
+    txt(c, cn, cx, y0-15, 'rgba(148,165,187,.65)', small?7:7.8, 'center', 500);
+  });
+
+  rows.forEach((r,i)=>{
+    const cy = y0 + rh*(i+0.5);
+
+    // 行标签 + 主题色小点
+    dot(c, x0-14, cy, 2.4, r.col, null);
+    txt(c, r.n, x0-20, cy, hexA(r.col,.85), small?7.5:8.2, 'right', 500);
+
+    r.s.forEach((v,j)=>{
+      const bx = x0 + cw*j, by = y0 + rh*i;
+      const pad = 3;
+
+      // 统一色系：深浅只表示强弱
+      const t = v/5;
+      c.fillStyle = 'rgba(124,140,255,'+(0.035 + t*0.66).toFixed(3)+')';
+      c.fillRect(bx+pad, by+pad, cw-pad*2, rh-pad*2);
+
+      // 数值
+      if(v > 0){
+        txt(c, String(v), bx+cw/2, cy,
+            v>=4 ? 'rgba(247,250,255,.95)' : 'rgba(206,218,242,.62)',
+            small?7.5:8.5, 'center', v>=4?600:400);
+      }
+    });
+
+    // 行高亮（质谱）
+    if(r.n === '在线质谱'){
+      c.save();
+      c.strokeStyle = hexA(CO.cy,.5); c.lineWidth = 1.4;
+      c.strokeRect(x0-3, y0+rh*i+1, x1-x0+6, rh-2);
+      c.restore();
+    }
+  });
+
+  // 边框
+  c.strokeStyle = 'rgba(148,165,187,.14)'; c.lineWidth=1;
+  c.strokeRect(x0, y0, x1-x0, y1-y0);
+
+  txt(c, '深 → 弱　亮 → 强（0–5 分）', x1, h-11, 'rgba(148,165,187,.4)', 7, 'right');
+}
+
+/* ============================================================
+   10 · 交互与启动
+   ============================================================ */
+const inView = {hero:true, axis:false, quad:false};
+
+function setupObservers(){
+  const map = [['#cvHero','hero'], ['#cvAxis','axis'], ['#cvQuad','quad']];
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      const key = map.find(m=>m[0]===e.target.id || e.target.closest?.('#'+e.target.id));
+      if(!key) return;
+      inView[key[1]] = e.isIntersecting;
+    });
+  }, {threshold:0.02});
+
+  map.forEach(([sel])=>{
+    const el = $(sel);
+    if(el) io.observe(el);
+  });
+}
+
+let lastFrame = 0;
+function tick(){
+  const now = performance.now();
+  if(now - lastFrame > 34){
+    lastFrame = now;
+    heroT += 0.021;
+    if(inView.hero) drawHero();
+    if(inView.axis){
+      axisT += 0.0032;
+      if(axisT > 1) axisT = 0;
+      drawAxis();
+    }
+    if(inView.quad){
+      qT += 0.028;
+      drawQuad();
+    }
+  }
+  heroRAF = requestAnimationFrame(tick);
+}
+
+function initProgress(){
+  const bar = $('#pbar'); if(!bar) return;
+  const upd = ()=>{
+    const st = window.scrollY || 0;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = clamp(st/Math.max(max,1)*100, 0, 100)+'%';
+  };
+  window.addEventListener('scroll', upd, {passive:true});
+  upd();
+}
+
+function initNav(){
+  const links = $$('#nav a');
+  if(!links.length) return;
+
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec')).filter(Boolean);
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting) return;
+      const id = e.target.id.replace('sec','');
+      links.forEach(a=>a.classList.toggle('on', a.getAttribute('href')==='#'+id));
+    });
+  }, {rootMargin:'-15% 0px -70% 0px'});
+
+  secs.forEach(s=>io.observe(s));
+  if(secs[0]) links[0].classList.add('on');
+}
+
+function boot(){
+  // 首次绘制（每个 canvas 必须显式调用一次）
+  drawHero();
+  drawTrade();
+  drawFrag();
+  fillFragTable();
+  drawQuad();
+  drawAxis();
+  drawCap();
+  updateCapReadout();
+  drawOnline();
+  drawMap();
+
+  // 滑块
+  const sEv = $('#sEv');
+  if(sEv) sEv.addEventListener('input', ()=>{
+    curEv = +sEv.value;
+    const v = $('#vEv'); if(v) v.textContent = curEv+' eV';
+    drawFrag(); fillFragTable();
+  });
+
+  const sQ = $('#sQmz');
+  if(sQ) sQ.addEventListener('input', ()=>{
+    curQmz = +sQ.value;
+    const v = $('#vQmz'); if(v) v.textContent = String(curQmz);
+    drawQuad();
+  });
+
+  const sCd = $('#sCd');
+  if(sCd) sCd.addEventListener('input', ()=>{
+    curD = +sCd.value; updateCapReadout(); drawCap();
+  });
+  const sCl = $('#sCl');
+  if(sCl) sCl.addEventListener('input', ()=>{
+    curL = +sCl.value; updateCapReadout(); drawCap();
+  });
+
+  // 场景切换
+  $$('[data-sc]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      $$('[data-sc]').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on');
+      curScene = +btn.dataset.sc;
+      const nm = $('#scName');
+      if(nm) nm.textContent = SCENES[curScene].n;
+      drawOnline();
+    });
+  });
+
+  initProgress();
+  initNav();
+  setupObservers();
+  tick();
+
+  // 尺寸变化
+  let rz = 0;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(rz);
+    rz = setTimeout(()=>{
+      drawHero(); drawTrade(); drawFrag(); drawQuad();
+      drawAxis(); drawCap(); drawOnline(); drawMap();
+    }, 160);
+  });
+
+  // 离开页面时停动画
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ cancelAnimationFrame(heroRAF); }
+    else { cancelAnimationFrame(heroRAF); tick(); }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>

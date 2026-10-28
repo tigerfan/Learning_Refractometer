@@ -1,0 +1,2577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>色谱仪 · 原理、设计与应用</title>
+<meta name="description" content="从分配系数到分离度：色谱仪的物理原理、仪器设计与六大应用领域的可视化讲解。">
+<style>
+
+
+
+/* ============================================================
+   设计令牌
+   ============================================================ */
+:root{
+  --bg:#06070d;
+  --bg-2:#0a0c15;
+  --surface:#0a0f1a;
+  --surface-2:#0f1722;
+  --surface-3:#141e2c;
+  --line:#1a2637;
+  --line-hi:#2a3b52;
+  --tx:#e9eff8;
+  --tx-2:#94a5bb;
+  --tx-3:#5d6f87;
+  --cy:#a78bfa;
+  --cy-soft:rgba(167,139,250,.14);
+  --cy-line:rgba(167,139,250,.35);
+  --am:#ffb84d;
+  --am-soft:rgba(255,184,77,.13);
+  --vi:#4ec9e8;
+  --vi-soft:rgba(78,201,232,.13);
+  --pk:#ff8fab;
+  --rd:#ff7185;
+  --sans:'Inter','Segoe UI',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono','Cascadia Code',Consolas,monospace;
+  --r:14px;
+  --maxw:1180px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:32px}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(1200px 620px at 78% -8%, rgba(167,139,250,.085), transparent 62%),
+    radial-gradient(900px 520px at 8% 4%, rgba(78,201,232,.07), transparent 60%),
+    radial-gradient(800px 800px at 50% 108%, rgba(255,184,77,.035), transparent 65%);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px);
+  background-size:64px 64px;
+  mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 22%,#000 20%,transparent 78%);
+}
+
+/* ============================================================
+   顶部进度条
+   ============================================================ */
+.progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;background:rgba(255,255,255,.04)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--cy),var(--vi));box-shadow:0 0 12px var(--cy)}
+
+/* ============================================================
+   侧边导航
+   ============================================================ */
+.nav{
+  position:fixed;left:26px;top:50%;transform:translateY(-50%);
+  z-index:100;display:flex;flex-direction:column;gap:2px;
+}
+.nav a{
+  display:flex;align-items:center;gap:10px;
+  color:var(--tx-3);text-decoration:none;font-size:11.5px;
+  font-family:var(--mono);letter-spacing:.02em;
+  padding:5px 0;transition:color .22s;
+}
+.nav a .dot{
+  width:5px;height:5px;border-radius:50%;background:var(--line-hi);
+  flex:0 0 auto;transition:all .25s;
+}
+.nav a span{opacity:0;transform:translateX(-6px);transition:all .25s;white-space:nowrap}
+.nav a:hover span{opacity:1;transform:none}
+.nav a:hover{color:var(--tx-2)}
+.nav a.on{color:var(--cy)}
+.nav a.on .dot{background:var(--cy);box-shadow:0 0 9px var(--cy);width:14px;border-radius:3px}
+.nav a.on span{opacity:1;transform:none}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.wrap{position:relative;z-index:1;max-width:var(--maxw);margin:0 auto;padding:0 40px}
+section{padding:76px 0 8px;position:relative}
+.sec-head{display:flex;align-items:flex-start;gap:18px;margin-bottom:30px}
+.sec-num{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cy);
+  border:1px solid var(--cy-line);border-radius:6px;
+  padding:3px 9px;margin-top:5px;letter-spacing:.06em;
+  flex:0 0 auto;background:var(--cy-soft);
+}
+.sec-title{font-size:27px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.sec-sub{color:var(--tx-2);font-size:13.5px;margin-top:3px;max-width:760px}
+h3{font-size:16px;font-weight:620;margin-bottom:10px;letter-spacing:-.005em}
+p{color:var(--tx-2);margin-bottom:12px}
+p strong,li strong{color:var(--tx);font-weight:600}
+a{color:var(--cy)}
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r);
+  padding:22px 24px;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(167,139,250,.28),rgba(78,201,232,.18),transparent);
+}
+.card.flat::before{display:none}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g-hero{grid-template-columns:1.05fr .95fr;gap:36px;align-items:center}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.hero{padding-top:88px;padding-bottom:40px}
+.tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;
+  color:var(--cy);text-transform:uppercase;
+  border:1px solid var(--cy-line);border-radius:999px;
+  padding:4px 12px;background:var(--cy-soft);margin-bottom:22px;
+}
+.tag i{width:5px;height:5px;border-radius:50%;background:var(--cy);box-shadow:0 0 8px var(--cy);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{
+  font-size:clamp(34px,4.4vw,54px);line-height:1.1;font-weight:700;
+  letter-spacing:-.032em;margin-bottom:18px;
+}
+h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,var(--cy) 8%,#b0f2fa 42%,var(--vi) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero-lead{font-size:15.5px;color:var(--tx-2);max-width:520px;margin-bottom:26px}
+.hero-lead b{color:var(--tx);font-weight:600}
+
+/* 推导链 */
+.chain{display:flex;flex-wrap:wrap;gap:0 4px;align-items:center;margin-bottom:30px;font-family:var(--mono);font-size:11px}
+.chain span{
+  color:var(--tx-2);border:1px solid var(--line);border-radius:5px;
+  padding:3px 8px;background:rgba(255,255,255,.018);
+}
+.chain span.hi{color:var(--cy);border-color:var(--cy-line);background:var(--cy-soft)}
+.chain i{color:var(--tx-3);font-style:normal;padding:0 1px}
+
+/* 关键量条 */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:13px 15px}
+.kpi .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase;margin-bottom:4px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--cy);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--tx-3);font-weight:400;margin-left:2px}
+
+/* Canvas 容器 */
+.cvbox{position:relative;border-radius:var(--r);border:1px solid var(--line);background:linear-gradient(180deg,#070c14,#05080e);overflow:hidden}
+.cvbox canvas{display:block;width:100%}
+.cv-cap{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--tx-3);
+  text-transform:uppercase;padding:8px 14px;border-top:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+}
+
+/* ============================================================
+   公式
+   ============================================================ */
+.eq{
+  font-family:var(--mono);font-size:14.5px;color:var(--tx);
+  background:#05080e;border:1px solid var(--line);border-left:2px solid var(--cy);
+  border-radius:0 8px 8px 0;padding:13px 18px;margin:14px 0;
+  overflow-x:auto;line-height:2;
+}
+.eq.sm{font-size:13px;padding:10px 15px;line-height:1.9}
+.eq .v{color:var(--cy)}
+.eq .o{color:var(--tx-3);padding:0 4px}
+.eq .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 3px;font-size:.88em;line-height:1.32}
+.eq .frac span:first-child{border-bottom:1px solid rgba(148,165,187,.45);padding:0 7px 3px}
+.eq .frac span:last-child{padding:3px 7px 0}
+.eq-note{font-size:12px;color:var(--tx-3);margin-top:-6px;margin-bottom:14px;font-family:var(--mono)}
+
+/* 推导步骤 */
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:15px 0;border-bottom:1px dashed rgba(255,255,255,.055)}
+.step:last-child{border-bottom:none}
+.step .n{
+  font-family:var(--mono);font-size:11px;color:var(--cy);
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--cy-line);
+  display:flex;align-items:center;justify-content:center;background:var(--cy-soft);
+  margin-top:2px;
+}
+.step .h{font-weight:600;font-size:14px;margin-bottom:3px}
+.step .d{font-size:12.8px;color:var(--tx-2);line-height:1.65}
+.step .d code{font-family:var(--mono);font-size:11.5px;color:var(--am);background:var(--am-soft);padding:1px 5px;border-radius:4px}
+
+/* ============================================================
+   控件
+   ============================================================ */
+.ctrl{margin-top:16px}
+.ctrl-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.ctrl-row label{font-size:12.5px;color:var(--tx-2);font-family:var(--mono)}
+.ctrl-row .val{font-family:var(--mono);font-size:14px;color:var(--cy);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:#1c2839;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--cy);border:2px solid #05080e;
+  box-shadow:0 0 0 1px var(--cy),0 0 14px rgba(167,139,250,.6);
+  cursor:grab;transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.18);cursor:grabbing}
+input[type=range]::-moz-range-thumb{
+  width:13px;height:13px;border-radius:50%;background:var(--cy);
+  border:2px solid #05080e;box-shadow:0 0 0 1px var(--cy);cursor:grab;
+}
+input[type=range].am::-webkit-slider-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am),0 0 14px rgba(255,184,77,.55)}
+input[type=range].am::-moz-range-thumb{background:var(--am);box-shadow:0 0 0 1px var(--am)}
+
+/* 开关 */
+.switches{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.sw{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.sw:hover{border-color:var(--line-hi);color:var(--tx-2)}
+.sw input{display:none}
+.sw i{width:7px;height:7px;border-radius:2px;background:var(--line-hi);transition:all .2s}
+.sw.on{color:var(--tx);border-color:var(--line-hi);background:rgba(255,255,255,.04)}
+.sw.on i{background:var(--c,var(--cy));box-shadow:0 0 8px var(--c,var(--cy))}
+
+/* ============================================================
+   表格
+   ============================================================ */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{
+  text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.055em;
+  color:var(--tx-3);font-weight:500;
+  padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--tx-2)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(255,255,255,.022);color:var(--tx)}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.hl{color:var(--cy);font-weight:500}
+td.warn{color:var(--am)}
+td.bad{color:var(--rd)}
+.tagm{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--tx-2)}
+
+/* ============================================================
+   读数面板
+   ============================================================ */
+.readout{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:16px}
+.readout .cell{background:var(--surface);padding:10px 13px}
+.readout .cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);text-transform:uppercase;margin-bottom:2px}
+.readout .cell .v{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.readout .cell .v.cy{color:var(--cy)}
+.readout .cell .v.am{color:var(--am)}
+.readout .cell .u{font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+
+/* ============================================================
+   徽章 / 提示条
+   ============================================================ */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  padding:2px 7px;border-radius:4px;
+  background:rgba(167,139,250,.12);color:var(--cy);border:1px solid rgba(167,139,250,.25);
+}
+.badge.am{background:var(--am-soft);color:var(--am);border-color:rgba(255,184,77,.25)}
+.badge.vi{background:var(--vi-soft);color:var(--vi);border-color:rgba(78,201,232,.25)}
+.badge.rd{background:rgba(255,113,133,.12);color:var(--rd);border-color:rgba(255,113,133,.25)}
+.note{
+  display:flex;gap:11px;font-size:12.8px;color:var(--tx-2);line-height:1.68;
+  background:rgba(255,184,77,.05);border:1px solid rgba(255,184,77,.16);
+  border-radius:9px;padding:12px 15px;margin-top:16px;
+}
+.note .ico{color:var(--am);font-family:var(--mono);flex:0 0 auto;font-size:13px}
+.note.ok{background:rgba(167,139,250,.045);border-color:rgba(167,139,250,.16)}
+.note.ok .ico{color:var(--cy)}
+.note b{color:var(--tx)}
+
+/* ============================================================
+   SVG 分子图
+   ============================================================ */
+.molbox{position:relative}
+.molbox svg{display:block;width:100%;height:auto}
+.atom{cursor:pointer;transition:all .25s}
+.atom circle{transition:all .25s}
+.atom text{font-family:var(--mono);font-size:11px;fill:var(--tx-2);pointer-events:none;transition:all .25s}
+.atom:hover circle{filter:brightness(1.55)}
+.atom.dim{opacity:.18}
+.atom.lit circle{filter:drop-shadow(0 0 6px currentColor)}
+.atom.lit text{fill:var(--tx)}
+.bond{stroke:#2b3d55;stroke-width:1.6;fill:none;transition:all .25s}
+.bond.lit{stroke:#4d6a8c}
+
+/* 图例 */
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lg{
+  display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+  font-family:var(--mono);font-size:11px;color:var(--tx-2);
+  border:1px solid var(--line);border-radius:6px;padding:5px 10px;
+  background:rgba(255,255,255,.015);transition:all .2s;
+}
+.lg:hover{border-color:var(--line-hi)}
+.lg i{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lg .c{color:var(--tx-3);font-size:10px}
+.lg.on{background:rgba(255,255,255,.05);border-color:var(--line-hi);color:var(--tx)}
+
+/* 累加计数器 */
+.counter{display:flex;flex-direction:column;gap:6px;margin-top:16px}
+.crow{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px}
+.crow .nm{color:var(--tx-3);width:86px;flex:0 0 auto;font-size:10.5px}
+.crow .bar{flex:1;height:5px;background:#131e2c;border-radius:3px;overflow:hidden}
+.crow .bar i{display:block;height:100%;border-radius:3px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
+.crow .vl{width:64px;text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   尾部
+   ============================================================ */
+footer{
+  margin-top:80px;border-top:1px solid var(--line);
+  padding:34px 0 54px;position:relative;z-index:1;
+}
+footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start}
+footer .t{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.06em;line-height:1.9}
+footer .t b{color:var(--tx-2);font-weight:500}
+footer .r{font-family:var(--mono);font-size:10.5px;color:var(--tx-3);text-align:right;line-height:1.9}
+
+/* ============================================================
+   响应式
+   ============================================================ */
+@media(max-width:1240px){.nav{display:none}}
+@media(max-width:900px){
+  .wrap{padding:0 22px}
+  .g-hero,.g2,.g3,.g4{grid-template-columns:1fr}
+  /* 覆盖各节内联的双栏栅格 */
+  .grid[style]{grid-template-columns:1fr !important}
+  h1{font-size:33px}
+  section{padding:56px 0 6px}
+  .hero{padding-top:64px}
+  .kpis{grid-template-columns:1fr;gap:1px}
+  .sec-title{font-size:22px}
+  .ctrlbar{grid-template-columns:1fr !important}
+  table{font-size:11.5px}
+  th,td{padding:7px 5px}
+  .rl-i b{font-size:13px}
+  .note{font-size:12px}
+  .eq{font-size:13px}
+  .eq.sm{font-size:12px}
+}
+@media(max-width:520px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 16px}
+  .readout{grid-template-columns:1fr 1fr}
+  .bigN{font-size:32px}
+  .kpis{grid-template-columns:1fr 1fr}
+  .chain{font-size:10px}
+  h1{font-size:29px}
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#1d2a3c;border-radius:5px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#2b3d55}
+::selection{background:rgba(167,139,250,.28);color:#fff}
+
+.eq sub{font-size:.7em;vertical-align:-.2em;color:var(--tx-2)}
+.eq sup{font-size:.7em;vertical-align:.42em}
+.eq .hl{color:var(--cy)}
+.eq .hl2{color:var(--am)}
+.eq .brk{color:rgba(148,165,187,.6);font-size:1.12em;vertical-align:middle;padding:0 1px}
+.formula-lab{font-family:var(--mono);font-size:10px;letter-spacing:.11em;color:var(--tx-3);text-transform:uppercase;margin-bottom:-4px;margin-top:16px}
+.formula-lab:first-child{margin-top:0}
+.dl{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.dl .it{display:grid;grid-template-columns:64px 1fr;gap:10px;font-size:12.8px;line-height:1.62}
+.dl .it b{font-family:var(--mono);font-size:11.5px;color:var(--cy);font-weight:600;padding-top:1px}
+.dl .it span{color:var(--tx-2)}
+.mol-wrap{position:relative;background:radial-gradient(circle at 45% 45%,rgba(167,139,250,.05),transparent 62%);border-radius:12px}
+.smu{fill:none;stroke:#243449;stroke-width:1.2}
+.mtxt{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;fill:#7d90a8;letter-spacing:.01em}
+.mtxt.o{fill:#c9836b}
+.mtxt.oh{fill:#b98a5e}
+.mtxt.h{fill:#63758c;font-size:9px}
+.bigsum{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+.bigsum .n{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--cy);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.bigsum .u{font-family:var(--mono);font-size:11px;color:var(--tx-3)}
+.cmp{display:flex;gap:18px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--tx-3);flex-wrap:wrap}
+.cmp b{color:var(--tx);font-weight:600}
+
+.rl{display:flex;flex-direction:column}
+.rl-i{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.045)}
+.rl-i:last-child{border-bottom:none}
+.rl-i span{font-size:11.5px;color:var(--tx-3);font-family:var(--mono)}
+.rl-i b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.rl-i b.cy{color:var(--cy);font-size:17px}
+.rl-i b.am{color:var(--am)}
+.rl-i b.rd{color:var(--rd)}
+.rl-i b.gr{color:#b0f2fa}
+.rl-i em{font-style:normal;font-size:10px;color:var(--tx-3);margin-left:2px;font-weight:400}
+.ctrlbar{display:grid;grid-template-columns:1.6fr 1fr auto;gap:26px;align-items:end}
+@media(max-width:900px){.ctrlbar{grid-template-columns:1fr;gap:16px}}
+.bigN{font-family:var(--mono);font-size:40px;font-weight:600;letter-spacing:-.035em;color:var(--cy);line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(167,139,250,.4)}
+.rf{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--tx-3);text-transform:uppercase}
+
+
+
+/* ===== RGB 三色光专用 ===== */
+:root{
+  --cR:#ff5f6d;
+  --cG:#3ddc84;
+  --cB:#5b9dff;
+  --cRd:rgba(255,95,109,.55);
+  --cGd:rgba(61,220,132,.55);
+  --cBd:rgba(91,157,255,.55);
+}
+.spectrum-bar{
+  height:3px;width:100%;border-radius:2px;margin:0 0 18px;
+  background:linear-gradient(90deg,#5b9dff 0%,#3ddc84 50%,#ff5f6d 100%);
+  opacity:.85;
+}
+.rgb-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.rgb-cell{background:var(--bg-2);padding:14px 14px 12px}
+.rgb-cell .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+.rgb-cell .lab i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.rgb-cell .v{font-family:var(--mono);font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1}
+.rgb-cell .s{font-size:10px;color:var(--tx-3);font-family:var(--mono);margin-top:6px}
+.bigN.tri{display:flex;align-items:baseline;gap:2px;font-size:34px}
+.bigN.tri em{font-style:normal;font-size:19px;opacity:.55}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--line2);background:var(--bg-3);color:var(--tx-2)}
+.chip i{width:6px;height:6px;border-radius:50%}
+.lam{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.wl-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:6px;letter-spacing:.02em}
+
+
+
+/* ===== 光路页专用 ===== */
+:root{ --cRd:rgba(255,107,107,.5); }
+.opt-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.opt-cell{background:var(--bg-2);padding:13px 13px 11px}
+.opt-cell .k{font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3);margin-bottom:6px}
+.opt-cell .v{font-family:var(--mono);font-size:19px;font-weight:500;line-height:1}
+.opt-cell .v small{font-size:11px;opacity:.5;margin-left:2px}
+.opt-cell .s{font-size:9.5px;color:var(--tx-3);font-family:var(--mono);margin-top:5px}
+.chk{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:none}
+.chk .num{font-family:var(--mono);font-size:10px;color:var(--am);width:20px;flex-shrink:0;padding-top:2px}
+.chk .tx{font-size:12.3px;line-height:1.65;color:var(--tx-2)}
+.chk .tx b{color:var(--tx)}
+
+
+
+/* ===== 色谱页专用 ===== */
+.flow-wrap{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+.flow-wrap svg{min-width:700px;display:block}
+.flow-hint{display:none;font-family:var(--mono);font-size:9px;color:var(--tx-3);margin-top:8px;text-align:center;letter-spacing:.06em}
+@media(max-width:640px){
+  .flow-hint{display:block}
+  .m-hide3 th:nth-child(3),.m-hide3 td:nth-child(3){display:none}
+  .m-hide3 td:first-child{white-space:nowrap}
+}
+
+</style>
+</head>
+<body>
+<div class="progress"><div class="progress-bar" id="pbar"></div></div>
+
+<nav class="nav" id="nav">
+  <a href="#s1"><i class="dot"></i><span>01 · 色谱在做什么</span></a>
+  <a href="#s2"><i class="dot"></i><span>02 · 仪器长什么样</span></a>
+  <a href="#s3"><i class="dot"></i><span>03 · 读懂一张图</span></a>
+  <a href="#s4"><i class="dot"></i><span>04 · 分配系数</span></a>
+  <a href="#s5"><i class="dot"></i><span>05 · 塔板理论</span></a>
+  <a href="#s6"><i class="dot"></i><span>06 · van Deemter</span></a>
+  <a href="#s7"><i class="dot"></i><span>07 · 分离度</span></a>
+  <a href="#s8"><i class="dot"></i><span>08 · 梯度洗脱</span></a>
+  <a href="#s9"><i class="dot"></i><span>09 · 检测器</span></a>
+  <a href="#s10"><i class="dot"></i><span>10 · 方法与应用</span></a>
+</nav>
+
+<!-- ============================================================
+     HERO
+     ============================================================ -->
+<header class="hero wrap">
+  <div class="grid g-hero">
+    <div>
+      <div class="tag"><i></i>分离科学 · 反相液相色谱</div>
+      <h1>混合物进去，<br><em>成分表出来</em></h1>
+      <p class="hero-lead">
+        色谱仪是分析化学里唯一能把<b>混合物</b>拆成<b>纯物质</b>再逐个计数的仪器。
+        它不靠光谱、不靠质量，只靠一件事：<b>让不同的分子跑得不一样快</b>。<br>
+        进样 20 μL，跑 13 分钟，出来一排峰——
+        每个峰的位置说明它<b>是什么</b>，面积说明它<b>有多少</b>。
+      </p>
+
+      <div class="chain">
+        <span>进样</span><i>→</i>
+        <span class="hi">两相分配</span><i>→</i>
+        <span>差速迁移</span><i>→</i>
+        <span>峰形展宽</span><i>→</i>
+        <span class="hi">分离度 R</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">分离出</div><div class="v">5<small>个峰</small></div></div>
+        <div class="kpi"><div class="k">柱子长度</div><div class="v">15<small>cm</small></div></div>
+        <div class="kpi"><div class="k">一个周期</div><div class="v">13<small>min</small></div></div>
+      </div>
+    </div>
+
+    <div class="cvbox">
+      <canvas id="cvHero" height="430"></canvas>
+      <div class="cv-cap"><span>标准反相分离 · 五组分依次流出</span><span style="text-transform:none">峰形按 van Deemter 计算</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+<!-- ============ S01 · 色谱在做什么 ============ -->
+<section id="s1sec">
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <div class="sec-title">先把混在一起的东西分开，再一个一个数</div>
+      <div class="sec-sub">
+        光谱仪照下去，得到的是所有成分叠加的总信号；色谱做的是另一件事——
+        把混合物拆成纯物质，再逐个定量。它不靠光谱、不靠质量，
+        只靠一件最简单的事：<b>让不同的分子跑得不一样快</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="cvbox">
+      <canvas id="cvSep" height="410"></canvas>
+      <div class="cv-cap"><span>柱内迁移与检测器响应 · 同步播放</span><span style="text-transform:none">带宽已横向放大</span></div>
+    </div>
+
+    <div class="card">
+      <h3>一次分析，只有三步</h3>
+      <div class="chk">
+        <div class="num">①</div>
+        <div class="tx"><b>进样</b>：20 μL 样品打进柱头，瞬间形成一小段"混合塞"。
+          这一刻，五个组分挤在同一个位置，无法区分。</div>
+      </div>
+      <div class="chk">
+        <div class="num">②</div>
+        <div class="tx"><b>分离</b>：流动相推着它们往前走。分子每碰到固定相表面，
+          就要停下来待一会儿。<b>待得久的跑得慢，待得短的跑得快</b>。
+          走完 15 cm，原本挤在一起的塞子被拉成五条独立的带。</div>
+      </div>
+      <div class="chk">
+        <div class="num">③</div>
+        <div class="tx"><b>检测</b>：每条带依次流过检测池，浓度变成电压，
+          在时间轴上留下一个峰。<b>峰的位置定性，峰的面积定量。</b></div>
+      </div>
+
+      <div class="note" style="margin-top:16px;font-size:12px;margin-bottom:0">
+        <div class="ico">◆</div>
+        <div>
+          整套方法的全部信息，都来自<b>速度差</b>。速度差来自<b>分配系数差</b>，
+          分配系数差来自分子结构差。后面九章就是把这条链一节一节拆开。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g3" style="gap:14px;margin-top:16px">
+    <div class="cell" style="padding:15px 16px;border:1px solid var(--line);border-radius:9px;background:var(--bg-2)">
+      <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3)">为什么不能直接测</div>
+      <div style="font-size:12.3px;line-height:1.65;color:var(--tx-2);margin-top:7px">
+        混合物的折射率、吸光度、密度都是<b>加权平均</b>。
+        10% 糖 + 5% 盐，和 8% 糖 + 7% 盐，可能给出同一个读数——信息量不够。
+      </div>
+    </div>
+    <div class="cell" style="padding:15px 16px;border:1px solid var(--line);border-radius:9px;background:var(--bg-2)">
+      <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3)">色谱给出的</div>
+      <div style="font-size:12.3px;line-height:1.65;color:var(--tx-2);margin-top:7px">
+        每个组分一个峰。<b>保留时间</b>说是谁，<b>峰面积</b>说有多少。
+        五个组分 → 五个独立数字，而不是一个混在一起的加权值。
+      </div>
+    </div>
+    <div class="cell" style="padding:15px 16px;border:1px solid var(--line);border-radius:9px;background:var(--bg-2)">
+      <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.09em;color:var(--tx-3)">代价</div>
+      <div style="font-size:12.3px;line-height:1.65;color:var(--tx-2);margin-top:7px">
+        分离需要时间。一个周期 2–30 分钟，<b>不可能连续测量</b>。
+        这是原理决定的，不是工程没做好。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S02 · 一台仪器长什么样 ============ -->
+<section id="s2sec">
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <div class="sec-title">一台 HPLC，拆开只有六件东西</div>
+      <div class="sec-sub">
+        泵、进样阀、柱、检测器，加上溶剂和废液。
+        真正决定性能的不是这些部件的名字，而是它们之间的<b>死体积</b>与<b>时序</b>。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:20px 18px">
+    <div class="flow-wrap"><svg viewBox="0 0 1000 300" style="width:100%;height:auto;display:block" id="flowSvg">
+      <defs>
+        <linearGradient id="gCol" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(167,139,250,.30)"/>
+          <stop offset="100%" stop-color="rgba(167,139,250,.08)"/>
+        </linearGradient>
+        <marker id="arw" markerWidth="7" markerHeight="7" refX="5.4" refY="3.2" orient="auto">
+          <path d="M0,0 L6,3.2 L0,6.4 z" fill="rgba(167,139,250,.55)"/>
+        </marker>
+        <pattern id="pack" width="7" height="7" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1.15" fill="rgba(167,139,250,.30)"/>
+          <circle cx="5.5" cy="5.5" r="1.15" fill="rgba(78,201,232,.22)"/>
+        </pattern>
+      </defs>
+
+      <!-- 管线 -->
+      <g stroke="rgba(167,139,250,.42)" stroke-width="1.6" fill="none" marker-end="url(#arw)">
+        <path d="M88 66 H 132"/>
+        <path d="M88 176 H 118 V 120 H 132"/>
+        <path d="M194 118 V 112 H 234"/>
+        <path d="M330 112 H 368"/>
+        <path d="M396 112 H 428"/>
+        <path d="M534 112 H 566"/>
+        <path d="M614 112 H 676"/>
+        <path d="M790 112 H 838"/>
+      </g>
+
+      <!-- 溶剂瓶 A -->
+      <g>
+        <rect x="30" y="44" width="58" height="44" rx="5" fill="rgba(78,201,232,.07)" stroke="rgba(78,201,232,.42)" stroke-width="1.2"/>
+        <rect x="34" y="66" width="50" height="20" fill="rgba(78,201,232,.14)"/>
+        <text x="59" y="38" text-anchor="middle" fill="#94a5bb" font-size="10" font-family="ui-monospace,monospace">A · 水</text>
+        <text x="59" y="81" text-anchor="middle" fill="rgba(78,201,232,.85)" font-size="10" font-family="ui-monospace,monospace">65%</text>
+      </g>
+      <!-- 溶剂瓶 B -->
+      <g>
+        <rect x="30" y="154" width="58" height="44" rx="5" fill="rgba(167,139,250,.07)" stroke="rgba(167,139,250,.42)" stroke-width="1.2"/>
+        <rect x="34" y="176" width="50" height="20" fill="rgba(167,139,250,.16)"/>
+        <text x="59" y="148" text-anchor="middle" fill="#94a5bb" font-size="10" font-family="ui-monospace,monospace">B · 乙腈</text>
+        <text x="59" y="191" text-anchor="middle" fill="rgba(167,139,250,.9)" font-size="10" font-family="ui-monospace,monospace">35%</text>
+      </g>
+
+      <!-- 脱气机 -->
+      <g>
+        <rect x="134" y="62" width="58" height="112" rx="6" fill="rgba(255,184,77,.04)" stroke="rgba(255,184,77,.32)" stroke-width="1.1"/>
+        <text x="163" y="112" text-anchor="middle" fill="#ffb84d" font-size="9.5" font-family="ui-monospace,monospace" letter-spacing=".06em">脱气</text>
+        <text x="163" y="126" text-anchor="middle" fill="rgba(148,165,187,.6)" font-size="8" font-family="ui-monospace,monospace">真空/膜</text>
+      </g>
+
+      <!-- 泵 -->
+      <g>
+        <rect x="236" y="72" width="94" height="82" rx="6" fill="rgba(167,139,250,.06)" stroke="rgba(167,139,250,.48)" stroke-width="1.3"/>
+        <text x="283" y="96" text-anchor="middle" fill="#e9eff8" font-size="11" font-family="ui-monospace,monospace">二元泵</text>
+        <text x="283" y="112" text-anchor="middle" fill="rgba(148,165,187,.7)" font-size="8.5" font-family="ui-monospace,monospace">0.2–10 mL/min</text>
+        <text x="283" y="126" text-anchor="middle" fill="rgba(148,165,187,.7)" font-size="8.5" font-family="ui-monospace,monospace">≤ 400 bar</text>
+        <!-- 柱塞示意 -->
+        <rect x="252" y="134" width="18" height="12" rx="2" fill="rgba(167,139,250,.35)"/>
+        <rect x="278" y="134" width="18" height="12" rx="2" fill="rgba(167,139,250,.2)"/>
+        <rect x="304" y="134" width="18" height="12" rx="2" fill="rgba(167,139,250,.35)"/>
+      </g>
+
+      <!-- 混合器 -->
+      <g>
+        <circle cx="382" cy="112" r="13" fill="rgba(167,139,250,.14)" stroke="rgba(167,139,250,.5)" stroke-width="1.2"/>
+        <path d="M375 108 a7 7 0 0 1 14 3 a7 7 0 0 1 -12 4" fill="none" stroke="rgba(167,139,250,.85)" stroke-width="1.2"/>
+        <text x="382" y="140" text-anchor="middle" fill="rgba(148,165,187,.65)" font-size="8.5" font-family="ui-monospace,monospace">混合</text>
+      </g>
+
+      <!-- 进样阀 -->
+      <g>
+        <rect x="430" y="66" width="104" height="94" rx="6" fill="rgba(78,201,232,.05)" stroke="rgba(78,201,232,.45)" stroke-width="1.3"/>
+        <text x="482" y="88" text-anchor="middle" fill="#e9eff8" font-size="11" font-family="ui-monospace,monospace">六通进样阀</text>
+        <circle cx="482" cy="116" r="20" fill="none" stroke="rgba(78,201,232,.55)" stroke-width="1.1"/>
+        <circle cx="482" cy="116" r="3.2" fill="rgba(78,201,232,.85)"/>
+        <g fill="rgba(78,201,232,.65)">
+          <circle cx="482" cy="96" r="2.2"/><circle cx="499" cy="106" r="2.2"/>
+          <circle cx="499" cy="126" r="2.2"/><circle cx="482" cy="136" r="2.2"/>
+          <circle cx="465" cy="126" r="2.2"/><circle cx="465" cy="106" r="2.2"/>
+        </g>
+        <text x="482" y="154" text-anchor="middle" fill="rgba(148,165,187,.65)" font-size="8.5" font-family="ui-monospace,monospace">20 μL 定量环</text>
+      </g>
+
+      <!-- 柱温箱 + 色谱柱 -->
+      <g>
+        <rect x="554" y="40" width="88" height="180" rx="7" fill="none" stroke="rgba(255,184,77,.28)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="598" y="34" text-anchor="middle" fill="rgba(255,184,77,.75)" font-size="8.5" font-family="ui-monospace,monospace">柱温箱 30 °C</text>
+
+        <rect x="570" y="58" width="44" height="140" rx="4" fill="url(#gCol)" stroke="rgba(167,139,250,.72)" stroke-width="1.4"/>
+        <rect x="574" y="62" width="36" height="132" fill="url(#pack)" opacity=".8"/>
+        <text x="592" y="212" text-anchor="middle" fill="rgba(233,239,248,.85)" font-size="9" font-family="ui-monospace,monospace">C18 柱</text>
+        
+        <!-- 压力标注 -->
+        <text x="548" y="94" text-anchor="end" fill="rgba(167,139,250,.9)" font-size="9" font-family="ui-monospace,monospace">85 bar</text>
+      </g>
+
+      <!-- 检测器 -->
+      <g>
+        <rect x="678" y="72" width="110" height="82" rx="6" fill="rgba(78,201,232,.05)" stroke="rgba(78,201,232,.45)" stroke-width="1.3"/>
+        <text x="733" y="92" text-anchor="middle" fill="#e9eff8" font-size="11" font-family="ui-monospace,monospace">UV 检测器</text>
+        <!-- 流通池 Z 型光路 -->
+        <path d="M692 112 h 14 l 0 22 h 22 l 0 -22 h 14" fill="none" stroke="rgba(78,201,232,.5)" stroke-width="1.4"/>
+        <circle cx="690" cy="112" r="3" fill="rgba(255,184,77,.9)"/>
+        <path d="M690 112 l 66 0" stroke="rgba(255,184,77,.28)" stroke-width="1" stroke-dasharray="2 3"/>
+        <text x="733" y="146" text-anchor="middle" fill="rgba(148,165,187,.65)" font-size="8.5" font-family="ui-monospace,monospace">254 nm · 10 μL 池</text>
+      </g>
+
+      <!-- 废液 -->
+      <g>
+        <rect x="840" y="88" width="58" height="48" rx="5" fill="rgba(148,165,187,.05)" stroke="rgba(148,165,187,.3)" stroke-width="1.1"/>
+        <text x="869" y="112" text-anchor="middle" fill="rgba(148,165,187,.85)" font-size="9.5" font-family="ui-monospace,monospace">废液</text>
+        <text x="869" y="126" text-anchor="middle" fill="rgba(148,165,187,.5)" font-size="8" font-family="ui-monospace,monospace">1.0 mL/min</text>
+      </g>
+
+      <!-- 底部时序轴 -->
+      <g>
+        <line x1="30" y1="262" x2="898" y2="262" stroke="rgba(148,165,187,.18)" stroke-width="1"/>
+        <text x="30" y="280" fill="rgba(148,165,187,.5)" font-size="8.5" font-family="ui-monospace,monospace">0 s</text>
+        <text x="200" y="280" fill="rgba(148,165,187,.5)" font-size="8.5" font-family="ui-monospace,monospace">混合 + 加压</text>
+        <text x="430" y="280" fill="rgba(148,165,187,.5)" font-size="8.5" font-family="ui-monospace,monospace">进样（阀切换）</text>
+        <text x="600" y="280" fill="rgba(148,165,187,.5)" font-size="8.5" font-family="ui-monospace,monospace">分离 13 min</text>
+        <text x="760" y="280" fill="rgba(148,165,187,.5)" font-size="8.5" font-family="ui-monospace,monospace">检测 → 数据</text>
+      </g>
+    </svg></div>
+    <div class="flow-hint">← 左右滑动查看完整流路 →</div>
+    <div class="cv-cap" style="margin-top:10px"><span>反相 HPLC 流路</span><span style="text-transform:none">压力沿管线递减，柱是唯一的主要阻力</span></div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px;margin-top:18px">
+    <div class="card">
+      <h3>死体积：看不见的性能杀手</h3>
+      <table>
+        <thead><tr><th>部位</th><th class="num">典型值</th><th>超标的后果</th></tr></thead>
+        <tbody>
+          <tr><td>进样阀到柱</td><td class="num">10–20 μL</td><td>早流出峰变形</td></tr>
+          <tr><td>柱到检测器</td><td class="num">5–15 μL</td><td>所有峰变宽</td></tr>
+          <tr><td>流通池</td><td class="num">8–12 μL</td><td>柱效被池体积限制</td></tr>
+          <tr><td>接头（每个）</td><td class="num">0.5–2 μL</td><td>死区 → 峰拖尾</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.2px;margin:14px 0 0;line-height:1.75">
+        把峰宽换算成体积：t<sub>R</sub> = 6.48 min 的苯峰，w = 0.244 min，
+        流速 1 mL/min，则峰体积 = <b>244 μL</b>。
+        20 μL 的额外死体积只占 8%，影响不大；但如果换到 2.1 mm 内径柱
+        （流速 0.3 mL/min），峰体积只剩 73 μL，<b>同样的死体积就占 27%</b>——柱效立刻掉一半。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>四个容易被忽略的设计细节</h3>
+      <div class="chk">
+        <div class="num">01</div>
+        <div class="tx"><b>脉动阻尼</b>：单柱塞泵的流量脉动会让基线周期性波动。
+          双柱塞串联 + 电子凸轮补偿，残余脉动 &lt; 1%。</div>
+      </div>
+      <div class="chk">
+        <div class="num">02</div>
+        <div class="tx"><b>柱前过滤</b>：0.2 μm 筛板。省掉它，颗粒会堵在柱头，
+          几千针之后柱压升高、峰拖尾。</div>
+      </div>
+      <div class="chk">
+        <div class="num">03</div>
+        <div class="tx"><b>溶剂脱气</b>：水中溶解氧在 254 nm 有吸收，
+          还会在检测池里析出气泡。在线真空脱气是标配。</div>
+      </div>
+      <div class="chk">
+        <div class="num">04</div>
+        <div class="tx"><b>柱温控制</b>：保留时间对温度敏感（约 −1%/K）。
+          柱温箱的均匀性比绝对精度更重要。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S03 · 读懂一张图 ============ -->
+<section id="s3sec">
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <div class="sec-title">一张色谱图上，只有六个参数</div>
+      <div class="sec-sub">
+        横轴是时间，纵轴是检测器信号。峰的位置（保留时间）定性，峰的面积定量，
+        峰的宽度告诉你柱子的效率，峰与峰的距离告诉你分离得好不好。
+        把这六个参数读明白，色谱就懂了一半。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>六个参数，各管一件事</h3>
+      <div class="chk">
+        <div class="num">t₀</div>
+        <div class="tx"><b>死时间</b>：不被固定相保留的分子走过柱子所需的时间。
+          本页条件下 <b>1.62 min</b>，相当于柱内流动相体积 1.6 mL。</div>
+      </div>
+      <div class="chk">
+        <div class="num">t<sub>R</sub></div>
+        <div class="tx"><b>保留时间</b>：从进样到峰顶的时间。<b>定性用</b>——
+          同一根柱、同一条件下，它是物质的指纹。</div>
+      </div>
+      <div class="chk">
+        <div class="num">k</div>
+        <div class="tx"><b>保留因子</b>：k = (t<sub>R</sub> − t₀)/t₀。
+          无量纲，比 t<sub>R</sub> 更能跨柱比较。理想区间 <b>1 &lt; k &lt; 10</b>。</div>
+      </div>
+      <div class="chk">
+        <div class="num">w</div>
+        <div class="tx"><b>峰宽</b>：4σ 宽度（基线宽）。它决定柱效，
+          也决定两个峰能不能分开。</div>
+      </div>
+      <div class="chk">
+        <div class="num">A</div>
+        <div class="tx"><b>峰面积</b>：与物质的量成正比。<b>定量用</b>——
+          峰高会受展宽影响，面积不会。</div>
+      </div>
+      <div class="chk">
+        <div class="num">R</div>
+        <div class="tx"><b>分离度</b>：两个峰中心距除以平均峰宽。
+          <b>R = 1.5</b> 是基线分离的判据。</div>
+      </div>
+      <div class="chk">
+        <div class="num">T<sub>f</sub></div>
+        <div class="tx"><b>拖尾因子</b>：峰在 10% 高度处的后沿/前沿比。
+          理想 <b>0.9–1.1</b>，超过 1.5 说明柱子有死区或次级作用。</div>
+      </div>
+
+      <div class="note" style="margin-top:16px;font-size:12px;margin-bottom:0">
+        <div class="ico">◆</div>
+        <div>
+          七个参数不是并列的：<b>t<sub>R</sub> 和 w 推出 N</b>，
+          <b>N 和 Δt 推出 R</b>。图上量两个数，就能算出第三个。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cvbox">
+        <canvas id="cvChrom" height="380"></canvas>
+        <div class="cv-cap"><span>标准分离 · 150 × 4.6 mm, 5 μm C18</span><span style="text-transform:none">1.0 mL/min · 30 °C</span></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3 style="font-size:13px">五个组分，全部数据</h3>
+        <table style="margin-top:8px">
+          <thead><tr><th>组分</th><th class="num">k</th><th class="num">t<sub>R</sub> (min)</th><th class="num">w (min)</th><th class="num">R<sub>前</sub></th></tr></thead>
+          <tbody id="tbPeaks"></tbody>
+        </table>
+        <p style="font-size:10.5px;color:var(--tx-3);font-family:var(--mono);margin:10px 0 0;line-height:1.7">
+          苯 / 甲苯 / 乙苯 / 丙苯 / 丁苯同系物。R<sub>前</sub> 是与前一个峰的分离度；
+          甲苯与苯这一对最接近（R = 1.61），是整张图的瓶颈。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S04 · 分配系数 ============ -->
+<section id="s4sec">
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <div class="sec-title">为什么有的分子跑得快，有的跑得慢</div>
+      <div class="sec-sub">
+        色谱的物理基础只有一个：同一个分子在<b>流动相</b>和<b>固定相</b>里分配的倾向不同。
+        喜欢待在固定相里的，走得慢；喜欢待在流动相里的，跟着流走。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvPart" height="340"></canvas>
+        <div class="cv-cap"><span>两相之间的动态平衡</span><span style="text-transform:none">k = 5 时的分布</span></div>
+      </div>
+      <div class="note" style="margin-top:14px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          图中每个分子的平均停留时间按 k 分配：在固定相中的时间占
+          <b>k/(1+k)</b>。k = 5 时，分子有 <b>83%</b> 的时间待在固定相里，
+          所以它的速度只有流动相的 1/6。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>三个公式，定义整条色谱链</h3>
+      <div class="eq">
+        K <span class="o">=</span>
+        <span class="frac"><span>C<sub>s</sub></span><span>C<sub>m</sub></span></span>
+      </div>
+      <div class="eq-note">分配系数。热力学量，只与温度、溶剂有关，与柱尺寸无关。</div>
+
+      <div class="eq" style="margin-top:18px">
+        k <span class="o">=</span> K <span class="o">·</span> β
+        <span class="o">=</span> K <span class="o">·</span>
+        <span class="frac"><span>V<sub>s</sub></span><span>V<sub>m</sub></span></span>
+      </div>
+      <div class="eq-note">保留因子。β 是相比（固定相/流动相体积比），本柱约 <b>1/12</b>。</div>
+
+      <div class="eq" style="margin-top:18px">
+        t<sub>R</sub> <span class="o">=</span> t₀ <span class="o">·</span> (1 + k)
+      </div>
+      <div class="eq-note">保留时间。整条色谱链最核心的一个式子，后面所有推导都从它出发。</div>
+
+      <table style="margin-top:22px">
+        <thead><tr><th>量</th><th class="num">典型值</th><th>含义</th></tr></thead>
+        <tbody>
+          <tr><td>K</td><td class="num">10–1000</td><td>反相 C18，疏水物分配进烷基链</td></tr>
+          <tr><td>β</td><td class="num">0.08–0.12</td><td>5 μm 全多孔填料</td></tr>
+          <tr><td>k</td><td class="num">1–10</td><td>太小分不开，太大跑得慢</td></tr>
+          <tr><td>t₀</td><td class="num">1.6 min</td><td>150 mm 柱，1 mL/min</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S05 · 塔板理论 ============ -->
+<section id="s5sec">
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <div class="sec-title">峰为什么会越走越宽</div>
+      <div class="sec-sub">
+        理想情况下，同一个物质的分子应该同时到达检测器，出一个无限窄的尖峰。
+        实际上它们会在柱内扩散、走不同的路径、在相间来回穿梭——
+        结果是峰越走越宽。塔板理论用"理论塔板数"把这个展宽量化。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>塔板数与板高</h3>
+      <div class="eq">
+        N <span class="o">=</span> 16 <span class="o">·</span>
+        <span class="brk">(</span>
+        <span class="frac"><span>t<sub>R</sub></span><span>w</span></span>
+        <span class="brk">)</span><sup>2</sup>
+      </div>
+      <div class="eq-note">
+        w 取<b>基线宽度</b>（4σ）。也有人用半高峰宽，此时系数变成 5.54。
+      </div>
+
+      <div class="eq" style="margin-top:18px">
+        H <span class="o">=</span>
+        <span class="frac"><span>L</span><span>N</span></span>
+      </div>
+      <div class="eq-note">
+        理论塔板高度（HETP）。它把柱效归一化到单位长度，
+        方便比较不同长度的柱子。
+      </div>
+
+      <div class="readout" style="margin-top:20px">
+        <div><div class="k">柱长 L</div><div class="v" style="font-size:18px">150<small class="u">mm</small></div></div>
+        <div><div class="k">柱效 N</div><div class="v" style="font-size:18px">11298</div></div>
+        <div><div class="k">板高 H</div><div class="v" style="font-size:18px">13.3<small class="u">μm</small></div></div>
+        <div><div class="k">H / d<sub>p</sub></div><div class="v" style="font-size:18px">2.65</div></div>
+      </div>
+
+      <p style="font-size:12.5px;margin:18px 0 0;line-height:1.75">
+        板高 <b>13.3 μm</b> 意味着什么？填料粒径是 5 μm，即一个理论塔板只有
+        <b>2.65 个颗粒</b>那么高。听着很夸张，但这就是 5 μm 柱的真实水平——
+        好的柱子能做到 2 d<sub>p</sub>，差的要 4–5 d<sub>p</sub>。
+      </p>
+    </div>
+
+    <div>
+      <div class="cvbox">
+        <canvas id="cvPlate" height="360"></canvas>
+        <div class="cv-cap"><span>同样的保留时间，柱效不同 → 峰宽不同</span><span style="text-transform:none">N = 2k / 5k / 11k / 25k</span></div>
+      </div>
+
+      <div class="note ok" style="margin-top:14px;font-size:12px">
+        <div class="ico">✓</div>
+        <div>
+          柱效翻四倍，峰宽只减一半——因为 w ∝ 1/√N。
+          <b>想靠堆柱长提高分离度，收益是平方根级别的</b>：
+          柱长翻倍，R 只涨 41%，柱压却翻倍。这是色谱里最常见的一个错觉。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S06 · van Deemter ============ -->
+<section id="s6sec">
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <div class="sec-title">流速：快了不行，慢了也不行</div>
+      <div class="sec-sub">
+        塔板理论只说"峰变宽了"，没说为什么。van Deemter 方程把展宽拆成三项：
+        涡流扩散、纵向扩散、传质阻力。三项对流速的依赖方向相反，
+        所以必然存在一个最优流速。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>三项，一个最小值</h3>
+      <div class="eq">
+        H <span class="o">=</span> A <span class="o">+</span>
+        <span class="frac"><span>B</span><span>u</span></span>
+        <span class="o">+</span> C<span class="o">·</span>u
+      </div>
+      <div class="eq-note">
+        A 与流速无关；B/u 随流速下降；C·u 随流速上升。
+        三者相加，中间有个谷底。
+      </div>
+
+      <div class="eq sm" style="margin-top:16px">
+        u<sub>opt</sub> <span class="o">=</span>
+        <span style="font-size:15px">√</span><span class="brk">(</span>
+        <span class="frac"><span>B</span><span>C</span></span>
+        <span class="brk">)</span>
+        <span class="o">=</span> 0.0577<small class="u"> cm/s</small>
+      </div>
+      <div class="eq sm">
+        H<sub>min</sub> <span class="o">=</span> A <span class="o">+</span> 2<span style="font-size:15px">√</span><span class="brk">(</span>B·C<span class="brk">)</span>
+        <span class="o">=</span> 11.5<small class="u"> μm</small>
+      </div>
+
+      <table class="m-hide3" style="margin-top:20px">
+        <thead><tr><th>项</th><th class="num">数值</th><th>物理来源</th></tr></thead>
+        <tbody>
+          <tr><td>A 涡流扩散</td><td class="num">8 μm</td><td>颗粒间路径长短不一，≈ 2d<sub>p</sub></td></tr>
+          <tr><td>B 纵向扩散</td><td class="num">1×10⁻⁵ cm²/s</td><td>浓度梯度驱动的分子扩散，≈ 2D<sub>m</sub></td></tr>
+          <tr><td>C 传质阻力</td><td class="num">3×10⁻³ s</td><td>进出固定相需要时间，∝ d<sub>p</sub>²/D<sub>m</sub></td></tr>
+        </tbody>
+      </table>
+
+      <p style="font-size:12.5px;margin:16px 0 0;line-height:1.75">
+        注意 A 项在<b>开管毛细管柱</b>里等于零——因为没有颗粒，没有多路径。
+        这是毛细管 GC 能做到几十万塔板的根本原因。
+      </p>
+    </div>
+
+    <div>
+      <div class="cvbox">
+        <canvas id="cvVD" height="360"></canvas>
+        <div class="cv-cap"><span>van Deemter 曲线 · 三项分解</span><span style="text-transform:none">5 μm C18 反相</span></div>
+      </div>
+
+      <div class="ctrl" style="margin-top:14px">
+        <div class="ctrl-row"><label>线速度 u</label><span class="val" id="vVDu">0.154 cm/s</span></div>
+        <input type="range" id="sVD" min="0.02" max="0.45" step="0.002" value="0.154">
+      </div>
+
+      <div class="readout" style="margin-top:12px">
+        <div><div class="k">板高 H</div><div class="v" id="vVDh">13.28<small class="u">μm</small></div></div>
+        <div><div class="k">柱效 N</div><div class="v" id="vVDN">11298</div></div>
+        <div><div class="k">流速</div><div class="v" id="vVDf">1.00<small class="u">mL/min</small></div></div>
+        <div><div class="k">相对最优</div><div class="v" id="vVDx">2.7<small class="u">×</small></div></div>
+      </div>
+
+      <div class="note warn" style="margin-top:14px;font-size:11.8px">
+        <div class="ico">⚠</div>
+        <div>
+          实际没人工作在 u<sub>opt</sub> 上。最优流速对应 0.37 mL/min，
+          跑完要 32 分钟；用 1 mL/min 柱效只损失 14%，时间省 60%。
+          <b>这是色谱方法开发里第一个必须做的取舍。</b>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S07 · 分离度 ============ -->
+<section id="s7sec">
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <div class="sec-title">R = 1.5：一条人为画出来的线</div>
+      <div class="sec-sub">
+        分离度定义为两峰中心距除以平均峰宽。R = 1.5 时两峰重叠约 0.3%，
+        定量误差可以忽略——所以它成了"基线分离"的行业判据。
+        但这条线不是物理定律，是约定。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div class="card">
+      <h3>从图上量，和从参数算</h3>
+      <div class="eq">
+        R <span class="o">=</span>
+        <span class="frac"><span>2(t<sub>2</sub> − t<sub>1</sub>)</span><span>w<sub>1</sub> + w<sub>2</sub></span></span>
+      </div>
+      <div class="eq-note">定义式。测出来是多少就是多少，不依赖任何模型。</div>
+
+      <div class="eq sm" style="margin-top:18px">
+        R <span class="o">=</span>
+        <span class="frac"><span>√N</span><span>4</span></span>
+        <span class="o">·</span>
+        <span class="frac"><span>α − 1</span><span>α</span></span>
+        <span class="o">·</span>
+        <span class="frac"><span>k̄</span><span>1 + k̄</span></span>
+      </div>
+      <div class="eq-note">
+        Purnell 方程。三个因子分别对应三件事：<b>柱效</b>、<b>选择性</b>、<b>保留</b>。
+      </div>
+
+      <table style="margin-top:18px">
+        <thead><tr><th>因子</th><th>想改善时怎么做</th><th class="num">代价</th></tr></thead>
+        <tbody>
+          <tr><td>√N / 4<br><span style="color:var(--tx-3);font-size:10px">柱效</span></td>
+              <td>加长柱子、减小粒径、降低流速</td>
+              <td class="num">柱压、时间</td></tr>
+          <tr><td>(α−1)/α<br><span style="color:var(--tx-3);font-size:10px">选择性</span></td>
+              <td>换流动相、调 pH、换柱子</td>
+              <td class="num">重新开发</td></tr>
+          <tr><td>k̄/(1+k̄)<br><span style="color:var(--tx-3);font-size:10px">保留</span></td>
+              <td>降低有机相比例</td>
+              <td class="num">峰变宽、变矮</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note" style="margin-top:16px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          只有<b>选择性</b>是"免费"的：换流动相能把 α 从 1.02 提到 1.10，
+          R 直接翻五倍，而分析时间几乎不变。所以方法开发的第一顺位永远是调选择性，
+          不是加长柱子。
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cvbox">
+        <canvas id="cvOptim" height="330"></canvas>
+        <div class="cv-cap"><span>实时分离 · 拖动下方参数</span><span style="text-transform:none">最难那对的 R 见读数</span></div>
+      </div>
+
+      <div class="grid g2" style="gap:14px;margin-top:14px">
+        <div class="ctrl">
+          <div class="ctrl-row"><label>流速</label><span class="val" id="vOF">1.00 mL/min</span></div>
+          <input type="range" id="sOF" min="0.2" max="3.0" step="0.02" value="1.0">
+        </div>
+        <div class="ctrl">
+          <div class="ctrl-row"><label>柱长</label><span class="val" id="vOL">150 mm</span></div>
+          <input type="range" id="sOL" min="50" max="250" step="5" value="150">
+        </div>
+      </div>
+
+      <div class="readout" style="margin-top:12px">
+        <div><div class="k">分离度 R</div><div class="v" id="vOR" style="font-size:20px">1.61</div></div>
+        <div><div class="k">柱效 N</div><div class="v" id="vON">11298</div></div>
+        <div><div class="k">末峰时间</div><div class="v" id="vOT">13.0<small class="u">min</small></div></div>
+        <div><div class="k">柱压</div><div class="v" id="vOP">85<small class="u">bar</small></div></div>
+      </div>
+
+      <div class="note" id="noteR" style="margin-top:12px;font-size:12px">
+        <div class="ico" id="icoR">✓</div>
+        <div id="txtR">基线分离，两个峰完全独立，定量误差 &lt; 0.5%。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S08 · 梯度洗脱 ============ -->
+<section id="s8sec">
+  <div class="sec-head">
+    <div class="sec-num">08</div>
+    <div>
+      <div class="sec-title">等度跑不完的样品，用梯度压回 10 分钟</div>
+      <div class="sec-sub">
+        一组同系物，k 从 1 到 20，等度洗脱时最后一个峰要跑 30 分钟，
+        而且峰又宽又矮。梯度洗脱让有机相比例随时间上升，
+        后面的峰被"追着推出来"。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvGrad" height="370"></canvas>
+        <div class="cv-cap"><span>等度 vs 梯度 · 同一组样品</span><span style="text-transform:none">线性梯度 12 min</span></div>
+      </div>
+      <div class="ctrl" style="margin-top:14px">
+        <div class="ctrl-row"><label>梯度时间 t<sub>G</sub></label><span class="val" id="vGt">12 min</span></div>
+        <input type="range" id="sG" min="4" max="30" step="1" value="12">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>线性溶剂强度模型（LSS）</h3>
+      <div class="eq">
+        ln k <span class="o">=</span> ln k<sub>0</sub>
+        <span class="o">−</span> S<span class="o">·</span>φ
+      </div>
+      <div class="eq-note">
+        φ 是有机相体积分数，S 是溶剂强度常数（小分子约 5–10）。
+        有机相每增加 10%，k 大约降一半。
+      </div>
+
+      <table style="margin-top:18px">
+        <thead><tr><th class="num">φ</th><th class="num">k（末峰）</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td class="num">0.35</td><td class="num">7.00</td><td>起始条件</td></tr>
+          <tr><td class="num">0.50</td><td class="num">2.11</td><td>快速推进</td></tr>
+          <tr><td class="num">0.65</td><td class="num">0.64</td><td>接近无保留</td></tr>
+          <tr><td class="num">0.80</td><td class="num">0.19</td><td>基本随流动相走</td></tr>
+          <tr><td class="num">0.95</td><td class="num">0.06</td><td>冲洗柱子</td></tr>
+        </tbody>
+      </table>
+
+      <p style="font-size:12.5px;margin:16px 0 0;line-height:1.75">
+        梯度的代价是<b>重现性更难做</b>：泵的混合精度、柱平衡时间、系统延迟体积
+        都会影响保留时间。所以梯度方法在转移仪器时，必须做延迟体积校正。
+      </p>
+
+      <div class="note ok" style="margin-top:14px;font-size:12px">
+        <div class="ico">✓</div>
+        <div>
+          气相色谱里对应的是<b>程序升温</b>：柱温从 50 °C 升到 300 °C，
+          高沸点组分被"赶"出来。原理完全一样，只是把"改溶剂"换成"改温度"。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S09 · 检测器 ============ -->
+<section id="s9sec">
+  <div class="sec-head">
+    <div class="sec-num">09</div>
+    <div>
+      <div class="sec-title">检测器：把浓度变成一个电压</div>
+      <div class="sec-sub">
+        柱子把混合物分开，检测器把"流过什么"变成信号。
+        色谱的分辨能力由柱子决定，但<b>能测到多低的浓度</b>由检测器决定。
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px">
+    <div>
+      <div class="cvbox">
+        <canvas id="cvDet" height="330"></canvas>
+        <div class="cv-cap"><span>检测限对比 · 对数坐标</span><span style="text-transform:none">g/mL（HPLC）或 g/s（GC）</span></div>
+      </div>
+      <div class="note" style="margin-top:14px;font-size:12px">
+        <div class="ico">◆</div>
+        <div>
+          注意纵轴是<b>对数</b>。MS 比 TCD 灵敏 <b>五个数量级</b>——
+          不是"好一点"，是"能不能测"的区别。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>五种检测器，五套物理原理</h3>
+      <table>
+        <thead><tr><th>检测器</th><th>原理</th><th class="num">LOD</th><th class="num">线性</th></tr></thead>
+        <tbody>
+          <tr><td><b>UV-Vis</b></td>
+              <td>Beer-Lambert 吸收：A = εbc。有发色团才响应</td>
+              <td class="num">1e−9</td><td class="num">10⁵</td></tr>
+          <tr><td><b>FLD</b></td>
+              <td>激发→发射，双波长。比 UV 灵敏 100–1000 倍</td>
+              <td class="num">1e−12</td><td class="num">10⁴</td></tr>
+          <tr><td><b>FID</b></td>
+              <td>有机物在氢焰中电离，收集离子流。GC 通用型</td>
+              <td class="num">1e−11</td><td class="num">10⁷</td></tr>
+          <tr><td><b>TCD</b></td>
+              <td>热导率差异。无破坏、通用，但灵敏度最低</td>
+              <td class="num">1e−8</td><td class="num">10⁵</td></tr>
+          <tr><td><b>MS</b></td>
+              <td>电离后按 m/z 分离。唯一能<b>同时定性和定量</b>的</td>
+              <td class="num">1e−13</td><td class="num">10⁵</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:20px;font-size:13px">UV 检测的物理限制</h3>
+      <div class="eq sm">
+        A <span class="o">=</span> ε <span class="o">·</span> b <span class="o">·</span> c
+      </div>
+      <div class="eq-note">
+        吸光度与浓度成正比，但只在 A &lt; 1.5 时成立。
+        超过 2 之后杂散光主导，曲线弯曲——这就是<b>线性范围上限</b>的来历。
+      </div>
+
+      <div class="note warn" style="margin-top:14px;font-size:11.8px">
+        <div class="ico">⚠</div>
+        <div>
+          没有发色团的物质（糖、醇、大部分脂肪族）在 UV 上<b>完全不可见</b>。
+          测糖必须用示差折光（RID）或蒸发光散射（ELSD），
+          这解释了为什么糖分析的方法和药物完全不同。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S10 · 方法与应用 ============ -->
+<section id="s10sec">
+  <div class="sec-head">
+    <div class="sec-num">10</div>
+    <div>
+      <div class="sec-title">拿到一个样品，第一步该问什么</div>
+      <div class="sec-sub">
+        色谱方法开发不是试出来的，是按决策树走出来的。
+        第一个问题永远是"能不能气化"，第二个是"有没有发色团"。
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>分离模式决策树</h3>
+    <div class="grid g4" style="gap:12px;margin-top:6px">
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第一步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--cy)">能气化吗？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          bp &lt; 500 °C 且热稳定 → <b>GC</b><br>
+          否则 → 液相
+        </div>
+      </div>
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第二步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--cy)">溶于什么？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          溶于水/乙腈 → <b>反相 C18</b>（80% 的场景）<br>
+          溶于正己烷 → 正相
+        </div>
+      </div>
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第三步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--cy)">带电吗？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          可电离 → 加缓冲盐调 pH，或<b>离子色谱</b><br>
+          大分子 → SEC / 离子交换
+        </div>
+      </div>
+      <div class="cell" style="padding:14px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2)">
+        <div class="k" style="font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--tx-3)">第四步</div>
+        <div style="font-size:13px;font-weight:500;margin:7px 0 6px;color:var(--cy)">有发色团吗？</div>
+        <div style="font-size:11.5px;color:var(--tx-2);line-height:1.6">
+          有 → UV<br>
+          无 → RID / ELSD / MS / 柱前衍生
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="align-items:start;gap:18px;margin-top:18px">
+    <div class="card">
+      <h3>六大应用领域</h3>
+      <table>
+        <thead><tr><th>领域</th><th>典型项目</th><th class="num">限量</th></tr></thead>
+        <tbody>
+          <tr><td>制药</td><td>残留溶剂、有关物质、含量均匀度</td><td class="num">ppm 级</td></tr>
+          <tr><td>食品</td><td>农残、添加剂、真菌毒素</td><td class="num">0.01–0.1 mg/kg</td></tr>
+          <tr><td>环境</td><td>VOCs、多环芳烃、酚类</td><td class="num">μg/L</td></tr>
+          <tr><td>石化</td><td>模拟蒸馏、汽油族组成</td><td class="num">%</td></tr>
+          <tr><td>临床</td><td>血药浓度、新生儿代谢病筛查</td><td class="num">μg/mL</td></tr>
+          <tr><td>法医</td><td>毒物筛查、兴奋剂确证</td><td class="num">ng/mL</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.2px;margin:14px 0 0;line-height:1.75">
+        限量决定了要什么检测器。<b>ppm 级用 UV 就够，ppb 级必须上 MS</b>——
+        这不是仪器偏好，是物理下限。
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>方法开发的五个动作，按性价比排序</h3>
+      <div class="chk">
+        <div class="num">1</div>
+        <div class="tx"><b>调有机相比例</b>：把 k 拉到 2–10。最便宜、最有效，
+          一个下午能扫完。</div>
+      </div>
+      <div class="chk">
+        <div class="num">2</div>
+        <div class="tx"><b>调 pH</b>：可电离物的峰形和保留全靠它。
+          碱性物用 pH 3 抑制电离，酸性物用 pH 2.5。</div>
+      </div>
+      <div class="chk">
+        <div class="num">3</div>
+        <div class="tx"><b>换柱子</b>：C18 → 苯基/氰基/混合模式。
+          选择性变化最大，但要从头验证。</div>
+      </div>
+      <div class="chk">
+        <div class="num">4</div>
+        <div class="tx"><b>升温度</b>：每升 10 °C，k 降约 20%，柱压降约 15%。
+          一举两得，但选择性可能变差。</div>
+      </div>
+      <div class="chk">
+        <div class="num">5</div>
+        <div class="tx"><b>加长柱子</b>：最后才考虑。R ∝ √L，
+          柱长翻倍只涨 41%，柱压和时间都翻倍。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>本页模型的数据来源与边界</h3>
+    <div class="grid g3" style="gap:16px;margin-top:4px">
+      <div>
+        <div class="k" style="font-family:var(--mono);font-size:9px;color:var(--tx-3);letter-spacing:.08em;margin-bottom:6px">实测锚定</div>
+        <p style="font-size:12px;line-height:1.7;color:var(--tx-2);margin:0">
+          柱压 83 bar（C18 150×4.6 mm，5 μm，1 mL/min，40 °C，
+          HiChrom 目录实测）。本页模型算出 <b>85 bar</b>，差 2.6%。
+        </p>
+      </div>
+      <div>
+        <div class="k" style="font-family:var(--mono);font-size:9px;color:var(--tx-3);letter-spacing:.08em;margin-bottom:6px">文献典型值</div>
+        <p style="font-size:12px;line-height:1.7;color:var(--tx-2);margin:0">
+          van Deemter 系数 A = 8 μm、B = 1×10⁻⁵ cm²/s、C = 3×10⁻³ s，
+          取 5 μm 全多孔 C18 的代表值，由此得 H<sub>min</sub> = 11.5 μm ≈ 2.3 d<sub>p</sub>。
+        </p>
+      </div>
+      <div>
+        <div class="k" style="font-family:var(--mono);font-size:9px;color:var(--tx-3);letter-spacing:.08em;margin-bottom:6px">本页假设</div>
+        <p style="font-size:12px;line-height:1.7;color:var(--tx-2);margin:0">
+          k 值（3.00–7.00）是为教学选的一组同系物，不是实测。
+          λ、峰形拖尾因子均设为理想值，实际柱子的拖尾会更差。
+        </p>
+      </div>
+    </div>
+    <div class="note warn" style="margin-top:14px;font-size:12px">
+      <div class="ico">⚠</div>
+      <div>
+        <b>Purnell 方程算出 2.11，直接定义式算出 2.23</b>——差 5%。
+        因为 Purnell 用平均 k 和相邻两峰的 α 做了近似，
+        相邻峰越远、k 差别越大，偏差越大。它适合判断趋势，不适合替代测量值。
+      </div>
+    </div>
+  </div>
+
+  <footer style="margin-top:56px;padding:26px 0 40px;border-top:1px solid var(--line);
+                 display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+                 font-family:var(--mono);font-size:10.5px;color:var(--tx-3);letter-spacing:.03em">
+    <div>色谱仪 · 原理 · 设计 · 应用</div>
+    <div>标准条件：C18 150×4.6 mm · 5 μm · 1.0 mL/min · 30 °C · 254 nm</div>
+  </footer>
+</section>
+</main>
+
+<script>
+"use strict";
+(() => {
+
+/* ============================================================
+   0 · 工具
+   ============================================================ */
+const CO = {
+  cy:'#a78bfa', am:'#ffb84d', vi:'#4ec9e8', rd:'#ff6b6b', gr:'#5ee6a8',
+  tx:'#e9eff8', tx2:'#94a5bb', tx3:'#5d6f87',
+  grid:'#111527', grid2:'#1a1f33', line:'#222840'
+};
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+function prep(cv, cssH){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = Math.max(200, cv.clientWidth||400);
+  const h = cssH;
+  cv.style.height = h+'px';
+  if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr);
+    cv.height = Math.round(h*dpr);
+  }
+  const c = cv.getContext('2d');
+  c.setTransform(dpr,0,0,dpr,0,0);
+  c.clearRect(0,0,w,h);
+  return {c,w,h};
+}
+function txt(c,s,x,y,col,size,align,weight){
+  c.save();
+  c.fillStyle = col||CO.tx2;
+  c.font = (weight||400)+' '+(size||10)+'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+  c.textAlign = align||'left';
+  c.textBaseline = 'middle';
+  c.fillText(s,x,y);
+  c.restore();
+}
+function line(c,x1,y1,x2,y2){ c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+function dot(c,x,y,r,fill,stroke,wd){
+  c.beginPath(); c.arc(x,y,r,0,6.2832);
+  if(fill){ c.fillStyle=fill; c.fill(); }
+  if(stroke){ c.strokeStyle=stroke; c.lineWidth=wd||1.5; c.stroke(); }
+}
+function path(c, xs, ys, X, Y, col, wd, dash){
+  c.save();
+  c.strokeStyle = col; c.lineWidth = wd||1.7;
+  c.setLineDash(dash||[]);
+  c.lineJoin='round'; c.lineCap='round';
+  c.beginPath();
+  for(let i=0;i<xs.length;i++){
+    const px=X(xs[i]), py=Y(ys[i]);
+    i ? c.lineTo(px,py) : c.moveTo(px,py);
+  }
+  c.stroke(); c.restore();
+}
+function hexA(hex, a){
+  const h = hex.replace('#','');
+  const n = parseInt(h.length===3 ? h.split('').map(x=>x+x).join('') : h, 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+/* ============================================================
+   1 · 色谱模型
+   ============================================================ */
+const COL = {
+  L0: 15,          // cm
+  ID: 0.46,        // cm
+  dp: 5e-4,        // cm
+  eps: 0.65,
+  A: 8e-4,         // cm
+  B: 1e-5,         // cm²/s
+  C: 3e-3          // s
+};
+COL.area = Math.PI*(COL.ID/2)**2;   // 0.166 cm²
+
+const Hpl = u => COL.A + COL.B/u + COL.C*u;
+const Npl = (L,u) => L/Hpl(u);
+const uOpt = Math.sqrt(COL.B/COL.C);
+const Hmin = COL.A + 2*Math.sqrt(COL.B*COL.C);
+
+const uOfF = F => F/(60*COL.area*COL.eps);   // mL/min → cm/s
+const FofU = u => u*60*COL.area*COL.eps;
+
+// 柱压 bar（φ 由实测 83 bar 反标定）
+function dBar(F, Lcm, dp){
+  const u = uOfF(F)*1e-2;          // m/s
+  const eta = 1.0e-3;
+  return 920*eta*Lcm*1e-2*u/(dp*1e-2)**2/1e5;
+}
+
+// 五组分基准保留因子（φ = 0.35）
+const KB = [3.00, 3.25, 3.85, 5.20, 7.00];
+const NAMES = ['苯','甲苯','乙苯','丙苯','丁苯'];
+const ASYM  = [0.00, 0.06, 0.10, 0.14, 0.20];   // 拖尾因子（教学用）
+const S_LSS = 8.0;      // 溶剂强度常数
+
+// 温度对 k 的影响（van't Hoff，ΔH = −10 kJ/mol）；基准 30 °C
+const kT = (k, Tc) => k*Math.exp(1202*(1/(Tc+273.15) - 1/303.15));
+// 有机相比例对 k 的影响
+const kPhi = (k, phi) => k*Math.exp(-S_LSS*(phi-0.35));
+
+function state(F, Lmm, Tc, phi){
+  const L = Lmm/10;
+  const u = uOfF(F);
+  const N = Npl(L,u);
+  const t0 = L/u/60;
+  const ks = KB.map(k => kPhi(kT(k, Tc), phi));
+  const tR = ks.map(k => t0*(1+k));
+  const w  = tR.map(t => 4*t/Math.sqrt(N));
+  return { L, u, N, t0, ks, tR, w, F, Lmm, Tc, phi,
+           P: dBar(F, L, COL.dp) };
+}
+
+// 两峰分离度
+function res(st, i){
+  if(i<1) return null;
+  return 2*(st.tR[i]-st.tR[i-1])/(st.w[i]+st.w[i-1]);
+}
+
+/* 峰形：分段高斯（右半加宽模拟拖尾） */
+function peakAt(t, mu, w4, asym){
+  const sig = w4/4;
+  const s = t < mu ? sig : sig*(1+asym);
+  const dx = (t-mu)/s;
+  if(dx < -5 || dx > 5.2) return 0;
+  return Math.exp(-0.5*dx*dx);
+}
+function chromAt(t, st, amps){
+  let y = 0;
+  for(let i=0;i<st.tR.length;i++){
+    y += (amps?amps[i]:1)*peakAt(t, st.tR[i], st.w[i], ASYM[i]);
+  }
+  return y;
+}
+
+const STD = state(1.0, 150, 30, 0.35);
+
+/* ============================================================
+   2 · Hero：一次真实的分离过程
+   ============================================================ */
+let heroT = 2.8, heroRAF = 0, heroOn = false;
+let heroSize = null;
+
+function drawHero(){
+  const cv = $('#cvHero'); if(!cv) return;
+  const H = window.innerWidth < 900 ? 300 : 430;
+  const {c,w,h} = prep(cv, H);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const P = {l:44, r:16, t:26, b:44};
+  const TMAX = 15;
+  const X = t => P.l + t/TMAX*(w-P.l-P.r);
+  const Y = v => h-P.b - v*(h-P.t-P.b)*0.92;
+
+  // 网格
+  for(let t=0;t<=TMAX;t+=3){
+    c.strokeStyle = CO.grid; c.lineWidth = 1;
+    line(c, X(t), P.t, X(t), h-P.b);
+    txt(c, String(t), X(t), h-P.b+13, CO.tx3, 8.5, 'center');
+  }
+  for(let v=0;v<=1.001;v+=0.25){
+    c.strokeStyle = CO.grid; c.lineWidth = 1;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    if(v>0) txt(c, v.toFixed(2), P.l-7, Y(v), CO.tx3, 8, 'right');
+  }
+  txt(c, 'min', w-P.r, h-P.b+26, CO.tx3, 8.5, 'right');
+  txt(c, 'A₂₅₄', P.l-7, P.t-10, CO.tx3, 8.5, 'right');
+
+  // 已记录部分
+  const front = heroT;
+
+  // 峰填充
+  c.save();
+  const grad = c.createLinearGradient(0, P.t, 0, h-P.b);
+  grad.addColorStop(0, hexA(CO.am, .34));
+  grad.addColorStop(1, hexA(CO.am, .03));
+  c.beginPath();
+  c.moveTo(X(0), Y(0));
+  const dt = 0.02;
+  for(let t=0;t<=front;t+=dt){
+    c.lineTo(X(t), Y(chromAt(t, STD)));
+  }
+  c.lineTo(X(front), Y(0));
+  c.closePath();
+  c.fillStyle = grad; c.fill();
+  c.restore();
+
+  // 峰轮廓
+  c.save();
+  c.shadowColor = hexA(CO.am,.7); c.shadowBlur = 10;
+  c.strokeStyle = CO.am; c.lineWidth = 1.9;
+  c.beginPath();
+  let started = false;
+  for(let t=0;t<=front;t+=dt){
+    const px = X(t), py = Y(chromAt(t, STD));
+    started ? c.lineTo(px,py) : (c.moveTo(px,py), started=true);
+  }
+  c.stroke();
+  c.restore();
+
+  // 基线
+  c.strokeStyle = 'rgba(148,165,187,.25)'; c.lineWidth = 1;
+  line(c, P.l, Y(0), w-P.r, Y(0));
+
+  // 扫描头
+  if(front < TMAX){
+    c.save();
+    c.strokeStyle = hexA(CO.vi,.55); c.lineWidth = 1.2;
+    c.setLineDash([3,3]);
+    line(c, X(front), P.t, X(front), h-P.b);
+    c.restore();
+    dot(c, X(front), Y(chromAt(front, STD)), 3.4, CO.vi, '#0a0c15', 1.4);
+  }
+
+  // 峰顶编号（错开，避免重叠）
+  STD.tR.forEach((t,i)=>{
+    if(t > front-0.15) return;
+    txt(c, String(i+1), X(t), Y(1)-11, 'rgba(233,239,248,.8)', 8, 'center', 600);
+  });
+
+  // 底部图例
+  let lx = P.l + 2;
+  STD.tR.forEach((t,i)=>{
+    txt(c, (i+1)+' '+NAMES[i], lx, h-9, 'rgba(148,165,187,.5)', 7.5, 'left');
+    lx += 43;
+  });
+
+  // 状态条
+  const done = STD.tR.filter(t=>t<=front).length;
+  txt(c, '已流出 '+done+' / 5', w-P.r-2, P.t-12, 'rgba(148,165,187,.55)', 8.5, 'right');
+}
+
+function loopHero(){
+  heroT += 0.042;
+  if(heroT > 16.6) heroT = 2.8;
+  drawHero();
+  heroRAF = requestAnimationFrame(loopHero);
+}
+
+/* ============================================================
+   3 · 主色谱图（带参数标注）
+   ============================================================ */
+function drawChrom(){
+  const cv = $('#cvChrom'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, 380);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const P = {l: small?42:48, r:16, t:34, b:54};
+  const TMAX = 14;
+  const X = t => P.l + t/TMAX*(w-P.l-P.r);
+  const Y = v => h-P.b - v*0.92*(h-P.t-P.b);
+
+  // 网格
+  for(let t=0;t<=14;t+=2){
+    c.strokeStyle = CO.grid; c.lineWidth = 1;
+    line(c, X(t), P.t, X(t), h-P.b);
+    txt(c, String(t), X(t), h-P.b+13, CO.tx3, 8, 'center');
+  }
+  for(let v=0;v<=1.001;v+=0.25){
+    c.strokeStyle = CO.grid; c.lineWidth = 1;
+    line(c, P.l, Y(v), w-P.r, Y(v));
+    if(v>0) txt(c, v.toFixed(2), P.l-7, Y(v), CO.tx3, 8, 'right');
+  }
+  txt(c, 't (min)', w-P.r, h-P.b+30, CO.tx3, 8.5, 'right');
+
+  // 填充
+  const g = c.createLinearGradient(0,P.t,0,h-P.b);
+  g.addColorStop(0, hexA(CO.am,.30)); g.addColorStop(1, hexA(CO.am,.02));
+  c.beginPath(); c.moveTo(X(0),Y(0));
+  for(let t=0;t<=TMAX;t+=0.015) c.lineTo(X(t), Y(chromAt(t, STD)));
+  c.lineTo(X(TMAX), Y(0)); c.closePath();
+  c.fillStyle = g; c.fill();
+
+  // 轮廓
+  c.save();
+  c.shadowColor = hexA(CO.am,.6); c.shadowBlur = 9;
+  c.strokeStyle = CO.am; c.lineWidth = 1.8;
+  c.beginPath();
+  for(let t=0;t<=TMAX;t+=0.015){
+    const px=X(t), py=Y(chromAt(t, STD));
+    t===0 ? c.moveTo(px,py) : c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // 峰顶编号
+  STD.tR.forEach((t,i)=>{
+    txt(c, String(i+1), X(t), Y(1)-11, 'rgba(233,239,248,.82)', 8, 'center', 600);
+  });
+
+  // 顶部图例
+  let lx = P.l + 2;
+  STD.tR.forEach((t,i)=>{
+    txt(c, (i+1)+' '+NAMES[i], lx, P.t-11, 'rgba(148,165,187,.7)', 8, 'left');
+    lx += (small?38:46);
+  });
+
+  // 死时间
+  c.save();
+  c.setLineDash([2,4]); c.strokeStyle = 'rgba(148,165,187,.22)'; c.lineWidth = 1;
+  line(c, X(STD.t0), P.t, X(STD.t0), h-P.b);
+  c.restore();
+  txt(c, 't₀', X(STD.t0)+3, P.t+6, 'rgba(148,165,187,.5)', 8, 'left');
+
+  // 第一个峰：t_R 在峰左上，w 在基线下
+  const t1 = STD.tR[0], w1 = STD.w[0];
+  dot(c, X(t1), Y(1), 2.8, CO.vi, null);
+  txt(c, 't_R = '+t1.toFixed(2), X(t1)-7, Y(1)-12, 'rgba(78,201,232,.95)', 8.5, 'right', 600);
+
+  // w 括号 + 引线
+  const xa = X(t1-w1/2), xb = X(t1+w1/2);
+  const yb = h-P.b+22;
+  c.save();
+  c.strokeStyle = 'rgba(167,139,250,.75)'; c.lineWidth = 1;
+  line(c, xa, Y(0)+2, xa, yb);
+  line(c, xb, Y(0)+2, xb, yb);
+  line(c, xa, yb, xb, yb);
+  c.restore();
+  // 引线
+  const tx0 = X(t1)+34, ty0 = h-P.b+38;
+  c.save();
+  c.strokeStyle = 'rgba(167,139,250,.4)'; c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo((xa+xb)/2, yb);
+  c.lineTo(tx0-6, ty0);
+  c.stroke();
+  c.restore();
+  txt(c, 'w = '+w1.toFixed(3)+' min', tx0, ty0, 'rgba(167,139,250,.9)', 8, 'left', 600);
+
+  // 右上：R 值
+  const R1 = res(STD,1);
+  txt(c, 'R(1,2) = '+R1.toFixed(2), w-P.r-2, P.t-11,
+      R1>=1.5?'rgba(94,230,168,.9)':'rgba(255,184,77,.9)', 8.5, 'right', 600);
+}
+
+/* ============================================================
+   3b · 第 01 章：柱内迁移与检测器响应（同步动画）
+   ============================================================ */
+const SEPCOL = ['#4ec9e8','#a78bfa','#ffb84d','#5ee6a8','#ff8fab'];
+let sepT = 0, sepRAF = 0, sepOn = false;
+
+function drawSep(){
+  const cv = $('#cvSep'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, small?390:410);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const colX = small?24:38;
+  const detW = small?54:74;
+  const colW = w - colX - detW - (small?26:42);
+  const colY = 56, colH = small?70:86;
+
+  // ---- 柱体 ----
+  c.fillStyle = 'rgba(167,139,250,.05)';
+  c.fillRect(colX, colY, colW, colH);
+  c.strokeStyle = 'rgba(167,139,250,.42)'; c.lineWidth = 1.2;
+  c.strokeRect(colX, colY, colW, colH);
+
+  // 填料颗粒
+  c.save();
+  for(let i=0;i<64;i++){
+    const px = colX + 3 + ((i*97)%997)/997*(colW-6);
+    const py = colY + 6 + ((i*53)%97)/97*(colH-12);
+    c.beginPath(); c.arc(px, py, small?2.0:2.5, 0, 6.2832);
+    c.fillStyle = 'rgba(167,139,250,.11)'; c.fill();
+  }
+  c.restore();
+
+  txt(c, '进样口', colX, colY-13, 'rgba(148,165,187,.6)', 8, 'left');
+  txt(c, 'C18 柱', colX+colW/2, colY-13, 'rgba(167,139,250,.7)', 8, 'center');
+  txt(c, '0 cm', colX, colY+colH+11, 'rgba(148,165,187,.38)', 7.5, 'left');
+  txt(c, '15 cm', colX+colW, colY+colH+11, 'rgba(148,165,187,.38)', 7.5, 'right');
+
+  // ---- 组分带 ----
+  STD.tR.forEach((tR,i)=>{
+    const prog = sepT/tR;
+    if(prog > 1.03) return;
+    const cx = colX + Math.min(prog,1)*colW;
+    const bw = (small?6:8) + prog*(small?13:18);
+    const rx = colH*0.46, sx = bw/rx;
+    c.save();
+    c.translate(cx, colY+colH/2);
+    c.scale(sx, 1);
+    const rg = c.createRadialGradient(0,0,0, 0,0,rx);
+    rg.addColorStop(0, hexA(SEPCOL[i],.88));
+    rg.addColorStop(.45, hexA(SEPCOL[i],.42));
+    rg.addColorStop(.78, hexA(SEPCOL[i],.12));
+    rg.addColorStop(1, hexA(SEPCOL[i],0));
+    c.fillStyle = rg;
+    c.beginPath(); c.arc(0,0,rx,0,6.2832); c.fill();
+    c.restore();
+    if(prog > 0.12 && prog < 0.94){
+      txt(c, String(i+1), cx, colY+colH/2, 'rgba(8,10,18,.95)', 8, 'center', 600);
+    }
+  });
+
+  // ---- 检测器 ----
+  const detX = colX + colW + (small?8:11);
+  const detY = colY + colH*0.20, detH = colH*0.60;
+  c.fillStyle = 'rgba(78,201,232,.05)';
+  c.fillRect(detX, detY, detW, detH);
+  c.strokeStyle = 'rgba(78,201,232,.42)'; c.lineWidth = 1.1;
+  c.strokeRect(detX, detY, detW, detH);
+  txt(c, '检测器', detX+detW/2, detY-11, 'rgba(78,201,232,.7)', 8, 'center');
+
+  c.strokeStyle = 'rgba(78,201,232,.28)'; c.lineWidth = 1;
+  line(c, colX+colW, colY+colH/2, detX, detY+detH/2);
+
+  // 流通池：有组分经过时点亮
+  let glow = 0;
+  STD.tR.forEach(tR=>{
+    const d = Math.abs(sepT/tR - 1);
+    if(d < 0.05) glow = Math.max(glow, 1-d/0.05);
+  });
+  c.save();
+  if(glow > 0.02){ c.shadowColor = hexA(CO.am,.85); c.shadowBlur = 13*glow; }
+  c.beginPath(); c.arc(detX+detW/2, detY+detH/2, small?4:5.5, 0, 6.2832);
+  c.fillStyle = glow>0.02 ? hexA(CO.am, .28+glow*.62) : 'rgba(78,201,232,.2)';
+  c.fill();
+  c.restore();
+
+  // ---- 下半：色谱图 ----
+  const gx = colX, gw = w - colX - 14;
+  const gy = small?205:212, gh = small?132:148;
+  const TMAX = 16;
+  const X = t => gx + t/TMAX*gw;
+  const Y = v => gy+gh - v*0.88*gh;
+  const front = Math.min(sepT, TMAX);
+
+  for(let t=0;t<=TMAX;t+=4){
+    c.strokeStyle = CO.grid; c.lineWidth = 1;
+    line(c, X(t), gy, X(t), gy+gh);
+    txt(c, String(t), X(t), gy+gh+12, CO.tx3, 7.5, 'center');
+  }
+  line(c, gx, Y(0), gx+gw, Y(0));
+
+  txt(c, '检测信号', gx, gy-11, 'rgba(148,165,187,.55)', 8, 'left');
+  txt(c, 'min', gx+gw, gy+gh+24, CO.tx3, 8, 'right');
+  txt(c, 't = '+front.toFixed(1)+' min · 已流出 '+
+      STD.tR.filter(t=>t<=sepT).length+'/5',
+      gx+gw, gy-11, 'rgba(148,165,187,.55)', 8, 'right');
+
+  // 填充
+  c.save();
+  c.beginPath();
+  c.moveTo(X(0), Y(0));
+  for(let t=0;t<=front;t+=0.03) c.lineTo(X(t), Y(chromAt(t, STD)));
+  c.lineTo(X(front), Y(0));
+  c.closePath();
+  const g2 = c.createLinearGradient(0,gy,0,gy+gh);
+  g2.addColorStop(0, hexA(CO.am,.26)); g2.addColorStop(1, hexA(CO.am,.02));
+  c.fillStyle = g2; c.fill();
+  c.restore();
+
+  // 曲线
+  c.save();
+  c.shadowColor = hexA(CO.am,.6); c.shadowBlur = 8;
+  c.strokeStyle = CO.am; c.lineWidth = 1.6;
+  c.beginPath();
+  for(let t=0;t<=front;t+=0.03){
+    const px=X(t), py=Y(chromAt(t,STD));
+    t===0?c.moveTo(px,py):c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // 峰顶彩色点（与柱内色带对应）
+  STD.tR.forEach((tR,i)=>{
+    if(tR > front-0.12) return;
+    dot(c, X(tR), Y(1), small?2.4:3.0, SEPCOL[i], '#0a0c15', 1.2);
+    txt(c, String(i+1), X(tR), Y(1)-9, hexA(SEPCOL[i],.95), 8, 'center', 600);
+  });
+
+  // 扫描线
+  if(sepT < TMAX){
+    c.save();
+    c.setLineDash([2,3]); c.strokeStyle='rgba(148,165,187,.28)'; c.lineWidth=1;
+    line(c, X(sepT), gy, X(sepT), gy+gh);
+    c.restore();
+  }
+}
+
+function loopSep(){
+  sepT += 0.028;
+  if(sepT > 17.6) sepT = 2.6;
+  drawSep();
+  sepRAF = requestAnimationFrame(loopSep);
+}
+
+/* ============================================================
+   4 · 两相分配动画
+   ============================================================ */
+const PART = { pts:[], on:false, raf:0, last:0, k:5 };
+function initPart(){
+  const N = 64;
+  PART.pts = [];
+  for(let i=0;i<N;i++){
+    PART.pts.push({
+      x: Math.random(),
+      ry: Math.random(),                   // 区内相对纵向位置
+      v: 0.055 + Math.random()*0.03,
+      inS: Math.random() < 0.83,           // 起始就按 k 分配
+      ph: Math.random()*6.28
+    });
+  }
+}
+function drawPart(){
+  const cv = $('#cvPart'); if(!cv) return;
+  const {c,w,h} = prep(cv, 340);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const P = {l:14, r:14, t:26, b:26};
+  const gw = w-P.l-P.r, gh = h-P.t-P.b;
+  const ySplit = P.t + gh*0.46;
+
+  // 流动相区
+  c.fillStyle = 'rgba(78,201,232,.035)';
+  c.fillRect(P.l, P.t, gw, ySplit-P.t);
+  // 固定相区
+  c.fillStyle = 'rgba(167,139,250,.055)';
+  c.fillRect(P.l, ySplit, gw, P.t+gh-ySplit);
+
+  // 固定相颗粒纹理
+  c.save();
+  c.globalAlpha = .3;
+  for(let i=0;i<46;i++){
+    const px = P.l + ((i*137)%1000)/1000*gw;
+    const py = ySplit + 8 + ((i*79)%100)/100*(P.t+gh-ySplit-14);
+    c.beginPath(); c.arc(px, py, 4.2, 0, 6.2832);
+    c.fillStyle = 'rgba(167,139,250,.16)'; c.fill();
+    c.strokeStyle = 'rgba(167,139,250,.22)'; c.lineWidth = .8; c.stroke();
+  }
+  c.restore();
+
+  // 界面线
+  c.save();
+  c.setLineDash([4,4]);
+  c.strokeStyle = 'rgba(167,139,250,.45)'; c.lineWidth = 1.1;
+  line(c, P.l, ySplit, P.l+gw, ySplit);
+  c.restore();
+
+  txt(c, '流动相（乙腈/水）', P.l+6, P.t+12, 'rgba(78,201,232,.8)', 9, 'left', 500);
+  txt(c, 'C18 固定相', P.l+6, P.t+gh-12, 'rgba(167,139,250,.85)', 9, 'left', 500);
+  txt(c, 'u = 0.154 cm/s', P.l+gw-4, P.t+12, 'rgba(148,165,187,.5)', 8, 'right');
+
+  // 分子
+  PART.pts.forEach(p=>{
+    const isS = p.inS;
+    const px = P.l + p.x*gw;
+    const py = isS ? (ySplit + 12 + p.ry*(P.t+gh-ySplit-26))
+                   : (P.t + 14 + p.ry*(ySplit-P.t-30));
+    const col = isS ? CO.cy : CO.vi;
+    c.save();
+    c.shadowColor = hexA(col,.6); c.shadowBlur = 7;
+    dot(c, px, py, 3.1, hexA(col,.9), null);
+    c.restore();
+  });
+
+  // 统计
+  const nS = PART.pts.filter(p=>p.inS).length;
+  const ratio = nS/PART.pts.length;
+  txt(c, '固定相中占比 '+(ratio*100).toFixed(0)+'%   目标 k/(1+k) = '+
+      (5/6*100).toFixed(0)+'%', w-P.r-4, h-12, 'rgba(148,165,187,.55)', 8, 'right');
+}
+function tickPart(){
+  if(!PART.on) return;
+  const now = performance.now();
+  const dt = Math.min(0.05, (now-PART.last)/1000 || 0.016);
+  PART.last = now;
+
+  PART.pts.forEach(p=>{
+    // 状态切换：目标停留比例 k/(1+k) = 5/6
+    const pSwitch = p.inS ? 0.055 : 0.28;
+    if(Math.random() < pSwitch*dt*12){
+      p.inS = !p.inS;
+    }
+    const speed = p.inS ? p.v*0.10 : p.v;
+    p.x += speed*dt;
+    if(p.x > 1){
+      p.x = 0;
+      p.ry = Math.random();
+    }
+  });
+  drawPart();
+  PART.raf = requestAnimationFrame(tickPart);
+}
+
+/* ============================================================
+   5 · 塔板理论：N 对峰宽的影响
+   ============================================================ */
+function drawPlate(){
+  const cv = $('#cvPlate'); if(!cv) return;
+  const {c,w,h} = prep(cv, 360);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const P = {l:44, r:16, t:34, b:36};
+  const TMAX = 10;
+  const X = t => P.l + t/TMAX*(w-P.l-P.r);
+  const Y = v => h-P.b - v*(h-P.t-P.b)*0.9;
+
+  for(let t=0;t<=TMAX;t+=2){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(t), P.t, X(t), h-P.b);
+    txt(c, String(t), X(t), h-P.b+13, CO.tx3, 8, 'center');
+  }
+  line(c, P.l, Y(0), w-P.r, Y(0));
+
+  const sets = [
+    {N:2000,  col:'rgba(255,107,107,.8)', lab:'N = 2k'},
+    {N:5000,  col:'rgba(255,184,77,.85)', lab:'N = 5k'},
+    {N:11300, col:'rgba(167,139,250,.95)',lab:'N = 11k'},
+    {N:25000, col:'rgba(78,201,232,.95)', lab:'N = 25k'}
+  ];
+  const tR = 6.48;
+
+  sets.forEach((s,i)=>{
+    const w4 = 4*tR/Math.sqrt(s.N);
+    const xs=[], ys=[];
+    for(let t=0;t<=TMAX;t+=0.01){
+      xs.push(t);
+      ys.push(peakAt(t, tR, w4, 0));
+    }
+    c.save();
+    if(i===2){ c.shadowColor = hexA(CO.cy,.6); c.shadowBlur = 9; }
+    path(c, xs, ys, X, Y, s.col, i===2?2.1:1.5);
+    c.restore();
+    // 图例
+    const lx = P.l + (w-P.l-P.r)*0.74, ly = P.t+10+i*13;
+    c.strokeStyle = s.col; c.lineWidth = i===2?2.1:1.5;
+    line(c, lx, ly, lx+14, ly);
+    txt(c, s.lab, lx+19, ly, 'rgba(148,165,187,.8)', 8.2, 'left');
+  });
+
+  // t_R 参考线
+  c.save();
+  c.setLineDash([2,4]); c.strokeStyle='rgba(148,165,187,.2)'; c.lineWidth=1;
+  line(c, X(tR), P.t, X(tR), h-P.b);
+  c.restore();
+  txt(c, 't_R 固定', X(tR), P.t-12, 'rgba(148,165,187,.55)', 8, 'center');
+
+  txt(c, '同一保留时间，柱效越高峰越窄越高', w-P.r, h-P.b+26,
+      'rgba(148,165,187,.45)', 8, 'right');
+}
+
+
+/* ============================================================
+   6 · van Deemter 三曲线
+   ============================================================ */
+let vdU = 0.154;
+function drawVD(){
+  const cv = $('#cvVD'); if(!cv) return;
+  const {c,w,h} = prep(cv, 360);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const P = {l:48, r:18, t:34, b:38};
+  const UMAX = 0.46, HMAX = 30;   // μm
+  const X = u => P.l + u/UMAX*(w-P.l-P.r);
+  const Y = Hmu => h-P.b - (Hmu/HMAX)*(h-P.t-P.b);   // Hmu 单位 μm
+
+  // 网格
+  for(let u=0;u<=0.451;u+=0.05){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(u), P.t, X(u), h-P.b);
+    txt(c, u.toFixed(2), X(u), h-P.b+13, CO.tx3, 8, 'center');
+  }
+  for(let H=0;H<=30.01;H+=5){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, P.l, Y(H), w-P.r, Y(H));
+    if(H>0) txt(c, String(H), P.l-7, Y(H), CO.tx3, 8, 'right');
+  }
+  txt(c, 'u (cm/s)', w-P.r, h-P.b+27, CO.tx3, 8.5, 'right');
+  txt(c, 'H (μm)', P.l-7, P.t-12, CO.tx3, 8.5, 'right');
+
+  const us=[]; for(let u=0.02;u<=UMAX;u+=0.002) us.push(u);
+  const toUm = v => v/1e-4;
+
+  // A 项
+  path(c, us, us.map(()=>toUm(COL.A)), X, Y, 'rgba(255,107,107,.55)', 1.3, [4,4]);
+  // B/u
+  path(c, us, us.map(u=>toUm(COL.B/u)), X, Y, 'rgba(78,201,232,.6)', 1.3, [4,4]);
+  // C*u
+  path(c, us, us.map(u=>toUm(COL.C*u)), X, Y, 'rgba(255,184,77,.6)', 1.3, [4,4]);
+  // 总和
+  c.save();
+  c.shadowColor = hexA(CO.cy,.5); c.shadowBlur = 10;
+  path(c, us, us.map(u=>toUm(Hpl(u))), X, Y, CO.cy, 2.4);
+  c.restore();
+
+  // u_opt
+  c.save();
+  c.setLineDash([3,3]); c.strokeStyle='rgba(167,139,250,.35)'; c.lineWidth=1;
+  line(c, X(uOpt), Y(0), X(uOpt), Y(toUm(Hmin)));
+  line(c, P.l, Y(toUm(Hmin)), X(uOpt), Y(toUm(Hmin)));
+  c.restore();
+  dot(c, X(uOpt), Y(toUm(Hmin)), 4, '#0a0c15', CO.cy, 1.8);
+  txt(c, 'u_opt = '+uOpt.toFixed(4), X(uOpt)+8, Y(toUm(Hmin))+15, 'rgba(167,139,250,.95)', 8.5, 'left', 600);
+  txt(c, 'H_min = '+(Hmin*1e4).toFixed(1)+' μm', X(uOpt)+8, Y(toUm(Hmin))+28, 'rgba(148,165,187,.7)', 8, 'left');
+
+  // 工作点
+  const hNow = toUm(Hpl(vdU));
+  const xw = X(vdU), yw = Y(hNow);
+  c.save();
+  c.strokeStyle = 'rgba(233,239,248,.28)'; c.lineWidth=1;
+  line(c, xw, Y(0), xw, yw);
+  line(c, P.l, yw, xw, yw);
+  c.restore();
+  c.save();
+  c.shadowColor = '#fff'; c.shadowBlur = 10;
+  dot(c, xw, yw, 4.6, '#e9eff8', '#0a0c15', 2);
+  c.restore();
+  txt(c, 'H = '+hNow.toFixed(1), xw+9, yw+14, 'rgba(233,239,248,.95)', 8.5, 'left', 600);
+
+  // 图例
+  const lg = [
+    [CO.rd, 'A 涡流扩散', [4,4]],
+    [CO.vi, 'B/u 纵向扩散', [4,4]],
+    [CO.am, 'C·u 传质阻力', [4,4]],
+    [CO.cy, 'H 总板高', null]
+  ];
+  lg.forEach((it,i)=>{
+    const y0 = P.t+9+i*13, x0 = P.l+8;
+    c.save(); c.strokeStyle=it[0]; c.lineWidth = it[2]?1.3:2.2;
+    c.setLineDash(it[2]||[]);
+    line(c, x0, y0, x0+15, y0); c.restore();
+    txt(c, it[1], x0+20, y0, 'rgba(148,165,187,.8)', 8.2, 'left');
+  });
+}
+
+/* ============================================================
+   7 · 实时优化色谱图
+   ============================================================ */
+let optF = 1.0, optL = 150;
+function drawOptim(){
+  const cv = $('#cvOptim'); if(!cv) return;
+  const small = window.innerWidth < 900;
+  const {c,w,h} = prep(cv, 330);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const st = state(optF, optL, 30, 0.35);
+  const tEnd = Math.max(st.tR[4]*1.18, 2);
+
+  const P = {l: small?40:46, r:14, t:28, b:34};
+  const X = t => P.l + t/tEnd*(w-P.l-P.r);
+  const Y = v => h-P.b - v*0.9*(h-P.t-P.b);
+
+  // 网格
+  const step = tEnd>20?5:(tEnd>8?2:1);
+  for(let t=0;t<=tEnd;t+=step){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(t), P.t, X(t), h-P.b);
+    txt(c, t.toFixed(0), X(t), h-P.b+13, CO.tx3, 7.8, 'center');
+  }
+  line(c, P.l, Y(0), w-P.r, Y(0));
+  txt(c, 'min', w-P.r, h-P.b+25, CO.tx3, 8, 'right');
+
+  // 填充
+  const g = c.createLinearGradient(0,P.t,0,h-P.b);
+  const R1 = res(st,1);
+  const fillCol = R1>=1.5 ? CO.am : (R1>=1.0 ? '#ff9f43' : CO.rd);
+  g.addColorStop(0, hexA(fillCol,.30)); g.addColorStop(1, hexA(fillCol,.02));
+  c.beginPath(); c.moveTo(X(0),Y(0));
+  for(let t=0;t<=tEnd;t+=tEnd/900) c.lineTo(X(t), Y(chromAt(t, st)));
+  c.lineTo(X(tEnd), Y(0)); c.closePath();
+  c.fillStyle = g; c.fill();
+
+  // 轮廓
+  c.save();
+  c.shadowColor = hexA(fillCol,.6); c.shadowBlur = 8;
+  c.strokeStyle = fillCol; c.lineWidth = 1.7;
+  c.beginPath();
+  for(let t=0;t<=tEnd;t+=tEnd/900){
+    const px=X(t), py=Y(chromAt(t, st));
+    t===0 ? c.moveTo(px,py) : c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // 右上：R 与 N
+  const rc = R1>=1.5?CO.gr:(R1>=1.0?CO.am:CO.rd);
+  txt(c, 'R = '+R1.toFixed(2), w-P.r-2, P.t-13, hexA(rc,.95), 9.5, 'right', 600);
+  txt(c, 'N = '+st.N.toFixed(0), w-P.r-2, P.t-2, 'rgba(148,165,187,.5)', 7.8, 'right');
+
+  // 峰顶编号
+  st.tR.forEach((t,i)=>{
+    if(t>tEnd*0.99) return;
+    txt(c, String(i+1), X(t), Y(1)-10, 'rgba(233,239,248,.65)', 7.5, 'center', 600);
+  });
+}
+
+/* ============================================================
+   8 · 等度 vs 梯度
+   ============================================================ */
+let gradT = 12;
+function drawGrad(){
+  const cv = $('#cvGrad'); if(!cv) return;
+  const {c,w,h} = prep(cv, 370);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const P = {l:46, r:16, t:30, b:36};
+  const TMAX = 30;
+  const X = t => P.l + t/TMAX*(w-P.l-P.r);
+  const half = (h-P.t-P.b-24)/2;
+
+  // 两条泳道
+  const yA = P.t;                 // 等度
+  const yB = P.t + half + 24;     // 梯度
+  const YA = v => yA+half-8 - v*(half-16);
+  const YB = v => yB+half-8 - v*(half-16);
+
+  // 网格
+  for(let t=0;t<=TMAX;t+=5){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(t), P.t, X(t), h-P.b);
+    txt(c, t.toFixed(0), X(t), h-P.b+13, CO.tx3, 8, 'center');
+  }
+  line(c, P.l, YA(0), w-P.r, YA(0));
+  line(c, P.l, YB(0), w-P.r, YB(0));
+  txt(c, 'min', w-P.r, h-P.b+26, CO.tx3, 8, 'right');
+
+  // ---- 等度：强保留样品 ----
+  const kEq = [2,4,8,16,30];
+  const t0 = 0.90;
+  const NEq = 9000;
+  const tEq = kEq.map(k=>t0*(1+k));
+  const wEq = tEq.map(t=>4*t/Math.sqrt(NEq));
+  const ampEq = wEq.map(w => wEq[0]/w);       // 面积守恒 → 宽峰必定矮
+
+  txt(c, '等度洗脱 · φ 恒定 0.30', P.l+2, yA-12, 'rgba(255,107,107,.9)', 8.5, 'left', 600);
+  txt(c, '最后峰 '+tEq[4].toFixed(1)+' min · 峰高仅 '+(ampEq[4]*100).toFixed(0)+'%', w-P.r-2, yA-12, 'rgba(255,107,107,.75)', 8, 'right');
+
+  const gA = c.createLinearGradient(0,yA,0,yA+half);
+  gA.addColorStop(0, hexA(CO.rd,.28)); gA.addColorStop(1, hexA(CO.rd,.02));
+  c.beginPath(); c.moveTo(X(0), YA(0));
+  for(let t=0;t<=TMAX;t+=0.02){
+    let v=0; tEq.forEach((tt,i)=>{ v += ampEq[i]*peakAt(t, tt, wEq[i], ASYM[i]); });
+    c.lineTo(X(t), YA(v));
+  }
+  c.lineTo(X(TMAX), YA(0)); c.closePath();
+  c.fillStyle = gA; c.fill();
+  c.save();
+  c.strokeStyle = 'rgba(255,107,107,.85)'; c.lineWidth = 1.5;
+  c.beginPath();
+  for(let t=0;t<=TMAX;t+=0.02){
+    let v=0; tEq.forEach((tt,i)=>{ v += ampEq[i]*peakAt(t, tt, wEq[i], ASYM[i]); });
+    const px=X(t), py=YA(v);
+    t===0?c.moveTo(px,py):c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // ---- 梯度 ----
+  const S = 8.0, dphi = 0.65;
+  const bG = S*dphi*t0/gradT;
+  const tGr = k => (t0/bG)*Math.log(1+bG*k) + t0;
+  const tGrad = kEq.map(tGr);
+  // 峰宽：按梯度压缩 0.62
+  const NG = 9000;
+  const wGrad = tGrad.map(t=>4*t/Math.sqrt(NG)*0.62);
+  const ampGrad = wGrad.map(w => wGrad[0]/w);
+
+  txt(c, '梯度洗脱 · φ 0.30 → 0.95 / '+gradT+' min', P.l+2, yB-12, 'rgba(94,230,168,.9)', 8.5, 'left', 600);
+  txt(c, '最后峰 '+tGrad[4].toFixed(1)+' min · 峰高 '+(ampGrad[4]*100).toFixed(0)+'%', w-P.r-2, yB-12, 'rgba(94,230,168,.8)', 8, 'right');
+
+  const gB = c.createLinearGradient(0,yB,0,yB+half);
+  gB.addColorStop(0, hexA(CO.gr,.26)); gB.addColorStop(1, hexA(CO.gr,.02));
+  c.beginPath(); c.moveTo(X(0), YB(0));
+  for(let t=0;t<=TMAX;t+=0.02){
+    let v=0; tGrad.forEach((tt,i)=>{ v += ampGrad[i]*peakAt(t, tt, wGrad[i], ASYM[i]*0.5); });
+    c.lineTo(X(t), YB(v));
+  }
+  c.lineTo(X(TMAX), YB(0)); c.closePath();
+  c.fillStyle = gB; c.fill();
+  c.save();
+  c.shadowColor = hexA(CO.gr,.5); c.shadowBlur = 8;
+  c.strokeStyle = 'rgba(94,230,168,.95)'; c.lineWidth = 1.6;
+  c.beginPath();
+  for(let t=0;t<=TMAX;t+=0.02){
+    let v=0; tGrad.forEach((tt,i)=>{ v += ampGrad[i]*peakAt(t, tt, wGrad[i], ASYM[i]*0.5); });
+    const px=X(t), py=YB(v);
+    t===0?c.moveTo(px,py):c.lineTo(px,py);
+  }
+  c.stroke(); c.restore();
+
+  // φ 曲线（梯度泳道右侧 y 轴）
+  c.save();
+  c.strokeStyle = 'rgba(78,201,232,.55)'; c.lineWidth = 1.2;
+  c.setLineDash([3,3]);
+  const yPhi = phi => yB+half-8 - (phi-0.25)/0.75*(half-16)*0.9;
+  line(c, X(0), yPhi(0.30), X(gradT), yPhi(0.95));
+  line(c, X(gradT), yPhi(0.95), X(TMAX), yPhi(0.95));
+  c.restore();
+  txt(c, 'φ', X(gradT)+4, yPhi(0.95)-8, 'rgba(78,201,232,.7)', 8, 'left');
+
+  // 时间差标注
+  const yMid = yA + half + 10;
+  c.save();
+  c.strokeStyle = 'rgba(94,230,168,.35)'; c.lineWidth = 1;
+  c.setLineDash([2,3]);
+  line(c, X(tGrad[4]), yB-4, X(tGrad[4]), yMid);
+  line(c, X(tEq[4]), yA+half+4, X(tEq[4]), yMid);
+  c.restore();
+  const save = tEq[4]-tGrad[4];
+  txt(c, '省下 '+save.toFixed(1)+' min', (X(tGrad[4])+X(tEq[4]))/2, yMid,
+      'rgba(94,230,168,.85)', 9, 'center', 600);
+}
+
+/* ============================================================
+   9 · 检测器 LOD 对比
+   ============================================================ */
+function drawDet(){
+  const cv = $('#cvDet'); if(!cv) return;
+  const {c,w,h} = prep(cv, 330);
+  c.fillStyle = '#0a0c15'; c.fillRect(0,0,w,h);
+
+  const D = [
+    {n:'TCD',  lod:-8,  lin:1e5,  col:CO.tx3},
+    {n:'UV-Vis', lod:-9, lin:1e5, col:CO.vi},
+    {n:'FID',  lod:-11, lin:1e7, col:CO.am},
+    {n:'FLD',  lod:-12, lin:1e4, col:CO.cy},
+    {n:'MS',   lod:-13, lin:1e5, col:CO.gr}
+  ];
+
+  const P = {l:64, r:22, t:26, b:38};
+  const XMIN=-7.0, XMAX=-13.5;          // 左：不灵敏　右：灵敏
+  const X = e => P.l + (XMIN-e)/(XMIN-XMAX)*(w-P.l-P.r);
+  const rowH = (h-P.t-P.b)/D.length;
+
+  // 网格
+  for(let e=-13;e<=-7;e++){
+    c.strokeStyle = CO.grid; c.lineWidth=1;
+    line(c, X(e), P.t, X(e), h-P.b);
+    txt(c, '1e'+e, X(e), h-P.b+13, CO.tx3, 7.8, 'center');
+  }
+  txt(c, '← 不灵敏', P.l+2, P.t-11, 'rgba(148,165,187,.45)', 7.5, 'left');
+  txt(c, '更灵敏 →', w-P.r-2, P.t-11, 'rgba(94,230,168,.6)', 7.5, 'right');
+
+  D.forEach((d,i)=>{
+    const y = P.t + i*rowH + rowH/2;
+    const x0 = P.l + 1, x1 = X(d.lod);
+    // 条
+    const g = c.createLinearGradient(x0,0,x1,0);
+    g.addColorStop(0, hexA(d.col,.12)); g.addColorStop(1, hexA(d.col,.66));
+    c.fillStyle = g;
+    c.fillRect(x0, y-rowH*0.28, x1-x0, rowH*0.56);
+    // 端点
+    dot(c, x1, y, 3.2, d.col, null);
+    // 名称
+    txt(c, d.n, P.l-9, y, 'rgba(233,239,248,.85)', 8.8, 'right', 500);
+    // LOD 值（条内左侧）
+    txt(c, '1e'+d.lod, x0+7, y, 'rgba(233,239,248,.92)', 7.8, 'left', 600);
+  });
+
+  txt(c, 'LOD (g/mL)', (P.l+w-P.r)/2, h-P.b+26, CO.tx3, 8, 'center');
+}
+
+/* ============================================================
+   10 · 表格与交互
+   ============================================================ */
+function buildTable(){
+  const tb = $('#tbPeaks'); if(!tb) return;
+  let html = '';
+  STD.tR.forEach((t,i)=>{
+    const r = res(STD,i);
+    const rc = r===null ? '' : (r>=1.5 ? 'var(--gr)' : (r>=1.0?'var(--am)':'var(--rd)'));
+    html += '<tr><td>'+NAMES[i]+'</td>'
+      + '<td class="num">'+STD.ks[i].toFixed(2)+'</td>'
+      + '<td class="num">'+t.toFixed(3)+'</td>'
+      + '<td class="num">'+STD.w[i].toFixed(3)+'</td>'
+      + '<td class="num" style="color:'+(rc||'var(--tx-3)')+'">'
+      + (r===null?'—':r.toFixed(2))+'</td></tr>';
+  });
+  tb.innerHTML = html;
+}
+
+function updateVD(){
+  const h = Hpl(vdU)*1e4;
+  const N = Npl(COL.L0, vdU);
+  const F = FofU(vdU);
+  $('#vVDu').textContent = vdU.toFixed(3)+' cm/s';
+  $('#vVDh').innerHTML = h.toFixed(2)+'<small class="u">μm</small>';
+  $('#vVDN').textContent = N.toFixed(0);
+  $('#vVDf').innerHTML = F.toFixed(2)+'<small class="u">mL/min</small>';
+  $('#vVDx').innerHTML = (vdU/uOpt).toFixed(1)+'<small class="u">×</small>';
+  drawVD();
+}
+
+function updateOptim(){
+  const st = state(optF, optL, 30, 0.35);
+  const R1 = res(st,1);
+  $('#vOF').textContent = optF.toFixed(2)+' mL/min';
+  $('#vOL').textContent = optL+' mm';
+  $('#vOR').textContent = R1.toFixed(2);
+  $('#vON').textContent = st.N.toFixed(0);
+  $('#vOT').innerHTML = st.tR[4].toFixed(1)+'<small class="u">min</small>';
+  $('#vOP').innerHTML = st.P.toFixed(0)+'<small class="u">bar</small>';
+
+  const col = R1>=1.5 ? 'var(--gr)' : (R1>=1.0 ? 'var(--am)' : 'var(--rd)');
+  $('#vOR').style.color = col;
+
+  const note = $('#noteR'), ico = $('#icoR'), tx = $('#txtR');
+  if(R1>=1.5){
+    note.className='note ok';
+    ico.textContent='✓';
+    tx.innerHTML='<b>基线分离</b>：两峰独立，定量误差 &lt; 0.5%。R = 1.5 是行业判据，不是因为物理上必须。';
+  } else if(R1>=1.0){
+    note.className='note warn';
+    ico.textContent='⚠';
+    tx.innerHTML='<b>部分重叠</b>：R 在 1.0–1.5 之间，两峰交界处有 2–5% 的重叠，定量误差升到 1–3%。可以用，但要做峰分解。';
+  } else {
+    note.className='note warn';
+    ico.textContent='✕';
+    tx.innerHTML='<b>未分离</b>：R &lt; 1.0，两峰实质上合并成一个肩峰。此时峰面积无法可靠分配，必须改条件。';
+  }
+  drawOptim();
+}
+
+function updateGrad(){
+  $('#vGt').textContent = gradT+' min';
+  drawGrad();
+}
+
+/* ============================================================
+   11 · 启动
+   ============================================================ */
+function boot(){
+  buildTable();
+  updateVD();
+  updateOptim();
+  updateGrad();
+  drawChrom();
+  drawPlate();
+  drawDet();
+  initPart();
+  drawPart();
+  PART.on = true;
+  PART.last = performance.now();
+  tickPart();
+
+  // 交互
+  $('#sVD').addEventListener('input', e=>{ vdU = parseFloat(e.target.value); updateVD(); });
+  $('#sOF').addEventListener('input', e=>{ optF = parseFloat(e.target.value); updateOptim(); });
+  $('#sOL').addEventListener('input', e=>{ optL = parseInt(e.target.value); updateOptim(); });
+  $('#sG').addEventListener('input', e=>{ gradT = parseInt(e.target.value); updateGrad(); });
+
+  // Hero 动画
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  drawSep();
+  sepT = 2.6;
+  if(!reduce){ heroOn = true; loopHero(); sepOn = true; loopSep(); }
+  else { heroT = 15; drawHero(); sepT = 6; drawSep(); }
+
+  // 视口内重绘
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting) drawChrom(); });
+  }, {threshold:.05});
+  const el = $('#cvChrom'); if(el) io.observe(el);
+
+  // 进度条
+  const bar = $('#pbar');
+  window.addEventListener('scroll', ()=>{
+    const st = window.scrollY;
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    if(bar) bar.style.width = (total>0 ? st/total*100 : 0)+'%';
+  }, {passive:true});
+
+  // nav 高亮
+  const links = $$('#nav a');
+  const secs = links.map(a=>document.getElementById(a.getAttribute('href').slice(1)+'sec'));
+  const navIO = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        const i = secs.indexOf(e.target);
+        links.forEach((a,j)=>a.classList.toggle('on', j===i));
+      }
+    });
+  }, {threshold:.15, rootMargin:'-15% 0px -60% 0px'});
+  secs.forEach(s=>{ if(s) navIO.observe(s); });
+
+  // 尺寸变化
+  let rzT=0;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(rzT);
+    rzT = setTimeout(()=>{
+      drawHero(); drawSep(); drawChrom(); drawPlate(); drawDet();
+      drawVD(); drawOptim(); drawGrad(); drawPart();
+    }, 160);
+  });
+
+  // 页面隐藏时停动画
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ cancelAnimationFrame(heroRAF); cancelAnimationFrame(sepRAF); PART.on=false; cancelAnimationFrame(PART.raf); }
+    else { if(!reduce){ loopHero(); loopSep(); } PART.on=true; tickPart(); }
+  });
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+
+</script>
+</body>
+</html>
